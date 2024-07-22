@@ -1,0 +1,17 @@
+
+
+From Rhian Davies, May, 2024
+
++ R Bookdown on processing steps for Boundary TSA
+file:///G:/!Workgrp/Analysts/!Project/TSA_Projects/active/KootenayLake_TSA13/TSR4/AnalysisReport/TSA13_TSR4_AnalysisReport/index.html
+
+
++ ArcGIS processing:
+W drive task list: W:\FOR\VIC\HTS\ANA\Workarea\ardavies\ts_units\2019\tsa13\Tasks
+
++ Data Package for data sources:
+https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/tsr-annual-allowable-cut/13ts_dpkg_2020_november.pdf
+Note: confirmed with Rhian that in Table 9, Modelled total width(m) refers to buffer width * 2. 2024-05-02 via Teams chat
+
++ FAIB Tools (analysts windows version), Python version 2.7 manual:
+\\sfp.idir.bcgov\S164\S6306\!Workgrp\Analysts\ardavies\projects\faib_tools_doc\_manual\index.html

@@ -1,0 +1,48 @@
+rank,name,rollup_name,gross_area,fmlb_area,falb_area
+1,National Park,Protected,590878,347147,346815
+2,Ecological Reserve,Protected,111805,49086,48656
+3,Provincial Park,Protected,10492584,4622065,4618468
+4,Conservancy,Protected,2750304,1433433,1432749
+5,Protected Area,Protected,398729,296606,296448
+6,Heritage Site,Protected,24497,11507,10378
+7,Recreation Area,Protected,5927,4270,4213
+8,Regional Park,Protected,76535,50271,44136
+9,Ungulate Winter Range: No harvest,Prohibited,5258155,2352333,2349107
+10,Wildlife Habitat Area: No harvest,Prohibited,1108748,716625,715689
+11,Biodiversity Mining and Tourism Area,Prohibited,296356,118238,117919
+12,Sea to Sky Wildland Zone,Prohibited,254408,21208,21208
+13,Special Wildland RMZ in Muskwa Kechia MA,Prohibited,635146,163851,163851
+14,Nlhaxten/Cayoosh Wildland Area,Prohibited,3057,591,591
+15,South Chilcotin Mountains Mining and Tourism Areas,Prohibited,14573,5302,5302
+16,NGO Fee Simple Conservation Lands,Prohibited,113927,74715,375
+17,Great Bear Rainforest (GBR) Special Forest Management Areas,Prohibited,250336,107940,107403
+18,Great Bear Rainforest (GBR) Landscape Reserve Design (LRD),Prohibited,451389,332360,331488
+19,Old Growth Management Area (OGMA): Legal,Prohibited,1654376,1529467,1527187
+20,Class1 Coast Grizzly Bear Habitat (Coast LUP),Prohibited,89902,54919,54586
+21,Old Growth Management Area (OGMA): Non-Legal,Prohibited,1083687,1005404,1001354
+22,Private Conservation Land: Administered Land,High Restricted,10768,6538,6405
+23,CRD Water Supply Area,High Restricted,19888,18552,756
+24,Greater Vancouver Water District,High Restricted,52000,39143,35660
+25,Wildlife Management Area (WMA),High Restricted,176888,68077,67793
+26,Creston Valley Wildlife Management Area,High Restricted,165,68,33
+27,Visual Quality Objective (VQO): Preservation,High Restricted,144409,78172,72036
+28,Visual Quality Objective (VQO): Retention,High Restricted,1296133,963255,874123
+29,FADM Designated Area,High Restricted,685042,468548,468131
+30,Atlin-Taku Forest Retention Areas,High Restricted,1120528,501569,501118
+31,Migratory Bird Sanctuaries,High Restricted,808,53,37
+32,Private Conservation Land: Reserve Land,Medium Restricted,524848,353136,341830
+33,Ungulate Winter Range: Conditional harvest,Medium Restricted,14889508,8563267,8280976
+34,Wildlife Habitat Area: Conditional harvest,Medium Restricted,1813480,1476694,1456871
+35,Visual Quality Objective (VQO): Partial Retention,Medium Restricted,1756826,1400772,1313432
+36,Visual Quality Objective (VQO): Modification,Medium Restricted,1662856,1373897,1284134
+37,Community Watershed,Medium Restricted,700120,580242,408924
+38,National Wildlife Areas,Medium Restricted,382,14,14
+39,Forest Recreation Site,Medium Restricted,324112,219070,216601
+40,Lakes South Landscape Corridor,Medium Restricted,21542,15878,15704
+41,Important Fisheries Watersheds (Great Bear Rainforest LUO),Medium Restricted,1332340,628130,621953
+42,Great Bear Rainforest (GBR) Ecosystem-based Management (EBM) Area,Low Restricted,1866995,924001,872625
+43,Muskwa Kechika Management Area,Low Restricted,2913026,1134884,1134614
+44,Fisheries Sensitive Watersheds,Low Restricted,858510,760819,721779
+45,Visual Quality Objective (VQO): Maximum Modification,Low Restricted,274432,154307,153552
+46,"Haida Gwaii, Central Coast, North Coast Planning Areas",Low Restricted,518426,452052,437178
+47,Class2 Coast Grizzly Bear Habitat,Low Restricted,6,3,3
