@@ -654,7 +654,7 @@ install.packages(&quot;dplyr&quot;)</code></pre>
 access to functions within this doc. They are provided below.</p>
 <pre class="r"><code>library(dadmtools)
 
-pg_conn_list &lt;- dadmtools::get_pg_conn_list()
+conn_list &lt;- dadmtools::get_pg_conn_list()
 import_bcgw_to_pg &lt;- function(
                                 src_schema    = &quot;WHSE_BASEMAPPING&quot;,
                                 src_layer     = &quot;GBA_RAILWAY_TRACKS_SP&quot;,
@@ -665,15 +665,15 @@ import_bcgw_to_pg &lt;- function(
                                 geometry_name = &quot;shape&quot;,
                                 geometry_type = &quot;MultiLineString&quot;,
                                 grouping_name = &quot;railway&quot;,
-                                pg_conn_list
+                                conn_list
 
 ) {
     query &lt;- glue(&#39;DROP FOREIGN TABLE IF EXISTS {fdw_schema}.{src_layer};&#39;)
-    run_sql_r(query, pg_conn_list)
+    run_sql_r(query, conn_list)
     query &lt;- glue(&#39;IMPORT FOREIGN SCHEMA &quot;{src_schema}&quot; LIMIT TO ({src_layer}) FROM SERVER oradb INTO {fdw_schema};&#39;)
-    run_sql_r(query, pg_conn_list)
+    run_sql_r(query, conn_list)
     query &lt;- glue(&#39;DROP TABLE IF EXISTS {dst_schema}.{dst_layer};&#39;)
-    run_sql_r(query, pg_conn_list)
+    run_sql_r(query, conn_list)
     if (is.null(grouping_name)){
     query &lt;- glue(&quot;CREATE TABLE {dst_schema}.{dst_layer} as
     SELECT
@@ -690,9 +690,9 @@ import_bcgw_to_pg &lt;- function(
     FROM
         {fdw_schema}.{src_layer};&quot;)
     }
-    run_sql_r(query, pg_conn_list)
+    run_sql_r(query, conn_list)
     query &lt;- glue(&#39;CREATE INDEX {dst_layer}_geom_idx on {dst_schema}.{dst_layer} USING gist(geom);&#39;)
-    run_sql_r(query, pg_conn_list)
+    run_sql_r(query, conn_list)
 }
 
 check_id_in_df &lt;- function(df, id, grouping_id) {
@@ -821,7 +821,7 @@ import_bcgw_to_pg(src_schema = &quot;WHSE_BASEMAPPING&quot;,
                   geometry_name = &quot;geometry&quot;,
                   geometry_type = &quot;MultiLineString&quot;,
                   grouping_name = &quot;stream&quot;,
-                  pg_conn_list  = conn_list)
+                  conn_list  = conn_list)
 
 ## WHSE_BASEMAPPING.FWA_LAKES_POLY
 import_bcgw_to_pg(src_schema = &quot;WHSE_BASEMAPPING&quot;,
@@ -833,7 +833,7 @@ import_bcgw_to_pg(src_schema = &quot;WHSE_BASEMAPPING&quot;,
                   geometry_name = &quot;geometry&quot;,
                   geometry_type = &quot;MultiPolygon&quot;,
                   grouping_name = NULL,
-                  pg_conn_list  = conn_list)
+                  conn_list  = conn_list)
 
 ## WHSE_BASEMAPPING.FWA_WETLANDS_POLY
 import_bcgw_to_pg(src_schema= &quot;WHSE_BASEMAPPING&quot;,
@@ -845,7 +845,7 @@ import_bcgw_to_pg(src_schema= &quot;WHSE_BASEMAPPING&quot;,
                   geometry_name = &quot;geometry&quot;,
                   geometry_type = &quot;MultiPolygon&quot;,
                   grouping_name = NULL,
-                  pg_conn_list  = conn_list)
+                  conn_list  = conn_list)
 
 
 ## Rationale: Needed to calculate riparian buffers
@@ -859,7 +859,7 @@ import_bcgw_to_pg(src_schema = &quot;WHSE_WATER_MANAGEMENT&quot;,
                   geometry_name = &quot;shape&quot;,
                   geometry_type = &quot;MultiPolygon&quot;,
                   grouping_name = NULL,
-                  pg_conn_list  = conn_list)
+                  conn_list  = conn_list)
 
 ## Rationale: Needed to calculate riparian buffers
 ## whse_forest_vegetation.bec_biogeoclimatic_poly
@@ -872,7 +872,7 @@ import_bcgw_to_pg(src_schema = &quot;WHSE_FOREST_VEGETATION&quot;,
                   geometry_name = &quot;geometry&quot;,
                   geometry_type = &quot;MultiPolygon&quot;,
                   grouping_name = NULL,
-                  pg_conn_list  = conn_list)
+                  conn_list  = conn_list)
 
 ## Rationale: channel width needed to calculate riparian buffers
 ## Data source from Simon Norris/Craig Mount
@@ -941,11 +941,11 @@ Expand for pre-processing steps
 <p><br></p>
 <p><strong>Importing FREP Data</strong></p>
 <p>Add geometry field to the FREP monitoring data</p>
-<pre class="r"><code>pg_conn_list &lt;- dadmtools::get_pg_conn_list()
+<pre class="r"><code>conn_list &lt;- dadmtools::get_pg_conn_list()
 query &lt;- &quot;ALTER TABLE whse_sp.june13_riparian_data_for_faib DROP COLUMN IF NOT EXISTS geom;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.june13_riparian_data_for_faib ADD COLUMN IF NOT EXISTS geom Geometry(Point, 3005);&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 query &lt;- &quot;UPDATE whse_sp.june13_riparian_data_for_faib SET geom = ST_SetSRID(ST_Point(bcalbers_easting, bcalbers_northing), 3005);&quot;
 run_sql_r(query, conpg_conn_listn_list)</code></pre>
@@ -954,14 +954,14 @@ to <code>whse_sp.june13_riparian_data_for_faib</code> with the fid of
 the nearest linestring of
 <code>whse_sp.modelled_habitat_potential</code></p>
 <pre class="r"><code>query &lt;- &quot;ALTER TABLE whse_sp.june13_riparian_data_for_faib DROP COLUMN IF EXISTS modelled_habitat_potential_fid;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.june13_riparian_data_for_faib ADD COLUMN modelled_habitat_potential_fid INTEGER;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 query &lt;- &quot;ALTER TABLE whse_sp.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_line;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.june13_riparian_data_for_faib ADD COLUMN distance_to_line real;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 query &lt;- &quot;WITH nearest_lines AS (
     SELECT
@@ -987,31 +987,31 @@ FROM
     nearest_lines nl
 WHERE 
     r.objectid = nl.point_fid;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p><strong>Getting ready for stream classification</strong></p>
 <p>Add fields to <code>whse_sp.modelled_habitat_potential</code> for
 later use</p>
 <pre class="r"><code>query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_class;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS riparian_class varchar(3);&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_class_reason;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS riparian_class_reason text;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_data_source;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS riparian_data_source text;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p>Update <code>whse_sp.modelled_habitat_potential</code> with modeled
 channel_width</p>
 <pre class="r"><code>print(glue(&#39;Updating whse_sp.modelled_habitat_potential with channel width&#39;))
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS channel_width real;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS channel_width_source text;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential SET channel_width_source = a.channel_width_source, channel_width = a.channel_width FROM whse_sp.fwa_stream_networks_channel_width a WHERE a.linear_feature_id = whse_sp.modelled_habitat_potential.linear_feature_id;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p>In order to easily calculate which linestrings are within community
 watersheds, generate a geometry of the centerpoint on the
 linestring.<br />
@@ -1020,7 +1020,7 @@ so first calculate an interim Linestring geometry.<br />
 Luckily all lines are single multilinestrings so it is a straight
 conversion</p>
 <pre class="r"><code>query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS geom_ls geometry(LineString, 3005);&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;WITH a AS (
 SELECT
     fid,
@@ -1031,28 +1031,28 @@ FROM
 UPDATE whse_sp.modelled_habitat_potential s SET geom_ls = a.geom
 FROM
 a WHERE s.fid = a.fid&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 ## generate the centerpoint
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS line_center_point geometry(Point, 3005);&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential s SET line_center_point = ST_LineInterpolatePoint(geom_ls, 0.5);&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 ## create an index on the center point
 query &lt;- &quot;DROP INDEX IF EXISTS whse_sp.modelled_habitat_potential_center_point_idx;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;CREATE INDEX modelled_habitat_potential_center_point_idx ON whse_sp.modelled_habitat_potential USING gist(line_center_point);&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ANALYZE whse_sp.modelled_habitat_potential;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 ## drop the interim linestring geometry
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS geom_ls&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS community_watershed boolean DEFAULT False;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 query &lt;- &quot;WITH a AS (
 SELECT
@@ -1072,19 +1072,19 @@ FROM
   a 
 WHERE 
   a.linear_feature_id = s.linear_feature_id;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p>Add some indexes for speed</p>
 <pre class="r"><code>query &lt;- &quot;CREATE INDEX modelled_habitat_potential_fish_idx ON whse_sp.modelled_habitat_potential USING btree(fish_habitat)&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 query &lt;- &quot;CREATE INDEX modelled_habitat_potential_comm_ws_idx ON whse_sp.modelled_habitat_potential USING btree(community_watershed)&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 query &lt;- &quot;CREATE INDEX modelled_habitat_potential_width_idx ON whse_sp.modelled_habitat_potential USING btree(channel_width)&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 query &lt;- &quot;ANALYZE whse_sp.modelled_habitat_potential&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p>Bring in manually created dataset of stream id’s within floodplain
 where the width was less than 100m</p>
 <pre class="r"><code>library(dadmtools)
@@ -1107,16 +1107,16 @@ Kootenay).</p>
 <p>The channel width for identified stream reaches with contributing
 area’s outside BC’s channel_width are set to NULL.</p>
 <pre class="r"><code>library(dadmtools)
-pg_conn_list &lt;- dadmtools::get_pg_conn_list()
+conn_list &lt;- dadmtools::get_pg_conn_list()
 
 query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential SET riparian_class = NULL, riparian_class_reason = NULL&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 run_sql_psql(sql_var = NULL, sql_file = &#39;data//input//stream_reaches_with_contributing_areas_outside_BC.sql&#39;, pg_db = &#39;prov_data&#39;, host = &#39;localhost&#39;)
 
 
 query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential a SET channel_width = NULL FROM public.stream_reaches_with_contributing_areas_outside_bc outside_bc where outside_bc.linear_feature_id = a.linear_feature_id;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 </div>
 <div id="classification" class="section level4">
 <h4>Classification</h4>
@@ -1128,10 +1128,10 @@ Expand for stream classification
 <p>Calculate the stream classification according to the rules found <a href="https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829">here</a></p>
 <p>Ensure riparian columns are reset prior to analysis</p>
 <pre class="r"><code>library(dadmtools)
-pg_conn_list &lt;- dadmtools::get_pg_conn_list()
+conn_list &lt;- dadmtools::get_pg_conn_list()
 
 query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential SET riparian_class = NULL, riparian_class_reason = NULL, riparian_data_source = NULL;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p><strong>Calculate S1A streams:</strong></p>
 <blockquote>
 <p><em>“(2) A stream that is a fish stream or is located in a community
@@ -1280,7 +1280,7 @@ FROM
     filtered_s1a
 WHERE 
     filtered_s1a.fid = whse_sp.modelled_habitat_potential.fid&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p><strong>Calculate S1B streams:</strong> &gt; <em>“(b) S1B, if the
 stream width is greater than 20 m but the stream does not have a
 riparian class of S1A”</em></p>
@@ -1302,7 +1302,7 @@ AND
   )
 AND
   riparian_class IS NULL;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p><strong>Calculate S2 streams:</strong> &gt; <em>“(c) S2, if the
 stream width is not less than 5 m but not more than 20 m”</em></p>
 <pre class="r"><code>query &lt;- &quot;UPDATE 
@@ -1323,7 +1323,7 @@ AND
   )
 AND
   riparian_class IS NULL;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p><strong>Calculate S3 streams:</strong> &gt; <em>“(d)S3, if the stream
 width is not less than 1.5 m but is less than 5 m;”</em></p>
 <pre class="r"><code>query &lt;- &quot;UPDATE 
@@ -1344,7 +1344,7 @@ AND
   )
 AND
   riparian_class IS NULL;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p><strong>Calculate S4 streams:</strong> &gt; <em>“(e) S4, if the
 stream width is less than 1.5 m.”</em></p>
 <pre class="r"><code>query &lt;- &quot;UPDATE 
@@ -1363,7 +1363,7 @@ AND
   )
 AND
   riparian_class IS NULL;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p><strong>Calculate S5 streams:</strong> &gt; <em>“(3)A stream that is
 not a fish stream and is located outside of a community watershed has
 the following riparian class: (a)S5, if the stream width is greater than
@@ -1384,7 +1384,7 @@ AND
   )
 AND
   riparian_class IS NULL;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p><strong>Calculate S6 streams:</strong> &gt; <em>“(b)S6, if the stream
 width is 3 m or less.”</em></p>
 <pre class="r"><code>query &lt;- &quot;UPDATE 
@@ -1403,7 +1403,7 @@ AND
   )
 AND
   riparian_class IS NULL;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p>Classify stream reaches where modeled channel width does not exist
 using a stream order based approach. Approach taken from 2024 Boundary
 TSA. Source:
@@ -1465,6 +1465,17 @@ not exist</caption>
 </tr>
 </tbody>
 </table>
+<pre class="r"><code>query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS tsa;&quot;
+run_sql_r(query, conn_list)
+query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN tsa smallint;&quot;
+run_sql_r(query, conn_list)
+query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential fishy SET tsa = tsa.tsa
+FROM
+whse_sp.tsa_boundaries_2020 tsa
+WHERE
+ST_Intersects(tsa.geom, fishy.line_center_point)
+;&quot;
+run_sql_r(query, conn_list)</code></pre>
 <pre class="r"><code>query &lt;- &quot;UPDATE 
     whse_sp.modelled_habitat_potential 
 SET
@@ -1505,7 +1516,7 @@ END,
     riparian_data_source = &#39;Fish Habitat Accessibility MODEL; WHSE_WATER_MANAGEMENT.WLS_COMMUNITY_WS_PUB_SVW&#39;
 WHERE
   riparian_class IS NULL;&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 <p>Add a new field</p>
 <p><strong>FWA Rivers</strong> For stream classification, the FWA rivers
 polygonal dataset is usually used in Timber Supply Analyses. It is
@@ -1513,18 +1524,18 @@ important to include it to ensure the river area’s are included in the
 riparian zones. In order to determine the stream classification per FWA
 River Poly, the most common (I.e. mode) classification was used.</p>
 <pre class="r"><code>query &lt;- &quot;ALTER TABLE whse_sp.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_class;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_class_reason;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_data_source;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 query &lt;- &quot;ALTER TABLE whse_sp.fwa_rivers_poly ADD COLUMN riparian_class varchar(3);&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.fwa_rivers_poly ADD COLUMN riparian_class_reason text;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.fwa_rivers_poly ADD COLUMN riparian_data_source text;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 query &lt;- &quot;WITH most_common_class AS (
     SELECT
@@ -1549,7 +1560,7 @@ FROM
   most_common_class a
 WHERE
     riv.waterbody_poly_id = a.waterbody_poly_id;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 
 
@@ -1583,7 +1594,7 @@ FROM
     nearest_river_polys
 WHERE 
     nearest_river_polys.waterbody_poly_id = r.waterbody_poly_id;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 
 query &lt;- &quot;UPDATE whse_sp.fwa_rivers_poly 
@@ -1596,16 +1607,16 @@ query &lt;- &quot;UPDATE whse_sp.fwa_rivers_poly
 
 ## update streams that overlap with rivers
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS inside_double_sided_river;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN inside_double_sided_river boolean default FALSE;&quot;
-run_sql_r(query, pg_conn_list)
+run_sql_r(query, conn_list)
 
 query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential fishy SET inside_double_sided_river = TRUE
 FROM
   whse_sp.fwa_rivers_poly riv
 WHERE
   ST_Intersects(riv.geom, fishy.line_center_point)&quot;
-run_sql_r(query, pg_conn_list)</code></pre>
+run_sql_r(query, conn_list)</code></pre>
 </div>
 <div id="qaqc" class="section level4">
 <h4>QA/QC</h4>
