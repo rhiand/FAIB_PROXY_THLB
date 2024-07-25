@@ -983,12 +983,15 @@ kable(stream_data, caption='Stream Classification Assignment (when channel width
 ```
 
 ```{r eval = FALSE}
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS tsa smallint;"
+query <- "ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS tsa;"
 run_sql_r(query, conn_list)
 query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN tsa smallint;"
 run_sql_r(query, conn_list)
-query <- "UPDATE whse_sp.modelled_habitat_potential SET tsa = 
+query <- "UPDATE whse_sp.modelled_habitat_potential fishy SET tsa = tsa.tsa
 FROM
+whse_sp.tsa_boundaries_2020 tsa
+WHERE
+ST_Intersects(tsa.geom, fishy.line_center_point)
 ;"
 run_sql_r(query, conn_list)
 ```
