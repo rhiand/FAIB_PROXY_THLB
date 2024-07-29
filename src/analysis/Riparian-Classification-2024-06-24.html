@@ -1406,8 +1406,9 @@ AND
 run_sql_r(query, conn_list)</code></pre>
 <p>Classify stream reaches where modeled channel width does not exist
 using a stream order based approach. Approach taken from 2024 Boundary
-TSA. Source:
-<code>file:///G:/!Workgrp/Analysts/!Project/TSA_Projects/active/KootenayLake_TSA13/TSR4/AnalysisReport/TSA13_TSR4_AnalysisReport/03-data-analysis.html#riparian-analysis</code></p>
+TSA for North and South Admin Areas. Source:
+<code>file:///G:/!Workgrp/Analysts/!Project/TSA_Projects/active/KootenayLake_TSA13/TSR4/AnalysisReport/TSA13_TSR4_AnalysisReport/03-data-analysis.html#riparian-analysis</code>
+Approach taken from 2020 North Island TSA. Source: <a href="https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/tsr-annual-allowable-cut/48tsdp_2020.pdf" class="uri">https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/tsr-annual-allowable-cut/48tsdp_2020.pdf</a></p>
 <pre><code>## Warning: package &#39;knitr&#39; was built under R version 4.3.3</code></pre>
 <table>
 <caption>Stream Classification Assignment (when channel width model does
@@ -1465,59 +1466,104 @@ not exist</caption>
 </tr>
 </tbody>
 </table>
-<pre class="r"><code>query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS tsa;&quot;
+<pre class="r"><code>query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS adm_nr_areas;&quot;
 run_sql_r(query, conn_list)
-query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN tsa smallint;&quot;
+query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN adm_nr_areas varchar(5);&quot;
 run_sql_r(query, conn_list)
-query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential fishy SET tsa = tsa.tsa
+query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential fishy SET adm_nr_areas =
+CASE 
+  WHEN adm.area_name = &#39;Coast Natural Resource Area&#39; then &#39;coast&#39;
+  WHEN adm.area_name = &#39;South Natural Resource Area&#39; then &#39;south&#39;
+  WHEN adm.area_name = &#39;North Natural Resource Area&#39; then &#39;north&#39;
+END
 FROM
-whse_sp.tsa_boundaries_2020 tsa
+  whse_sp.adm_nr_areas_sp adm
 WHERE
-ST_Intersects(tsa.geom, fishy.line_center_point)
-;&quot;
+ST_Intersects(adm.geom, fishy.line_center_point);&quot;
 run_sql_r(query, conn_list)</code></pre>
 <pre class="r"><code>query &lt;- &quot;UPDATE 
     whse_sp.modelled_habitat_potential 
 SET
     riparian_class = CASE 
-    WHEN 
-      stream_order &gt;= 4 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) THEN &#39;S1B&#39;
-    WHEN
-      stream_order = 3 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) THEN &#39;S2&#39;
-    WHEN
-      stream_order = 2 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) THEN &#39;S3&#39;
-    WHEN
-      stream_order = 1 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) THEN &#39;S4&#39;
-    WHEN
-      stream_order &gt; 1 AND (fish_habitat = &#39;NON FISH HABITAT&#39; OR NOT community_watershed) THEN &#39;S5&#39;
-    WHEN
-      stream_order = 1 AND (fish_habitat = &#39;NON FISH HABITAT&#39; OR NOT community_watershed) THEN &#39;S6&#39;
-END,
+    WHEN adm_nr_areas = &#39;coast&#39; THEN
+    CASE 
+        WHEN
+          stream_order &gt;= 5 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) THEN &#39;S1B&#39;
+        WHEN
+          stream_order = 4 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) THEN &#39;S2&#39;
+        WHEN
+          stream_order IN (2,3) AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) THEN &#39;S3&#39;
+        WHEN
+          stream_order = 1 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) THEN &#39;S4&#39;
+        WHEN
+          stream_order &gt; 1 AND (fish_habitat = &#39;NON FISH HABITAT&#39; OR NOT community_watershed) THEN &#39;S5&#39;
+        WHEN
+          stream_order = 1 AND (fish_habitat = &#39;NON FISH HABITAT&#39; OR NOT community_watershed) THEN &#39;S6&#39;
+    END
+  ELSE
+    CASE 
+        WHEN
+          stream_order &gt;= 4 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) THEN &#39;S1B&#39;
+        WHEN
+          stream_order = 3 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) THEN &#39;S2&#39;
+        WHEN
+          stream_order = 2 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) THEN &#39;S3&#39;
+        WHEN
+          stream_order = 1 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) THEN &#39;S4&#39;
+        WHEN
+          stream_order &gt; 1 AND (fish_habitat = &#39;NON FISH HABITAT&#39; OR NOT community_watershed) THEN &#39;S5&#39;
+        WHEN
+          stream_order = 1 AND (fish_habitat = &#39;NON FISH HABITAT&#39; OR NOT community_watershed) THEN &#39;S6&#39;
+    END
+  END,
     riparian_class_reason = CASE 
-    WHEN 
-      stream_order &gt;= 4 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) 
-      THEN &#39;stream order &gt;= 4 and fish presence or community watershed&#39;
-    WHEN
-      stream_order = 3 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) 
-      THEN &#39;stream order = 3 and fish presence or community watershed&#39;
-    WHEN
-      stream_order = 2 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) 
-      THEN &#39;stream order = 2 and fish presence or community watershed&#39;
-    WHEN
-      stream_order = 1 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) 
-      THEN &#39;stream order = 1 and fish presence or community watershed&#39;
-    WHEN
-      stream_order &gt; 1 AND (fish_habitat = &#39;NON FISH HABITAT&#39; OR NOT community_watershed) 
-      THEN &#39;stream order &gt; 1 and fish absence or not community watershed&#39;
-    WHEN
-      stream_order = 1 AND (fish_habitat = &#39;NON FISH HABITAT&#39; OR NOT community_watershed) 
-      THEN &#39;stream order = 1 and fish absence or not community watershed&#39;
-END,
-    riparian_data_source = &#39;Fish Habitat Accessibility MODEL; WHSE_WATER_MANAGEMENT.WLS_COMMUNITY_WS_PUB_SVW&#39;
+    WHEN adm_nr_areas = &#39;coast&#39; THEN
+      CASE
+        WHEN 
+          stream_order &gt;= 5 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) 
+          THEN &#39;coast admin area and stream order &gt;= 5 and fish presence or community watershed&#39;
+        WHEN
+          stream_order = 4 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) 
+          THEN &#39;coast admin area and stream order = 4 and fish presence or community watershed&#39;
+        WHEN
+          stream_order IN (2,3) AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) 
+          THEN &#39;coast admin area and stream order either 2 or 3 and fish presence or community watershed&#39;
+        WHEN
+          stream_order = 1 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) 
+          THEN &#39;coast admin area and stream order = 1 and fish presence or community watershed&#39;
+        WHEN
+          stream_order &gt; 1 AND (fish_habitat = &#39;NON FISH HABITAT&#39; OR NOT community_watershed) 
+          THEN &#39;coast admin area and stream order &gt; 1 and fish absence or not community watershed&#39;
+        WHEN
+          stream_order = 1 AND (fish_habitat = &#39;NON FISH HABITAT&#39; OR NOT community_watershed) 
+          THEN &#39;coast admin area and stream order = 1 and fish absence or not community watershed&#39;
+    END
+  ELSE
+      CASE
+        WHEN 
+          stream_order &gt;= 4 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) 
+          THEN &#39;not coast area and stream order &gt;= 4 and fish presence or community watershed&#39;
+        WHEN
+          stream_order = 3 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) 
+          THEN &#39;not coast area and stream order = 3 and fish presence or community watershed&#39;
+        WHEN
+          stream_order = 2 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) 
+          THEN &#39;not coast area and stream order = 2 and fish presence or community watershed&#39;
+        WHEN
+          stream_order = 1 AND (fish_habitat != &#39;NON FISH HABITAT&#39; OR community_watershed) 
+          THEN &#39;not coast area and stream order = 1 and fish presence or community watershed&#39;
+        WHEN
+          stream_order &gt; 1 AND (fish_habitat = &#39;NON FISH HABITAT&#39; OR NOT community_watershed) 
+          THEN &#39;not coast area and stream order &gt; 1 and fish absence or not community watershed&#39;
+        WHEN
+          stream_order = 1 AND (fish_habitat = &#39;NON FISH HABITAT&#39; OR NOT community_watershed) 
+          THEN &#39;not coast area and stream order = 1 and fish absence or not community watershed&#39;
+    END
+  END,
+    riparian_data_source = &#39;Fish Habitat Accessibility MODEL; WHSE_WATER_MANAGEMENT.WLS_COMMUNITY_WS_PUB_SVW, WHSE_ADMIN_BOUNDARIES.ADM_NR_AREAS_SP; North Island TSA Data Packages&#39;
 WHERE
   riparian_class IS NULL;&quot;
 run_sql_r(query, conn_list)</code></pre>
-<p>Add a new field</p>
 <p><strong>FWA Rivers</strong> For stream classification, the FWA rivers
 polygonal dataset is usually used in Timber Supply Analyses. It is
 important to include it to ensure the river area’s are included in the
@@ -1596,26 +1642,45 @@ WHERE
     nearest_river_polys.waterbody_poly_id = r.waterbody_poly_id;&quot;
 run_sql_r(query, conn_list)
 
+## Erin Moore recommended upgrading any S6, S3, or S4 classification as those are not likely to exist within double lined rivers
 
 query &lt;- &quot;UPDATE whse_sp.fwa_rivers_poly 
           SET 
             riparian_class = CASE 
                               WHEN riparian_class = &#39;S6&#39; THEN &#39;S5&#39;
                               WHEN riparian_class IN (&#39;S3&#39;, &#39;S4&#39;) THEN &#39;S2&#39;
-                            END;&quot;
-
-
-## update streams that overlap with rivers
-query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS inside_double_sided_river;&quot;
+                            END;&quot;</code></pre>
+<p>Since we will only export streams outside of FWA polygons, update the
+streams layer by adding a field that indicates whether it overlaps with
+lakes, wetlands, or rivers polygons. This field will be used in a
+subsequent layer export step.</p>
+<pre class="r"><code>## update streams that overlap with rivers
+query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS inside_fwa_polygon;&quot;
 run_sql_r(query, conn_list)
-query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN inside_double_sided_river boolean default FALSE;&quot;
+query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN inside_fwa_polygon boolean default FALSE;&quot;
 run_sql_r(query, conn_list)
 
-query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential fishy SET inside_double_sided_river = TRUE
+query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential fishy SET inside_fwa_polygon = TRUE
 FROM
   whse_sp.fwa_rivers_poly riv
 WHERE
   ST_Intersects(riv.geom, fishy.line_center_point)&quot;
+run_sql_r(query, conn_list)
+
+
+query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential fishy SET inside_fwa_polygon = TRUE
+FROM
+  whse_sp.fwa_lakes_poly lake
+WHERE
+  ST_Intersects(lake.geom, fishy.line_center_point)&quot;
+run_sql_r(query, conn_list)
+
+
+query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential fishy SET inside_fwa_polygon = TRUE
+FROM
+  whse_sp.fwa_wetlands_poly wetland
+WHERE
+  ST_Intersects(wetland.geom, fishy.line_center_point)&quot;
 run_sql_r(query, conn_list)</code></pre>
 </div>
 <div id="qaqc" class="section level4">
@@ -1682,9 +1747,17 @@ Expand for pre-processing steps
 <p><br></p>
 <p>Create new fields in the <code>whse_sp.fwa_wetlands_poly</code> layer
 for population</p>
-<pre class="r"><code>query &lt;- &quot;ALTER TABLE whse_sp.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS riparian_class varchar(2);&quot;
+<pre class="r"><code>query &lt;- &quot;ALTER TABLE whse_sp.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_class;&quot;
+run_sql_r(query, conn_list)
+query &lt;- &quot;ALTER TABLE whse_sp.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS riparian_class varchar(2);&quot;
+run_sql_r(query, conn_list)
+query &lt;- &quot;ALTER TABLE whse_sp.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_class_reason;&quot;
 run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS riparian_class_reason varchar(200);&quot;
+run_sql_r(query, conn_list)
+query &lt;- &quot;ALTER TABLE whse_sp.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_data_source;&quot;
+run_sql_r(query, conn_list)
+query &lt;- &quot;ALTER TABLE whse_sp.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS riparian_data_source varchar(200);&quot;
 run_sql_r(query, conn_list)</code></pre>
 </div>
 <div id="classification-1" class="section level4">
@@ -1701,7 +1774,11 @@ Expand for classification steps
 (a) W1, if the wetland is greater than 5 ha in size;”</em></p>
 </blockquote>
 <pre class="r"><code>print(glue(&#39;Processing W1 wetlands&#39;))
-query &lt;- &quot;UPDATE whse_sp.fwa_wetlands_poly SET riparian_class = &#39;W1&#39;, riparian_class_reason = &#39;wetland is greater than 5 ha in size&#39; WHERE feature_area_sqm/10000 &gt; 5&quot;
+query &lt;- &quot;UPDATE whse_sp.fwa_wetlands_poly SET 
+riparian_class = &#39;W1&#39;, 
+riparian_class_reason = &#39;wetland is greater than 5 ha in size&#39;, 
+riparian_data_source = &#39;FWA area&#39;
+WHERE feature_area_sqm/10000 &gt; 5&quot;
 run_sql_r(query, conn_list)</code></pre>
 <p>Calculate W2 wetland class:</p>
 <blockquote>
@@ -1749,7 +1826,8 @@ UPDATE
     whse_sp.fwa_wetlands_poly wet
 SET 
     riparian_class = &#39;W2&#39;, 
-    riparian_class_reason = &#39;wetland is not less than 1 ha and not more than 5 ha in size and is in one of the following biogeoclimatic zones or subzones&#39; 
+    riparian_class_reason = &#39;wetland is not less than 1 ha and not more than 5 ha in size and is in one of the following biogeoclimatic zones or subzones PP, BG, CDF, IDF (xh, xw or xm), CWG (xm, dm or ds)&#39;,
+    riparian_data_source = &#39;FWA area; WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY&#39;
 FROM 
     w2
 WHERE 
@@ -1766,7 +1844,8 @@ query &lt;- &quot;UPDATE
     whse_sp.fwa_wetlands_poly 
 SET 
     riparian_class = &#39;W3&#39;, 
-  riparian_class_reason = &#39;wetland is not less than 1 ha and not more than 5 ha in size and is in a biogeoclimatic zone or subzone other than one referred to in paragraph (b)&#39;
+  riparian_class_reason = &#39;wetland is not less than 1 ha and not more than 5 ha in size and is in a biogeoclimatic zone or subzone other than PP, BG, CDF, IDF (xh, xw or xm), CWG (xm, dm or ds)&#39;,
+  riparian_data_source = &#39;FWA area; WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY&#39;
 WHERE 
     feature_area_sqm/10000 &lt;= 5 
 AND 
@@ -1816,7 +1895,8 @@ UPDATE
     whse_sp.fwa_wetlands_poly wet
 SET 
     riparian_class = &#39;W4&#39;, 
-    riparian_class_reason = &#39;not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone referred to in paragraph (b) (i), (ii) or (iii)&#39; 
+    riparian_class_reason = &#39;not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone PP, BG, IDF (xh, xw, xm)&#39;,
+    riparian_data_source = &#39;FWA area; WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY&#39;
 FROM 
     w4
 WHERE 
@@ -1854,7 +1934,8 @@ UPDATE
     whse_sp.fwa_wetlands_poly wet
 SET 
     riparian_class = &#39;W4&#39;, 
-    riparian_class_reason = &#39;not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone referred to in paragraph (b) (i), (ii) or (iii)&#39; 
+    riparian_class_reason = &#39;not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone CDF, CWH (xm, dm, ds)&#39;,
+    riparian_data_source = &#39;FWA area; WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY&#39;
 FROM 
     w4
 WHERE 
@@ -1950,7 +2031,8 @@ UPDATE
     whse_sp.fwa_wetlands_poly
 SET 
     riparian_class = &#39;W5&#39;,
-    riparian_class_reason = &#39;2 or more W1 within 100m, a W1 and &gt;= 1 non-W1s (not including non-classifieds) within 80m, 2 or more non-W1s (not including non-classifieds) within 60m AND combined size is &gt;= 5ha&#39;
+    riparian_class_reason = &#39;2 or more W1 within 100m, a W1 and &gt;= 1 non-W1s (not including non-classifieds) within 80m, 2 or more non-W1s (not including non-classifieds) within 60m AND combined size is &gt;= 5ha&#39;,
+    riparian_data_source = &#39;FWA area; WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY&#39;
 FROM
     w5s
 WHERE
@@ -1994,9 +2076,17 @@ Expand for preprocessing steps
 <p><br></p>
 <p>Create new fields in the <code>whse_sp.fwa_lakes_poly</code> layer
 for population</p>
-<pre class="r"><code>query &lt;- &quot;ALTER TABLE whse_sp.fwa_lakes_poly ADD COLUMN IF NOT EXISTS riparian_class varchar(3);&quot;
+<pre class="r"><code>query &lt;- &quot;ALTER TABLE whse_sp.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_class;&quot;
+run_sql_r(query, conn_list)
+query &lt;- &quot;ALTER TABLE whse_sp.fwa_lakes_poly ADD COLUMN IF NOT EXISTS riparian_class varchar(3);&quot;
+run_sql_r(query, conn_list)
+query &lt;- &quot;ALTER TABLE whse_sp.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_class_reason;&quot;
 run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.fwa_lakes_poly ADD COLUMN IF NOT EXISTS riparian_class_reason varchar(200);&quot;
+run_sql_r(query, conn_list)
+query &lt;- &quot;ALTER TABLE whse_sp.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_data_source;&quot;
+run_sql_r(query, conn_list)
+query &lt;- &quot;ALTER TABLE whse_sp.fwa_lakes_poly ADD COLUMN IF NOT EXISTS riparian_data_source varchar(200);&quot;
 run_sql_r(query, conn_list)</code></pre>
 </div>
 <div id="classification-2" class="section level4">
@@ -2016,7 +2106,8 @@ Expand for classification steps
 query &lt;- &quot;UPDATE whse_sp.fwa_lakes_poly 
 SET 
     riparian_class = &#39;L1A&#39;, 
-    riparian_class_reason = &#39;if the lake is 1000 ha or greater in size&#39; 
+    riparian_class_reason = &#39;if the lake is 1000 ha or greater in size&#39;,
+    riparian_data_source = &#39;FWA area&#39;
 WHERE 
     feature_area_sqm/10000 &gt;= 1000&quot;
 run_sql_r(query, conn_list)</code></pre>
@@ -2031,7 +2122,8 @@ or<br />
 query &lt;- &quot;UPDATE whse_sp.fwa_lakes_poly 
 SET 
     riparian_class = &#39;L1B&#39;, 
-    riparian_class_reason = &#39;the lake is greater than 5 ha but less than 1000 h&#39; 
+    riparian_class_reason = &#39;the lake is greater than 5 ha but less than 1000 h&#39;,
+    riparian_data_source = &#39;FWA area&#39;
 WHERE 
     feature_area_sqm/10000 &lt; 1000
 AND
@@ -2084,7 +2176,8 @@ UPDATE
     whse_sp.fwa_lakes_poly wet
 SET 
     riparian_class = &#39;L2&#39;, 
-    riparian_class_reason = &#39;lake is not less than 1 ha and not more than 5 ha in size and is located in a biogeoclimatic zones or subzone&#39; 
+    riparian_class_reason = &#39;lake is not less than 1 ha and not more than 5 ha in size and is located in a biogeoclimatic zones or subzone PP, BG, CDF, IDF (xh, xw, xm), CWH (xm, dm, ds)&#39;,
+    riparian_data_source = &#39;FWA area; WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY&#39;
 FROM 
     w2
 WHERE 
@@ -2100,8 +2193,9 @@ referred to in paragraph (c);”</em></p>
 query &lt;- &quot;UPDATE 
                 whse_sp.fwa_lakes_poly 
           SET 
-                riparian_class = &#39;L3&#39;, 
-                riparian_class_reason = &#39;lake is not less than 1 ha and not more than 5 ha in size and is in a biogeoclimatic zone or subzone other than one referred to in paragraph (c)&#39;
+            riparian_class = &#39;L3&#39;, 
+                riparian_class_reason = &#39;lake is not less than 1 ha and not more than 5 ha in size and is in a biogeoclimatic zone or subzone other than PP, BG, CDF, IDF (xh, xw, xm), CWH (xm, dm, ds)&#39;,
+                riparian_data_source = &#39;FWA area; WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY&#39;
           WHERE 
                 feature_area_sqm/10000 &lt;= 5 
           AND 
@@ -2151,7 +2245,8 @@ UPDATE
     whse_sp.fwa_lakes_poly wet
 SET 
     riparian_class = &#39;L4&#39;, 
-    riparian_class_reason = &#39;not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone referred to in paragraph (b) (i), (ii) or (iii)&#39; 
+    riparian_class_reason = &#39;not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone PP, BG, IDF (xh, xw, xm)&#39;,
+    riparian_data_source = &#39;FWA area; WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY&#39;
 FROM 
     l4
 WHERE 
@@ -2190,7 +2285,8 @@ UPDATE
     whse_sp.fwa_lakes_poly wet
 SET 
     riparian_class = &#39;L4&#39;, 
-    riparian_class_reason = &#39;not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone referred to in paragraph (b) (i), (ii) or (iii)&#39; 
+    riparian_class_reason = &#39;not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone CDF, CWH (xm, dm, ds)&#39;,
+    riparian_data_source = &#39;FWA area; WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY&#39;
 FROM 
     l4
 WHERE 
@@ -2217,65 +2313,59 @@ W:/FOR/VIC/HTS/ANA/Workarea/ardavies/ts_units/2019/tsa13/Tasks/005_riparian/data
 Expand for buffer steps
 </summary>
 <p><br></p>
-<p>Buffers were determined from the regulations found <a href="https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829">here</a></p>
-<blockquote>
-<p><em>“Haida Gwaii has different riparian setbacks than FPPR. The Great
-Bear Rainforest also has different setbacks because of a higher level
-order and FLPs that are currently in progress.” ~ Lisa Nordin</em></p>
-</blockquote>
+<p>Buffers were determined using the Riparian management area guidebook
+found <a href="https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/silviculture/silvicultural-systems/silviculture-guidebooks/riparian-management-area-guidebook">here</a></p>
 <p><strong>Restrictions in a riparian management zones</strong></p>
 <blockquote>
-<p><em>“52 (1)A holder of a minor tenure who fells trees in a cutblock
-within a riparian management zone of a class described in Column 1 must
-ensure that:<br />
-(a)the percentage of the total basal area within the riparian management
-zone specified in Column 2 is left as standing trees, and<br />
-(b)the standing trees are reasonably representative of the physical
-structure of the riparian management zone, as it was before
-harvesting:”</em></p>
+<p><em>“Under the Forest practices within the RMA, fisheries-sensitive
+zones, and marine-sensitive zones section. The following table
+summarizes the maximum overall levels of retention within the riparian
+management zones for each riparian class of stream, wetland and lake
+that are anticipated to result from consistent implementation of the
+best management practices recommended in this guidebook.”</em></p>
 </blockquote>
 <table>
-<caption>Basal Area to be Retained Within Riparian Management
-Zone</caption>
+<caption>Maximum overall retention in the riparian management
+zones</caption>
 <colgroup>
-<col width="34%" />
-<col width="65%" />
+<col width="22%" />
+<col width="77%" />
 </colgroup>
 <thead>
 <tr class="header">
 <th align="left">Riparian Class</th>
-<th align="left">Basal Area to be Retained Within Riparian Management
-Zone (%)</th>
+<th align="left">Riparian Management Area Guidebook - Maximum Overall
+retention (%)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td align="left">S1-A or S1-B stream</td>
-<td align="left">≥ 20</td>
+<td align="left">50</td>
 </tr>
 <tr class="even">
 <td align="left">S2 stream</td>
-<td align="left">≥ 20</td>
+<td align="left">50</td>
 </tr>
 <tr class="odd">
 <td align="left">S3 stream</td>
-<td align="left">≥ 20</td>
+<td align="left">50</td>
 </tr>
 <tr class="even">
 <td align="left">S4 stream</td>
-<td align="left">≥ 10</td>
+<td align="left">25</td>
 </tr>
 <tr class="odd">
 <td align="left">S5 stream</td>
-<td align="left">≥ 10</td>
+<td align="left">25</td>
 </tr>
 <tr class="even">
 <td align="left">S6 stream</td>
-<td align="left">Not applicable</td>
+<td align="left">5</td>
 </tr>
 <tr class="odd">
-<td align="left">All classes of wetlands or lakes</td>
-<td align="left">≥ 10</td>
+<td align="left">Wetlands or lakes</td>
+<td align="left">25</td>
 </tr>
 </tbody>
 </table>
@@ -2300,7 +2390,7 @@ Zone width, on each side of the stream</caption>
 <th align="right">Riparian Management Area (metres)</th>
 <th align="right">Riparian Reserve Zone (metres)</th>
 <th align="right">Riparian Management Zone (metres)</th>
-<th align="left">Basal Area to be Retained Within Riparian Management
+<th align="left">Maximum Overall Retention in the Riparian Management
 Zone (%)</th>
 <th align="right">Applied Riparian Buffer width (metres)</th>
 </tr>
@@ -2311,56 +2401,56 @@ Zone (%)</th>
 <td align="right">100</td>
 <td align="right">0</td>
 <td align="right">100</td>
-<td align="left">≥ 20</td>
-<td align="right">20</td>
+<td align="left">50</td>
+<td align="right">50.0</td>
 </tr>
 <tr class="even">
 <td align="left">S1-B</td>
 <td align="right">70</td>
 <td align="right">50</td>
 <td align="right">20</td>
-<td align="left">≥ 20</td>
-<td align="right">54</td>
+<td align="left">50</td>
+<td align="right">60.0</td>
 </tr>
 <tr class="odd">
 <td align="left">S2</td>
 <td align="right">50</td>
 <td align="right">30</td>
 <td align="right">20</td>
-<td align="left">≥ 20</td>
-<td align="right">34</td>
+<td align="left">50</td>
+<td align="right">40.0</td>
 </tr>
 <tr class="even">
 <td align="left">S3</td>
 <td align="right">40</td>
 <td align="right">20</td>
 <td align="right">20</td>
-<td align="left">≥ 20</td>
-<td align="right">24</td>
+<td align="left">50</td>
+<td align="right">30.0</td>
 </tr>
 <tr class="odd">
 <td align="left">S4</td>
 <td align="right">30</td>
 <td align="right">0</td>
 <td align="right">30</td>
-<td align="left">≥ 10</td>
-<td align="right">3</td>
+<td align="left">25</td>
+<td align="right">7.5</td>
 </tr>
 <tr class="even">
 <td align="left">S5</td>
 <td align="right">30</td>
 <td align="right">0</td>
 <td align="right">30</td>
-<td align="left">≥ 10</td>
-<td align="right">3</td>
+<td align="left">25</td>
+<td align="right">7.5</td>
 </tr>
 <tr class="odd">
 <td align="left">S6</td>
 <td align="right">20</td>
 <td align="right">0</td>
 <td align="right">20</td>
-<td align="left">Not applicable</td>
-<td align="right">0</td>
+<td align="left">5</td>
+<td align="right">1.0</td>
 </tr>
 </tbody>
 </table>
@@ -2381,7 +2471,7 @@ Zone width</caption>
 <th align="right">Riparian Management Area (metres)</th>
 <th align="right">Riparian Reserve Zone (metres)</th>
 <th align="right">Riparian Management Zone (metres)</th>
-<th align="left">Basal Area to be Retained Within Riparian Management
+<th align="left">Maximum Overall Retention in the Riparian Management
 Zone (%)</th>
 <th align="right">Applied Riparian Buffer width (metres)</th>
 </tr>
@@ -2392,40 +2482,40 @@ Zone (%)</th>
 <td align="right">50</td>
 <td align="right">10</td>
 <td align="right">40</td>
-<td align="left">≥ 10</td>
-<td align="right">14</td>
+<td align="left">25</td>
+<td align="right">20.0</td>
 </tr>
 <tr class="even">
 <td align="left">W2</td>
 <td align="right">30</td>
 <td align="right">10</td>
 <td align="right">20</td>
-<td align="left">≥ 10</td>
-<td align="right">12</td>
+<td align="left">25</td>
+<td align="right">15.0</td>
 </tr>
 <tr class="odd">
 <td align="left">W3</td>
 <td align="right">30</td>
 <td align="right">0</td>
 <td align="right">30</td>
-<td align="left">≥ 10</td>
-<td align="right">3</td>
+<td align="left">25</td>
+<td align="right">7.5</td>
 </tr>
 <tr class="even">
 <td align="left">W4</td>
 <td align="right">30</td>
 <td align="right">0</td>
 <td align="right">30</td>
-<td align="left">≥ 10</td>
-<td align="right">3</td>
+<td align="left">25</td>
+<td align="right">7.5</td>
 </tr>
 <tr class="odd">
 <td align="left">W5</td>
 <td align="right">50</td>
 <td align="right">10</td>
 <td align="right">40</td>
-<td align="left">≥ 10</td>
-<td align="right">14</td>
+<td align="left">25</td>
+<td align="right">20.0</td>
 </tr>
 </tbody>
 </table>
@@ -2446,7 +2536,7 @@ width</caption>
 <th align="right">Riparian Management Area (metres)</th>
 <th align="right">Riparian Reserve Zone (metres)</th>
 <th align="right">Riparian Management Zone (metres)</th>
-<th align="left">Basal Area to be Retained Within Riparian Management
+<th align="left">Maximum Overall Retention in the Riparian Management
 Zone (%)</th>
 <th align="right">Applied Riparian Buffer width (metres)</th>
 </tr>
@@ -2457,40 +2547,40 @@ Zone (%)</th>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
-<td align="left">≥ 10</td>
-<td align="right">0</td>
+<td align="left">25</td>
+<td align="right">0.0</td>
 </tr>
 <tr class="even">
 <td align="left">L1-B</td>
 <td align="right">10</td>
 <td align="right">10</td>
 <td align="right">0</td>
-<td align="left">≥ 10</td>
-<td align="right">10</td>
+<td align="left">25</td>
+<td align="right">10.0</td>
 </tr>
 <tr class="odd">
 <td align="left">L2</td>
 <td align="right">30</td>
 <td align="right">10</td>
 <td align="right">20</td>
-<td align="left">≥ 10</td>
-<td align="right">12</td>
+<td align="left">25</td>
+<td align="right">15.0</td>
 </tr>
 <tr class="even">
 <td align="left">L3</td>
 <td align="right">30</td>
 <td align="right">0</td>
 <td align="right">30</td>
-<td align="left">≥ 10</td>
-<td align="right">3</td>
+<td align="left">25</td>
+<td align="right">7.5</td>
 </tr>
 <tr class="odd">
 <td align="left">L4</td>
 <td align="right">30</td>
 <td align="right">0</td>
 <td align="right">30</td>
-<td align="left">≥ 10</td>
-<td align="right">3</td>
+<td align="left">25</td>
+<td align="right">7.5</td>
 </tr>
 </tbody>
 </table>
@@ -2509,15 +2599,22 @@ run_sql_r(query, conn_list)
 query &lt;- &quot;UPDATE whse_sp.fwa_lakes_poly SET riparian_buffer_width_m = CASE 
     WHEN riparian_class = &#39;L1A&#39; THEN 0
     WHEN riparian_class = &#39;L1B&#39; THEN 10
-    WHEN riparian_class = &#39;L2&#39;  THEN 12
-    WHEN riparian_class = &#39;L3&#39;  THEN 3
-    WHEN riparian_class = &#39;L4&#39;  THEN 3
+    WHEN riparian_class = &#39;L2&#39;  THEN 15
+    WHEN riparian_class = &#39;L3&#39;  THEN 7.5
+    WHEN riparian_class = &#39;L4&#39;  THEN 7.5
     END;&quot;
 run_sql_r(query, conn_list)
 query &lt;- &quot;UPDATE whse_sp.fwa_lakes_poly SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m);&quot;
 run_sql_r(query, conn_list)
 
+query &lt;- &quot;CREATE INDEX IF NOT EXISTS fwa_lakes_poly_buffer_idx
+    ON whse_sp.fwa_lakes_poly USING gist
+    (riparian_buffer_geom)
+    TABLESPACE pg_default;&quot;
+run_sql_r(query, conn_list)
 
+query &lt;- &quot;ANALYZE whse_sp.fwa_lakes_poly;&quot;
+run_sql_r(query, conn_list)
 
 ## rivers
 query &lt;- &quot;ALTER TABLE whse_sp.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_buffer_geom;&quot;
@@ -2531,16 +2628,25 @@ query &lt;- &quot;ALTER TABLE whse_sp.fwa_rivers_poly ADD COLUMN riparian_buffer
 run_sql_r(query, conn_list)
 
 query &lt;- &quot;UPDATE whse_sp.fwa_rivers_poly SET riparian_buffer_width_m = CASE 
-    WHEN riparian_class = &#39;S1A&#39; THEN 20
-    WHEN riparian_class = &#39;S1B&#39; THEN 54
-    WHEN riparian_class = &#39;S2&#39;  THEN 34
-    WHEN riparian_class = &#39;S3&#39;  THEN 24
-    WHEN riparian_class = &#39;S4&#39;  THEN 3
-    WHEN riparian_class = &#39;S5&#39;  THEN 3
-    WHEN riparian_class = &#39;S6&#39;  THEN 0
+    WHEN riparian_class = &#39;S1A&#39; THEN 50
+    WHEN riparian_class = &#39;S1B&#39; THEN 60
+    WHEN riparian_class = &#39;S2&#39;  THEN 40
+    WHEN riparian_class = &#39;S3&#39;  THEN 30
+    WHEN riparian_class = &#39;S4&#39;  THEN 7.5
+    WHEN riparian_class = &#39;S5&#39;  THEN 7.5
+    WHEN riparian_class = &#39;S6&#39;  THEN 1
     END;&quot;
 run_sql_r(query, conn_list)
 query &lt;- &quot;UPDATE whse_sp.fwa_rivers_poly SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m);&quot;
+run_sql_r(query, conn_list)
+
+query &lt;- &quot;CREATE INDEX IF NOT EXISTS fwa_rivers_poly_buffer_idx
+    ON whse_sp.fwa_rivers_poly USING gist
+    (riparian_buffer_geom)
+    TABLESPACE pg_default;&quot;
+run_sql_r(query, conn_list)
+
+query &lt;- &quot;ANALYZE whse_sp.fwa_rivers_poly;&quot;
 run_sql_r(query, conn_list)
 
 
@@ -2555,15 +2661,25 @@ query &lt;- &quot;ALTER TABLE whse_sp.fwa_wetlands_poly ADD COLUMN riparian_buff
 run_sql_r(query, conn_list)
 
 query &lt;- &quot;UPDATE whse_sp.fwa_wetlands_poly SET riparian_buffer_width_m = CASE 
-    WHEN riparian_class = &#39;W1&#39;  THEN 14
-    WHEN riparian_class = &#39;W2&#39;  THEN 12
-    WHEN riparian_class = &#39;W3&#39;  THEN 3
-    WHEN riparian_class = &#39;W4&#39;  THEN 3
-    WHEN riparian_class = &#39;W5&#39;  THEN 14
+    WHEN riparian_class = &#39;W1&#39;  THEN 20
+    WHEN riparian_class = &#39;W2&#39;  THEN 15
+    WHEN riparian_class = &#39;W3&#39;  THEN 7.5
+    WHEN riparian_class = &#39;W4&#39;  THEN 7.5
+    WHEN riparian_class = &#39;W5&#39;  THEN 20
     END;&quot;
 run_sql_r(query, conn_list)
-query &lt;- &quot;UPDATE whse_sp.fwa_wetlands_poly SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m) WHEN riparian_buffer_width_m IS NOT NULL;&quot;
+query &lt;- &quot;UPDATE whse_sp.fwa_wetlands_poly SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m);&quot;
 run_sql_r(query, conn_list)
+
+query &lt;- &quot;CREATE INDEX IF NOT EXISTS fwa_wetlands_poly_buffer_idx
+    ON whse_sp.fwa_wetlands_poly USING gist
+    (riparian_buffer_geom)
+    TABLESPACE pg_default;&quot;
+run_sql_r(query, conn_list)
+
+query &lt;- &quot;ANALYZE whse_sp.fwa_wetlands_poly;&quot;
+run_sql_r(query, conn_list)
+
 
 
 ## stream network
@@ -2577,28 +2693,91 @@ run_sql_r(query, conn_list)
 query &lt;- &quot;ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN riparian_buffer_width_m smallint;&quot;
 run_sql_r(query, conn_list)
 query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential SET riparian_buffer_width_m = CASE 
-    WHEN riparian_class = &#39;S1A&#39; THEN 20
-    WHEN riparian_class = &#39;S1B&#39; THEN 54
-    WHEN riparian_class = &#39;S2&#39;  THEN 34
-    WHEN riparian_class = &#39;S3&#39;  THEN 24
-    WHEN riparian_class = &#39;S4&#39;  THEN 3
-    WHEN riparian_class = &#39;S5&#39;  THEN 3
-    WHEN riparian_class = &#39;S6&#39;  THEN 0
+    WHEN riparian_class = &#39;S1A&#39; THEN 50
+    WHEN riparian_class = &#39;S1B&#39; THEN 60
+    WHEN riparian_class = &#39;S2&#39;  THEN 40
+    WHEN riparian_class = &#39;S3&#39;  THEN 30
+    WHEN riparian_class = &#39;S4&#39;  THEN 7.5
+    WHEN riparian_class = &#39;S5&#39;  THEN 7.5
+    WHEN riparian_class = &#39;S6&#39;  THEN 1
     END;&quot;
 run_sql_r(query, conn_list)
 query &lt;- &quot;UPDATE whse_sp.modelled_habitat_potential SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m) WHERE riparian_buffer_width_m IS NOT NULL;&quot;
 run_sql_r(query, conn_list)
 
-query &lt;- &quot;
-CREATE TABLE whse_sp.riparian_buffered_areas AS
-WITH all_buffers_appended AS (
-  SELECT riparian_buffer_geom FROM whse_sp.modelled_habitat_potential WHERE riparian_class IS NOT NULL
+query &lt;- &quot;CREATE INDEX IF NOT EXISTS modelled_habitat_potential_buffer_idx
+    ON whse_sp.modelled_habitat_potential USING gist
+    (riparian_buffer_geom)
+    TABLESPACE pg_default;&quot;
+run_sql_r(query, conn_list)
+
+query &lt;- &quot;ANALYZE whse_sp.modelled_habitat_potential;&quot;
+run_sql_r(query, conn_list)</code></pre>
+</div>
+</div>
+<div id="create-a-provincial-buffer-layer" class="section level2">
+<h2>create a provincial buffer layer</h2>
+<pre class="r"><code>grid_table &lt;- &quot;whse_sp.bcgs_20k_grid&quot;
+grid_loop_fld &lt;- &quot;map_tile&quot;
+
+query &lt;- &quot;CREATE TABLE whse_sp.riparian_buffers (
+  map_tile varchar(),
+  geom geometry(MultiPolyon, 3005)
+);&quot;
+run_sql_r(query, conn_list)
+
+query &lt;- glue(&quot;SELECT {grid_loop_fld} FROM {grid_table}&quot;)
+grid_df &lt;- sql_to_df(query, pg_conn_param)
+
+query &lt;- &quot;WITH all_buffers_appended AS (
+  -- streams
+  SELECT 
+    riparian_buffer_geom 
+  FROM 
+    whse_sp.modelled_habitat_potential streams
+  JOIN
+    {grid_table} grd
+  ON
+    ST_Intersects(grid.geom, streams.geom)
+  WHERE 
+    riparian_class IS NOT NULL
+    and
+        grd.{grid_loop_fld} = &#39;{grid_row}&#39;
   UNION ALL
-  SELECT riparian_buffer_geom FROM whse_sp.fwa_wetlands_poly WHERE riparian_class IS NOT NULL
+  -- lakes
+  SELECT 
+    riparian_buffer_geom 
+  FROM 
+    whse_sp.fwa_lakes_poly lakes
+  JOIN
+    {grid_table} grd
+  ON
+    ST_Intersects(grid.geom, lakes.geom)
+  WHERE 
+    riparian_class IS NOT NULL
   UNION ALL
-  SELECT riparian_buffer_geom FROM whse_sp.fwa_lakes_poly WHERE riparian_class IS NOT NULL
+  -- wetland
+  SELECT 
+    riparian_buffer_geom 
+  FROM 
+    whse_sp.fwa_wetlands_poly wet
+  JOIN
+    {grid_table} grd
+  ON
+    ST_Intersects(grid.geom, wet.geom)
+  WHERE 
+    riparian_class IS NOT NULL
   UNION ALL
-  SELECT riparian_buffer_geom FROM whse_sp.fwa_rivers_poly WHERE riparian_class IS NOT NULL
+  SELECT 
+    riparian_buffer_geom 
+  FROM 
+    whse_sp.modelled_habitat_potential streams
+  JOIN
+    {grid_table} grd
+  ON
+    ST_Intersects(grid.geom, streams.geom)
+  WHERE 
+    riparian_class IS NOT NULL
 ) 
 SELECT
   ST_Union(riparian_buffer_geom)
@@ -2606,18 +2785,24 @@ FROM
   all_buffers_appended;
 &quot;
 run_sql_r(query, conn_list)</code></pre>
-</div>
 <div id="analysis-ready-dataset-export" class="section level3">
 <h3>Analysis Ready Dataset export</h3>
 <details>
 <summary>
 Expand for analysis ready dataset export
 </summary>
-<p><br> Write out lakes to a FileGDB</p>
-<pre class="r"><code>  sql_query &lt;- paste0(&#39;-sql &#39;, glue::double_quote(&quot;SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class FROM whse_sp.fwa_lakes_poly&quot;))
-  ogr_conn &lt;- paste0(&#39;PG:&#39;, glue::double_quote(&quot;dbname=&#39;prov_data&#39; host=&#39;localhost&#39; user=&#39;postgres&#39;&quot;))
-  cmd_streams &lt;- paste0(&#39;ogr2ogr -f &#39;, glue::double_quote(&quot;FileGDB&quot;), glue(&#39; data/clean/test.gdb {ogr_conn} -nlt MULTIPOLYGON -nln table_nam2 {sql_query} -update&#39;))
-  system(cmd_streams)</code></pre>
+<p><br> Write out streams, wetlands and lakes to a FileGDB</p>
+<pre class="r"><code>## lakes
+system(&quot;ogr2ogr -f \&quot;FileGDB\&quot; data/output/riparian.gdb PG:\&quot;dbname=&#39;prov_data&#39; host=&#39;localhost&#39; user=&#39;postgres&#39;\&quot; -nlt MULTIPOLYGON -nln fwa_lakes_poly -sql \&quot;SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM whse_sp.fwa_lakes_poly\&quot;&quot;)
+
+## wetlands
+system(&quot;ogr2ogr -f \&quot;FileGDB\&quot; data/output/riparian.gdb PG:\&quot;dbname=&#39;prov_data&#39; host=&#39;localhost&#39; user=&#39;postgres&#39;\&quot; -nlt MULTIPOLYGON -nln fwa_wetlands_poly -sql \&quot;SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM whse_sp.fwa_wetlands_poly\&quot; -update&quot;)
+
+## rivers
+system(&quot;ogr2ogr -f \&quot;FileGDB\&quot; data/output/riparian.gdb PG:\&quot;dbname=&#39;prov_data&#39; host=&#39;localhost&#39; user=&#39;postgres&#39;\&quot; -nlt MULTIPOLYGON -nln fwa_rivers_poly -sql \&quot;SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM whse_sp.fwa_rivers_poly\&quot; -update&quot;)
+
+## streams
+system(&quot;ogr2ogr -f \&quot;FileGDB\&quot; data/output/riparian.gdb PG:\&quot;dbname=&#39;prov_data&#39; host=&#39;localhost&#39; user=&#39;postgres&#39;\&quot; -nlt MULTILINESTRING -nln fwa_stream_networks_sp_modelled_habitat_potential -sql \&quot;SELECT fid, linear_feature_id::int, fish_habitat_id, blue_line_key, watershed_key, gnis_name, fwa_watershed_code, watershed_group_code, downstream_route_measure, waterbody_key, fwa_fcode_label, observation_id, gradient_barrier_030_id,gradient_barrier_050_id,gradient_barrier_080_id,gradient_barrier_150_id,gradient_barrier_220_id,gradient_barrier_300_id,intermittent_id,fish_obstacle_point_id,obstruction_id,subsurfaceflow_id,fish_habitat,slope,slope_class,stream_order,stream_magnitude,geom,channel_width,channel_width_source,community_watershed,riparian_class,riparian_class_reason,riparian_data_source FROM whse_sp.modelled_habitat_potential WHERE NOT inside_fwa_polygon\&quot; -update&quot;)</code></pre>
 </details>
 </div>
 </div>

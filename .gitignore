@@ -9,3 +9,4 @@ data/input/fwa_stream_networks_channel_width.csv
 *.Rproj
 *.Rhistory
 *.RData
+*.gdb
