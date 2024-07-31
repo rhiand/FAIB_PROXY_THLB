@@ -1,6 +1,12 @@
 Hailey Eckstrand
 June 5, 2024
 
+bc_01ha_gr_skey.tif
+Source -> S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_01ha_gr_skey.tif
+
+BC_Boundary_Terrestrial.tif
+Source -> S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\BC_Boundary_Terrestrial.tif
+
 June13_Riparian data_for_FAIB.xlsx
 Source -> email from Lisa Nordin, June, 2024
 

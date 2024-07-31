@@ -98,6 +98,19 @@ import_bcgw_to_pg(src_schema    = "WHSE_BASEMAPPING",
                   grouping_name = NULL,
                   pg_conn_list  = conn_list)
 
+## Rationale: Needed to do region specific stream order classification
+## WHSE_ADMIN_BOUNDARIES.ADM_NR_AREAS_SP
+import_bcgw_to_pg(src_schema    = "WHSE_ADMIN_BOUNDARIES",
+                  src_layer     = "ADM_NR_AREAS_SP",
+                  fdw_schema    = "load",
+                  dst_schema    = "whse_sp",
+                  dst_layer     = "ADM_NR_AREAS_SP",
+                  layer_id      = "area_number, area_name, org_unit, org_unit_name, feature_code, feature_name",
+                  geometry_name = "shape",
+                  geometry_type = "MultiPolygon",
+                  grouping_name = NULL,
+                  pg_conn_list  = conn_list)
+
 
 ## Rationale: channel width needed to calculate riparian buffers
 ## Data source from Simon Norris/Craig Mount
