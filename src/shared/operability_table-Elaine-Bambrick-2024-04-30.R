@@ -32,7 +32,7 @@ rm(list = ls())
 #5    A boundary feature class for the unit (ar.gdb)
 #6.   A pre_thlb with a binary field
 #7    A sink raster of mill locations
-#8    A road network rater for the unit
+#8    A road network raster for the unit
 
 ############house keeping#################################################################
 

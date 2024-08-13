@@ -1,0 +1,1005 @@
+---
+title: "Operability Table"
+author: "Kelly Izzard"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document: 
+    toc: yes
+    toc_float: yes
+    number_sections: yes
+    theme: simplex
+    highlight: tango
+editor_options: 
+  chunk_output_type: inline
+---
+
+# Operability
+
+Operability refers to the economic suitability of the productive forest for timber harvesting. Operability is driven by market conditions which define the extensive margin of extraction. In theory, under the proper market conditions, all of the productive forest could be considered operable. Sufficiently high markets can push margins to the point where the sub-marginal becomes marginal and available (helicopter logging steep on unstable terrain is a good example). But in reality this is seldom the case.
+
+For TSR operability is defined based on historic practice patterns within a given unit. These patterns are representative of historic market conditions over several business cycles. For TSR the term "practice" refers to *behaviour that is consistent with the legislative framework and/or is verifiable through legal commitment and is demonstrable over a sufficient period of time to be reflected as a trend in relevant data.*
+
+This session will demonstrate an empirical approach to defining operability using the historic harvest pattern within the Revelstoke TSA. The outcome of this process will be an operability table written to postgres which will be used by the netdown process to exclude inoperable areas.
+
+## Netdown
+
+The operability table is an input to the netdown process and the two scripts are to be used recursively as follows:
+
+1.  First iteration Operability table: produces physical operability, merchantability, and problem timber type inputs for the first iteration netdown process. Uses previous TSR THLB or current gTHLB as placeholder.
+2.  First iteration Netdown script: uses all input except Isolation categorization. First iteration Netdown produces the "pre-thlb" definition
+3.  The newly created pre-thlb for the unit replaces the placeholder thlb from the first iteration. The final Operability table is created
+4.  Second Iteration of netdown now utilizes Isolation categorization for Operability table and generates final THLB
+
+## Set-up
+
+The set-up includes a newly updated log_files.R script that contains a suite of functions for rasterization and operability. See section 10 Function Reference for details.
+
+## Caveats
+
+This script requires:
+
+1.  A Postgres binary stability table for the unit's bounding box
+2.  A Postgres analysis ready table
+3.  Paths to ECAS tables where all timbermarks have a "\_" prefix
+4.  A Postgres VDYP thin table
+5.  A boundary feature class for the unit (ar.gdb)
+6.  A pre_thlb with a binary field
+7.  A binary sink raster of mill locations (raster must be called "sinks.tif")
+8.  A binary road network raster for the unit (raster must be called "roads.tif")
+
+All the required paths and queries to run the functions are listed in this set-up section. The user can modify the vectors to suit their units data set-up and needs. The user must identify both the tsa label (eg."tsa17") and number (eg. 17) for the function to run correctly.
+
+Two elements are hard-coded in the functions
+
+1.  path to the BC DEM ( "R:\\elevation\\trim_25m\\bcalbers\\tif\\bc_elevation_25m_bcalb.tif")
+2.  the terrain stability binary variable name ("class2")
+
+The user can adopt these elements in their data or modify the function accordingly.
+
+The stone query csvs must have timber marks with a "\_" underscore prefix. Although the get_ecas fuction does do some cleaning it doesn't assess for the prefix. In the absence of the prefix the two table with not append correctly and the user will end-up with duplicate marks (those with prefixes and those without)
+
+A pre-THLB is required to complete the Economic Distance and Isolation assessment. In order to complete the first iteration of table production a substitute placeholder pre-thlb based either on the previous TSR or a current gTHLB is recommended. Once the pre-thlb is produced in the first netdown iteration it can replace the placeholder for the final iteration of operbility table production. The placeholder must be a spatially enable postgres table called "tsaXX_pre_thlb" and contain and ogc_field and a binary thlb variable called "thlb_bi". Once the first iteration of the netdown is run this table will be replaced.
+
+```{r setup, message=FALSE,warning=FALSE}
+#libraries
+
+library(knitr)
+library(kableExtra)
+library(DBI)
+library(RPostgreSQL)
+library(tidyverse)
+library(sf)
+library(tidyterra)
+library(terra)
+library(R.utils)
+library(bcdata)
+library(janitor)
+library(scales)
+library(tidytext)
+library(landscapemetrics)
+library(landscapetools)
+library(gstat)
+
+rm(list = ls())
+
+#rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(connection = "db")
+knitr::opts_knit$set(sql.max.print = NA)
+knitr::opts_chunk$set(fig.width = 7,fig.height = 7,collapse = TRUE)
+options(scipen = 999)
+set.seed(1)
+
+#drop earlier objects
+rm(list = ls())
+
+# add terra tools functions
+source("log_files.R")
+
+#run house_keeping function to create output folder, download skey files
+house_keeping()
+
+# identify the unit and final output table name
+tsa_lbl <- "tsa27"
+tsa_num <- 27
+postgres_table<- "tsa27_operability"
+
+#required paths
+
+stone2023 <- "C:\\Data\\stone\\InteriorStoneQuery.csv" 
+
+stone2016 <- "C:\\Data\\stone\\stone\\Stone_Query_March_29_2016.csv" 
+
+bnd_path <- "C:\\Data\\tsa27\\DTFolderStructure\\tsa27_2020.gdb"
+
+rds_path <- "C:\\Data\\tsa27\\DTFolderStructure\\STSM2022\\TSA27\\gisData\\grids\\roads.tif"
+
+sink_path <-"C:\\Data\\tsa27\\DTFolderStructure\\STSM2022\\TSA27\\gisData\\grids\\sinks.tif"
+
+#required queries
+
+pre_thlb_query<-"select ogc_fid,thlb_bi from tsa27_pre_thlb;"
+
+stab_query<-" select class2, wkb_geometry from tsa27_slpstab join tsa27_skey using (ogc_fid) order by ogc_fid;"
+
+blk_query<-"select cc_harvest_year, wkb_geometry from tsa27_ar_table join tsa27_skey using (ogc_fid) where cc_harvest_year > 0;"
+
+vdyp_query<-"select feature_id, age, vol from tsa27_vdyp_thin;"
+
+spc1_query<-"select ogc_fid,feature_id,spec_cd_1,cc_harvest_year,included from tsa27_ar_table;"
+
+#Postgres connection object
+
+db = dbConnect(RPostgreSQL::PostgreSQL(), host="localhost", user = "postgres")
+
+#get 1 ha template raster
+
+out_extents <- get_extents() #function requires no argument
+
+# get the template extents based on the unit extent
+out_ras_template <- ras_template(out_extents, tsa_lbl, 100)
+
+
+
+
+```
+
+## Physical Operability Thresholds
+
+Physical operability thresholds refer to physically limiting factors or boundaries for harvesting or road construction that historically have proven, over several business cycles, too difficult or too expensive to overcome.
+
+Three spatial layers are assessed to determine the physically inoperable portion of the landbase: slope, elevation and terrain stability. Each is sampled using the consolidated cutblock layer and the upper bounds of performance (99 percentile) for slope and elevation are determined and applied to each layer to create a binary raster at 25 metre resolution.
+
+These upper and lower bounds (99 percentile for physical operability and 1 percentile for merchantability respectively) approximates 3 standard deviations from the mean of a normally distributed variable (often the variables are not normally distributed). Anything greater than the 99 percentile or less than the 1 percentile would be considered noise in the data (unusual circumstances, market conditions or error).
+
+Terrain stability is pre-assessed to determine the degree of "avoidance". If less that 1% of the TS polygons by TS classification type contain a harvest history then all are identified in a binary raster at 25 metre resolution for exclusion. The three binary rasters are then combined to form a single inoperable variable which is then aggregated to 1 hectare resolution forming a proportional inoperable variable.
+
+Once we've consolidated the physically inoperable factors into a single resultant raster at 1 hectare resolution it is converted to a resultant dataframe for later inclusion into the operability table.
+
+The steps are as follows:
+
+1.  Get the provincial 25 meter resolution DEM and create a unit raster. Here we'll use the **get_dem** function in the log_file.R function repository. This functions requires access to the image warehouse. The path is hard-coded in the get_dem function so you'll need to map it before running the script.Any changes to drive names need to be made there (the current drive name is "R").
+
+2.  Convert the unit elevation raster to a slope percentage raster using the **get_slope** function. The function first converts the DEM to degrees slope then applies the following expression to convert degrees into percent: tan(pi / 180 \* slp_degrees) \* 100
+
+3.  Create a binary stability raster using the **get_stab** which utilizes the "stab_query" listed in the queries section for the stability table in the postgres database. The stability table requires a wkb_geometry field as the functions uses the sf:st_read to create the raster. The rasterization field is hard-coded in the function **(class2)**. The logfile can be modified to reflect the rasterization field in the user's database table or the user can simple name the variable **class2** in the postgres table for simplicity.
+
+4.  Create a cutblock sampler to determine the 99 percitle of historic practice. Sample the elevation and slope rasters then identify the area above the threshold for each factor.
+
+5.  Aggregate the physically inoperable factor rasters using the **aggregate** function. This function sums the the three factor rasters then reclassifies the resultant into binary. The function then utilizes the terra::aggregate function to aggregate the 25m resolution resultant into 100 meter resultant, summing the binary values where a summed cell value of 16 (4\*4) equals 100% inoperable....cells with values \< 16 and partially inoperable. The proportion inoperable is re-scaled to values between 0-1000. The resultant raster is then converted to a dataframe.
+
+```{r phys_op, message=FALSE,warning=FALSE}
+
+ #----phys_op----
+#get dem for unit
+
+x<-ras_template25(out_extents,tsa_lbl,25)
+
+elevation<-get_dem(bnd_path,x)
+
+plot(elevation)
+
+#slope 
+#covert DEM to percent slope
+
+slope<-get_slope(elevation)
+
+plot(slope)
+
+#stability
+#rasterize stability field from postgres
+
+stability<-get_stability(db,stab_query,x)
+
+plot(stability)
+
+ #Extract Thresholds: 99 percentile for slope and elevation3
+ #create a cut-block sample cookie cutter to extract thresholds (99 percentiles of slope and elevation)
+
+sampler<-create_sampler(db,blk_query)
+
+unit<-create_unit(bnd_path)
+
+#inoperable elevation
+
+inoperable_elevation<-elev_inop(elevation,sampler,unit)
+plot(inoperable_elevation)
+
+#inoperable slope
+
+inoperable_slope<-slp_inop(slope,sampler,unit)
+plot(inoperable_slope)
+
+#aggregate 25m rasters and write df to postgres
+#phys_op_df is written to postgres as 'tsaXX_op' table
+
+phy_ops_df<-aggregate(stability, inoperable_elevation,inoperable_slope, out_ras_template)
+
+pretty_table(head(phy_ops_df))
+
+```
+
+## Merchantability
+
+Stands are considered not merchantable if their characteristics (low volumes, low value or high cost of harvest [primarily excessive haul distance]) deviate significantly from the characteristics that have defined historic harvest preference and practice.
+
+### Minimum Harvest Volume per ha
+
+In order to define the lower bounds of merchantability, statistical analysis of appraisal data collected from cutting permits issued over the last 30 years was used to determine the minimum volumes per hectare (MVH) a stand must achieve in order to be considered merchantable. MHV is chosen as a proxy for minimum volume per tree (MVT) which is the primary value driver both on the coast and interior but is not generated through conventional yield modeling. MHV and MVT are strongly positively correlated.
+
+Since some existing stands have yield projections that never achieve the threshold and would never be eligible for harvest in the timber supply projection, they are excluded from the THLB in the base case. For the Boundary TSA the 1 percentile of all permitted total volumes per ha equal 135 m3/ha.
+
+The first step is to extract the ECAS data for TSA27 from the Stone Query dataset. The **get_ecas** takes the 2016 and 2023 stone query csvs and the tsa label as arguments. The csvs have been preprocessed to ensure all timber marks have a underscore ("\_") prefix to facilitate joining between datasets. The 1 percentile of volume per hectare for all ground skid clear cut timber marks is assigned to the mhv01 vector.
+
+The second step utilizes **get_mhv_df** function. This function determines the maximum volume per hectare for each feature_id from the units vdyp table (therefore the user must have the table in postgres in **thin** format before running the script). The function creates a resultant dataframe based on the vdyp query above and then identifies each feature_id that cannot achieve the mhv01 threshold. The vdyp datasets tend to be quite large in thin format so processing can take between 5-10 minutes depending on unit size. A potentially faster process would be to use the dplyr::pivot_wider function to create a wide table then determine the maximum volume accross all columns(ages) using mutate with a rowwise function which would apply a max function across each row in the dataframe.
+
+The **get_mhv_df** function also incorperates the spc1_query which ands the ogc_fid,spec_cd_q1 and included fields for the postgres tsa27_ar_table;
+
+```{r ecas, message=FALSE,warning=FALSE}
+
+mhv<-get_ecas(stone2023,stone2016,tsa_num)
+
+mhv01<-mhv[[1]]
+
+ecas_df <- as.data.frame(mhv[['tcas_df']])
+
+mhv_df<-get_mhv_df(db,vdyp_query,spc1_query,mhv01)
+
+
+pretty_table(head(mhv_df))
+
+
+```
+
+## Problem Timber Profiles
+
+In addition stand types dominated (leading) by species with no or negligible harvest history are considered non-commercial and are excluded from the THLB during the netdown process. Pre-processing the ECAS datasets indicate little to no deciduous volume attributed the permitted cutting authorities. In this example we mutate the mhv_df dataframe to add a problem timber type field then identify all the deciduous-leading species records and assign a value of 1. This will be used during the netdown process to exclude these hectares from the THLB.
+
+```{r ptt, message=FALSE,warning=FALSE}
+# calculate the deciduous component of all permit
+mhv_df <- mhv_df %>% 
+  mutate(ppt = case_when(
+    spec_cd_1 %in% c('AT','ACT','AC','E','EP') ~ 1 ,
+    TRUE ~ 0
+  ))
+
+pretty_table(head(mhv_df))
+
+```
+
+## Economic Distance and Isolation
+
+Operability is not only a function of the physical and spatial condition of a given stand but also that of its immediate neighborhood and the greater collection of stands or "patch" that it forms a part of.
+
+The final operability criterion is stand accessibility and is a measure of the probability of development given the degree of stand isolation relative to neighboring patches of THLB, the existing road network and the milling complex. Stand isolation can be a by-product of the netdown process which fragments the productive forest into smaller "economic" patches which vary in size and distance from its nearest neighboring patch. Distance is a significant driver in determining economic patch size. The further the patch occurs from a neighboring patch or the nearest developed road or the unit's milling complex more expensive it becomes to develop. Beyond certain thresholds it becomes unreasonable to assume that these otherwise available stands would contribute to realized timber supply.
+
+Fragments that are considered too small to be developed (smaller than a minimum patch size criteria) are removed from the THLB. Stands that can also be classified as isolated and removed from the THLB where they are deemed too costly to develop, based on historical development patterns, local knowledge and expert opinion
+
+Identifying isolated THLB is a recursive process that requires a "pre"-THLB (using a netdown script without an initial isolated variable) to be created first. Once in place the pre-THLB is rasterised then run through a patch identification process. Patch identification utilizes the [landscapemetrics](https://r-spatialecology.github.io/landscapemetrics/) package which provides a suite of functions for evaluate landscape metrics at the landscape, class and patch level. For our purposes we are interested in understanding the size and distance drivers of isolation and therefore need the patch identification (patch_id), the patch size in hectares (area) and the distance to nearest neighbor in meters(enn: euclidean nerest-neighbor).
+
+The process of patch identification is as follows:
+
+1.  Rasterize pre-thlb on binary variable using num_ras function and convert the output to a terra::SpatRaster object
+2.  Use the landscapemetrics::get_patches function to identify discrete pre-thlb patches. The get_patches function identifies patches in two classes: patches with a value of zero (outside the pre-thlb) and patches with a value of 1 (a pre-thlb patch)
+3.  Use the landscapemetrics calculate_lsm function to extract metrics for each patch and create patch_stats wide dataframe
+4.  Create distance2mill and distance2road rasters using the terra::distance function and sink and roads SpatRasters
+5.  Run **get_patch_table** to consolidate datasets into a single dataframe
+
+```{r patchify, message=FALSE,warning=FALSE}
+
+#use terra rast function to create road and mill SpatRasters for distance functions
+rd<-rast(rds_path)
+sink<-subst(rd, NA, 0)
+
+sink<-rast(sink_path)
+sink<-subst(sink, NA, 0)
+
+#identify rasterization field in postgres table
+field <- "thlb_bi"
+#identify rasterization output name
+tiff<-"tsa27_pre_thlb.tif"
+#run num_ras function to output pre-thlb raster
+num_rast(db,pre_thlb_query,field,tiff)
+#rasterize binary thlb as SpatRaster
+thlb<-rast("./data/tiff/tsa27_pre_thlb.tif")
+
+#use get_patches function to identify discrete thlb patches
+patch<-get_patches(thlb, return_raster = TRUE)
+
+#plot thlb patches
+show_patches(thlb)
+
+#extract the pre-thlb patch raster
+p_raster <- patch[[1]]$class_1
+
+#convert to terra::SpatRaster
+SpatPatch<-rast(p_raster)
+
+#landscapemetrics calculate_lsm function to extract metrics for each patch. The output is in "thin" format
+patch_stats<-calculate_lsm(thlb, 
+                 level = "patch",
+                 directions = 8,
+                 neighbourhood = 8)
+
+#create a wide dataframe
+patch_stats<-patch_stats%>%
+  filter(class == 1)%>%
+  pivot_wider(names_from = metric,
+              values_from = value)
+
+# run distance function on mill SpatRaster
+dist2mill<-distance(sink, target = 0)
+plot(dist2mill)
+
+#run distance function on road SpatRaster
+dist2road<-distance(rd, target = 0)
+plot(dist2road)
+
+#consolidate into single dataframe
+patch_df<-get_patch_table(out_ras_template,
+                             SpatPatch,
+                             patch_stats,
+                             dist2mill,
+                             dist2road)
+
+pretty_table(head(patch_df))
+
+
+```
+
+## Cycle time
+
+Another measure of the effect of distance on operability is Cycle time. Cycle time is an appraisal metric reflecting the cost per cubic meter of hauling from the centre of a cutting authority to the nearest point of appraisal (milling centre) and back again plus 1 hour for loading and unloading. Cycle time values are expressed in hrs. A strength of the ECAS dataset is that it can be enabled spatially using RESULTs openings joining the two datasets on the timber mark variable. This in turn adds a spatial dimension to the dataset which is useful for exploring spatial distribution of variables and the spatial and temporal trends in the data.
+
+Here we use the **get_ctime_sample** to spatially enable ECAS. The function follows the following process:
+
+1.  Select RESULTS openings from the BCGW using the units bounding box then clip to the unit boundary
+2.  Convert the sf object to a terra::Spatial Vector object
+3.  Create centroid object from blocks using terra::centroid function keep opening_id and timber mark attribute
+4.  Join ECAS dataset to centroids on timbermark
+5.  Subset to the cycletime variable: prim_cyc_time_all
+
+To interpolate cycletime across the landbase we use the **get_ctime** function.
+
+Spatial interpolation is the process of estimating values of spatially continuous variables for spatial locations where they have not been observed, based on observations. The statistical methodology for spatial interpolation, called geostatistics, is concerned with the modelling, prediction and simulation of spatially continuous phenomena.
+
+Inverse distance weighted (IDW) interpolation explicitly makes the assumption that things that are close to one another are more alike than those that are farther apart. To predict a value for any unmeasured location, IDW uses the measured values surrounding the prediction location. The measured values closest to the prediction location have more influence on the predicted value than those farther away. IDW assumes that each measured point has a local influence that diminishes with distance. It gives greater weights to points closest to the prediction location, and the weights diminish as a function of distance, hence the name inverse distance weighted.
+
+The get_ctime function uses the [gstat](https://cran.r-project.org/web/packages/gstat/gstat.pdf)package to create the [IDW](https://gisgeography.com/inverse-distance-weighting-idw-interpolation/) model of cycle times then converts output to a dataframe.
+
+```{r cycletime,message=FALSE,warning=FALSE}
+
+#CycleTime
+
+ctime_sample<-get_ctime_sample(tsa_num, ecas_df)
+bnd <- st_read(bnd_path,
+               layer = "bnd")
+SpatBnd <- vect(bnd)
+
+ctime_df<-get_ctime(ctime_sample, out_ras_template,SpatBnd)
+
+
+
+```
+
+## Operability Table
+
+Once the major elements of operability have been defined we pull them together into a single dataframe for loading into postgres. At this stage we add the final distance metrics (distance to mill, distance to road and cycle time), then create a distance_index.
+
+The final step is to assess each patch within the nascent THLB (pre_thlb) against size and distance thresholds. The dataframe is mutated to create a 'isolated' variable then each patch his first evaluated for a minimum size (area \<= 3 & ctime > 3 [more than an hour away from the closest milling complex]) and is assigned a value of 1 if below the threshold or 0 for above, they are then evaluated against both area and distance to nearest patch (area \<= 5 & enn \> 200 [200 = economic skid distance]), the finally they are the evaluated against area and distance index (the combination of distance to mill, distance to road and cycle time) (area \<= 25 & enn \> 500 [500 = temporary access] & distance_index \> .43 [90 percentile]).
+
+For viewing purposes the distance index is rasterized and plotted. The user can rasterize any operability metric using num_rast(function)that takes query,field, and tiff strings as arguments. Finally the resultant dataframe is loaded to postgres to be called in the subsequent netdown script.
+
+```{r op_tab, message=FALSE,warning=FALSE}
+ #get attributes from postgres
+
+#Create master table 
+
+op_df<-left_join(mhv_df,phy_ops_df, join_by("ogc_fid" == "cell"))
+
+op_df<-left_join(op_df,patch_df,join_by("ogc_fid" == "cell"))
+
+op_df<-left_join(op_df,ctime_df,join_by("ogc_fid"))
+
+op_df<-op_df%>%
+  filter(included ==1)
+
+
+# add distance indices
+
+maxD2M <-max(op_df$edist2mill)
+maxD2R <-max(op_df$edist2road)
+maxCtime <-max(op_df$ctime,na.rm = TRUE)
+
+op_df<-op_df%>%mutate(
+  d2mIndex = round(edist2mill/maxD2M,2),
+  d2rIndex = round(edist2road/maxD2R,2),
+  ctimeIndex = round(ctime/maxCtime,2),
+  distance_index = (d2rIndex + d2rIndex+ctimeIndex)/3
+)
+ 
+op_df<-op_df%>%
+  mutate(isolated = case_when(
+    area <= 3 & ctime > 3 ~ 1,
+    area <= 5 & enn > 200 ~ 1,
+    area <= 25 & enn > 500 & distance_index > .43 ~ 1,
+    TRUE ~ 0
+  ))
+
+sum(op_df$isolated)
+
+
+#write table to postgres
+if (dbExistsTable(db, postgres_table)) {
+  dbRemoveTable(db, postgres_table)
+}
+dbWriteTable(db, postgres_table, op_df, row.names = FALSE)
+
+#query<-"select ogc_fid,distance_index from tsa27_operability;"
+query<-paste0("select ogc_fid,distance_index from ", postgres_table,";")
+query
+
+field<-"distance_index"
+tiff<-"tsa27_dist_index.tif"
+
+num_rast(db,query,field,tiff) 
+
+
+samp<-op_df%>%
+  sample_frac(.0001)%>%
+  arrange(ogc_fid)
+
+pretty_table(samp)
+  
+```
+
+Disconnect
+
+```{r disconnect}
+
+dbDisconnect(db)
+
+```
+
+## Function Reference
+
+The following are the suite of functions in the log_file.R script
+
+```{r functions, warnings = FALSE, messages = FALSE, eval=FALSE}
+#Rasterization functions
+
+#Housekeeping function gets the extents tables and sets up the folder structure for the project
+
+house_keeping <- function() {
+  skey_path <- r"(W:\FOR\VIC\HTS\ANA\Workarea\kelly\skey)"
+  
+  ifelse(!dir.exists("./data/skey"), 
+         copyDirectory(skey_path, 
+          "./data/skey", 
+          private = TRUE, 
+          recursive = TRUE),
+         FALSE)
+  
+  ifelse(!dir.exists("./data/shp"), 
+        dir.create("./data/shp"),
+         FALSE)
+  
+  ifelse(!dir.exists("./data/tiff"), 
+         dir.create("./data/tiff"),
+         FALSE)
+  
+  
+  ifelse(!dir.exists("./data/cats"), 
+         dir.create("./data/cats"),
+         FALSE)
+  
+  getwd()
+}
+
+#getextents function extracts the extents and numrows,numcol from the key tables and consolidates them into a dataframe 
+
+get_extents <- function() {
+  #folder_path <- r"(W:\FOR\VIC\HTS\ANA\Workarea\kelly\skey\)"
+  folder_path <- "./data/skey/"
+  tsa_extent_all <- NULL
+  log_files <- list.files(folder_path)# get a list of logfiles
+  for (i in 1:length(log_files)) {
+    log <- read_tsv(paste0(folder_path, log_files[i]),show_col_types = FALSE)
+    first_header <- colnames(log) # return first line that contains TSA number
+    tsa_position <- str_locate(first_header, "tsa") # find the position of the tsa string in the column label
+    tsa_start_pos <- tsa_position[1] # store the starting position in the vector tsa_start_pos
+    tsa_label <- str_sub(first_header, tsa_start_pos, -1) # extract the tsa string from the label from the start position to the end
+    tsa_num <- str_sub(tsa_label, 1, 5) # extract just the tsa number
+    colnames(log)[1] <- tsa_label # assign the tsa_label to the column name
+    rows <- c(3, 5, 7, 9, 12, 13) # identify the rows that 'will' contain the extent metrics
+    extent <- log[5:6, ] # limit the df to the rows that contain the extents
+    extent %>%
+      mutate(
+        id = row_number(), # create an id fire for the two initial rows
+        tsa = tsa_num # create a tsa number column
+      ) %>% 
+      unnest_tokens(extents, tsa_label) %>% # use tidytext::unnest function to create rows for each character string
+      select(tsa, extents) %>% # get rid of the initial column name
+      mutate(row_num = row_number()) %>% # assign a row number id to each row
+      filter(row_num %in% rows) %>% # filter on rows containing extent values
+      mutate(extent_lbl = case_when( # create extent label
+        row_num == 3 ~ "x_min",
+        row_num == 5 ~ "y_min",
+        row_num == 7 ~ "x_max",
+        row_num == 9 ~ "y_max",
+        row_num == 12 ~ "n_col",
+        TRUE ~ "n_row"
+      )) %>%
+      select(tsa, extent_lbl, extents) %>%
+      mutate(extents = as.numeric(extents)) %>% #coerce to numeric
+      pivot_wider(names_from = extent_lbl, values_from = extents) -> tsa_extent
+    tsa_extent_all <-bind_rows(tsa_extent,tsa_extent_all)%>% #append each resulting df to the output
+      arrange(tsa) # arrange in ascending order
+    
+ 
+  }
+  return(tsa_extent_all)
+}
+
+#The ras_template function creates the terra raster template based on the TSA selected from the extents dataframe
+# It assigns a default vale of -99 to every cell
+
+ras_template <- function(extents, tsa_lbl, res) {
+  nr <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(n_row)
+  nc <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(n_col)
+  xmn <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(x_min)
+  xmx <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(x_max)
+  ymn <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(y_min)
+  ymx <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(y_max)
+
+  x <- rast(
+    nrows = nr, ncols = nc, xmin = xmn, xmax = xmx,
+    ymin = ymn, ymax = ymx,
+    crs = "epsg:3005",
+    resolution = c(res, res),
+    vals = -99
+  )
+}
+
+
+## the cat_rast function rasterizes categorical variables based on the factor level and produces a STSM ready legend file based 
+## that assoicates the level with the category
+
+cat_rast<-function(db,raster_query,field,tiff){
+  
+  tmp1 <- dbGetQuery(db, raster_query) %>%
+    arrange(ogc_fid) %>%
+    mutate(
+      ras_col = factor(get(field)), #convert to factor
+      level = as.integer(ras_col),
+      ras_col = gsub("\\s+", "", ras_col)) %>% #remove white spaces
+    select( -!!field) #drop field column
+  
+  tmp2 <- out_ras_template
+
+  #convert template to df for left join
+  tmp3 <- as.data.frame(tmp2, cells = TRUE)
+ 
+   # join the rasterization value df to geometry frame
+  tmp4 <- left_join(tmp3, tmp1, by = join_by("cell" == "ogc_fid"))
+ 
+   #load the  ratsreization values to the template
+  values(tmp2) <- tmp4 %>% select(level)
+ 
+  
+  #write to tiff
+  writeRaster(tmp2, paste0("./data/tiff/",tiff), overwrite = TRUE)
+  
+  plot(tmp2)
+  
+}
+
+
+cats_file<-function(db,raster_query,field,cats_path,cat_name,prefix){
+  
+  tmp1 <- dbGetQuery(db, raster_query) %>%
+    arrange(ogc_fid) %>%
+    mutate(
+      ras_col = factor(get(field)), #convert to factor
+      level = as.integer(ras_col),
+      ras_col = gsub("\\s+", "", ras_col)) %>% #remove white spaces
+      mutate(ras_col = case_when(
+        !is.na(ras_col) ~ paste0(prefix,ras_col))) %>%
+    select( -!!field) #drop field column
+  
+  
+  cats<-tmp1%>%
+    filter(!is.na(ras_col)) %>% #remove NAs
+    group_by(ras_col) %>% #group by rasterization column
+    summarise() %>%
+    ungroup() %>%
+    mutate(id = row_number(),
+           cats = paste(id,ras_col,sep = ":"))%>% #create concatenated legend
+    select(cats)
+
+
+  legend<-paste0("./data/cats/",cat_name)
+  
+  # change the path to your cat folder
+  write_delim(cats,legend, col_names = FALSE) # write tab delimited text file w/o header
+  
+}
+
+
+num_rast <- function(db,raster_query,field,tiff) {
+  
+  tmp1 <- dbGetQuery(db, raster_query) %>%
+    arrange(ogc_fid) %>%
+    mutate(
+      ras_col = get(field)) %>%
+    select( -!!field) #drop field column
+  
+  #get the geometry frame
+  tmp2 <- out_ras_template
+  #convert to dataframe with unique identifier for each cell
+  tmp3 <- as.data.frame(tmp2, cells = TRUE)
+  # join the rasterization value df to geometry frame
+  tmp4 <- left_join(tmp3, tmp1, by = join_by("cell" == "ogc_fid"))
+  #load the  ratsreization values to the template
+  values(tmp2) <- tmp4 %>% select(ras_col)
+  
+  #write to tiff
+  writeRaster(tmp2, paste0("./data/tiff/",tiff), overwrite = TRUE)
+  
+  plot(tmp2)
+  
+
+}
+
+##ras_template5 creates a 5 meter resolution rater template : useful for lineal features: roads/streams
+
+ras_template5 <- function(extents, tsa_lbl, res) {
+  nr <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(n_row) * 20
+  nc <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(n_col) * 20
+  xmn <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(x_min)
+  xmx <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(x_max)
+  ymn <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(y_min)
+  ymx <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(y_max)
+  
+  x <- rast(
+    nrows = nr, ncols = nc, xmin = xmn, xmax = xmx,
+    ymin = ymn, ymax = ymx,
+    crs = "epsg:3005",
+    resolution = c(res, res),
+    vals = -99
+  )
+}
+
+## ras_template25 creates a 25m resolution template: usefule for operability mapping 
+
+ras_template25 <- function(extents, tsa_lbl, res) {
+  nr <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(n_row) * 4
+  nc <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(n_col) * 4
+  xmn <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(x_min)
+  xmx <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(x_max)
+  ymn <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(y_min)
+  ymx <- out_extents %>%
+    filter(tsa == tsa_lbl) %>%
+    pull(y_max)
+  
+  x <- rast(
+    nrows = nr, ncols = nc, xmin = xmn, xmax = xmx,
+    ymin = ymn, ymax = ymx,
+    crs = "epsg:3005",
+    resolution = c(res, res),
+    vals = -99
+  )
+}
+
+## get_dem function extracts the unit's dem from the image warehouse...need network access/VPN active and a mapped 
+##path to the image warehouse
+
+get_dem<-function(bnd_path,clip){
+  message("executing get_dem function to extract provincial dem from image warehouse")
+  dem_path <-  "R:\\elevation\\trim_25m\\bcalbers\\tif\\bc_elevation_25m_bcalb.tif"
+  bnd <- st_read(bnd_path,
+                 layer = "bnd") # get unit boundary
+  SpatBnd <- vect(bnd)  # covert to terra::SpatVector
+  bc_dem <- rast(dem_path)  #get provincial dem and convert to terra::SpatRaster
+  unit_elev <- terra::crop(bc_dem, clip)  #clip provincial raster to unit bounding box
+  rm(bc_dem) # turf the provincial dem
+  unit_elev_bnd <- mask(unit_elev,SpatBnd)# clip bounding box to unit boundary
+}
+
+##get_slope converts a unit's dem to percent slope
+
+get_slope<- function(dem){
+  message("executing get_slope function to convert unit dem to percent slope")
+  slp_degrees <- terra::terrain(dem, "slope") # use terra::terrain function to convert dem to degrees slope
+  slp_percent <- tan(pi / 180 * slp_degrees) * 100 # convert degrees to percent
+}
+
+## get_stability function extracts stability table to spatial object
+
+get_stability<-function(db, stab_query,x){ # extract stability table from postgres using 25m template ("x")
+  op<-st_read(db,query = stab_query) #use sf::st_read function to create stability spatial object
+  SpatOP <- vect(op) # convert to terra: SpatVector
+  stability <- terra::rasterize(SpatOP, x, "class2") # rasterize on binary field
+}
+
+create_sampler<-function(db,q){ 
+  blks<-st_read(db,query = q)
+  SpatBlks <- vect(blks)
+}
+
+create_unit<-function(bnd_path){
+  bnd <- st_read(bnd_path,
+                 layer = "bnd")
+  SpatBnd <- vect(bnd)
+}
+
+
+
+elev_inop<-function(elevation,sampler,unit){
+  message("executing elev_inop function to sample elevation by blk to determine 99 percent cutoff")
+  blk_elev <- terra::extract(elevation,sampler)
+  blkelev99<-quantile(blk_elev$bc_elevation_25m_bcalb, probs = 0.99, na.rm = TRUE)
+  message("blk 99 percentile is ", blkelev99)
+  
+  unit_elev2 <- terra::extract(elevation, unit)
+  unitelev100<-quantile(unit_elev2$bc_elevation_25m_bcalb, probs = 1, na.rm = TRUE)
+  message("the unit maximum is ", unitelev100)
+  
+  elev_cutoff <- c(-Inf, blkelev99, 0, blkelev99, unitelev100, 1, unitelev100, Inf, 0)
+  elev_matrix <- matrix(elev_cutoff, ncol = 3, byrow = TRUE)
+  #### reclassify elevation raster based on cutoffs
+  elev_reclass <- terra::classify(elevation, elev_matrix) 
+  
+}
+
+
+
+slp_inop<-function(slope,sampler,unit){
+  message("executing slp_inop function to sample slope by blk to determine 99 percent cutoff")
+  blk_slp <- terra::extract(slope,sampler)
+  blk_slp99<-quantile(blk_slp$slope, probs = 0.99, na.rm = TRUE)
+  message("blk 99 percentile is ", blk_slp99)
+  
+  unit_slp <- terra::extract(slope, unit)
+  unit_slp100<-quantile(unit_slp$slope, probs = 1, na.rm = TRUE)
+  message("the unit maximum is ", unit_slp100)
+  
+  slp_cutoff <- c(-Inf, blk_slp99, 0, blk_slp99, unit_slp100, 1, unit_slp100, Inf, 0)
+  slp_matrix <- matrix(slp_cutoff, ncol = 3, byrow = TRUE)
+  #### reclassify elevation slope based on cutoffs
+  slp_reclass <- terra::classify(slope, slp_matrix) 
+  
+}
+
+
+aggregate<-function(stability, inoperable_elevation,inoperable_slope, out_ras_template){
+  message("executing aggregation function to calculate proportion inoperable")
+  res25m <- stability + inoperable_elevation + inoperable_slope
+  ### reclassify
+  res_cutoff <- c(-Inf, 0, 0, 1, 3, 1, 3, Inf, 0)
+  res_matrix <- matrix(res_cutoff, ncol = 3, byrow = TRUE)
+  res_reclass <- terra::classify(res25m, res_matrix)
+  # plot(res_reclass)
+  ## aggregate to 1 ha.cells with a value of 16 (4*4) are 100% inoperable
+  ## cells with values < 16 and partially inoperable
+  res_agg <- terra::aggregate(res_reclass, 4, fun = "sum", na.rm = TRUE)
+  # plot(res_agg)
+  ## convert to proportion of cell that is inoperable
+  resultant <- round(res_agg * 1000 / 16)
+  e<-ext(out_ras_template)
+  ext(resultant)<-e
+  tmp2 <- as.data.frame(out_ras_template, cells = TRUE)
+  tmp3 <- as.data.frame(resultant, cells = TRUE)
+  tmp4 <- left_join(tmp2, tmp3, by = join_by("cell"))
+  
+  if (dbExistsTable(db, paste(tsa_lbl, "_op", sep = ""))) {
+    dbRemoveTable(db, paste(tsa_lbl, "_op", sep = ""))
+  }
+  dbWriteTable(db, paste(tsa_lbl, "_op", sep = ""), tmp4, row.names = FALSE)
+  #plot(resultant)
+  tmp4
+}
+
+
+get_ecas<-function(sPath2023,sPath2016,tsa){
+  message("executing get_ecas function which cleans and combines stone queries: ignore warnings")
+  ecas2023 <- read_csv(sPath2023,
+                       show_col_types = FALSE) %>% 
+    rename_all(~ str_replace(., "^\\S* ", "")) %>% # ^ matches the start of string and remove
+    clean_names() %>% # make labels snake_case
+    mutate_if(is.numeric, ~ replace_na(., 0)) # if numeric replace NAs with zeros
+
+  ecas2016 <- read_csv(sPath2016,
+                       show_col_types = FALSE)%>%
+    rename_all(~ str_replace(., "^\\S* ", "")) %>%
+    clean_names() %>%
+    mutate(
+      man_unit = as.numeric(man_unit), # convert variable from character to numeric
+      indicated_rate = as.numeric(indicated_rate),
+      total_toa_amount = as.numeric(total_toa_amount)
+    ) %>%
+    mutate_if(is.numeric, ~ replace_na(., 0))
+ 
+  col_list <- compare_df_cols(ecas2023,  # dump cols from 2016 with type mismatch
+                              ecas2016,
+                              return = "mismatch") %>%
+    select(column_name) %>%
+    pull()
+  
+  ecas2016 <- ecas2016 %>% select(-col_list)
+  
+  ecas <- bind_rows(   #bind and clean df
+    list(
+      e2023 = ecas2023,
+      e2016 = ecas2016
+    ),
+    .id = "id"
+  ) %>%
+    mutate_if(is.numeric, ~ replace_na(., 0)) %>%
+    remove_empty("cols") %>%
+    group_by(mark) %>%
+    arrange(desc(app_eff_date)) %>%
+    slice(1) %>%
+    ungroup()
+  
+  
+  tsa <- ecas %>% # limit the sample to major licensees and BCTS
+    filter(man_unit == tsa_num) %>%
+    filter(!str_detect(licence, "T|L|W"))
+  
+  tsa <- tsa %>% mutate(tvph = case_when( # assign system values to TVPH variable
+    gscc_vol_ha > 0 & chgcc_vol_ha == 0 ~ gscc_vol_ha,
+    chgcc_vol_ha > 0 & gscc_vol_ha == 0 ~ chgcc_vol_ha,
+    TRUE ~ ncv / tot_merch_area
+  ))
+  
+  sub <- tsa %>% filter(gscc_vol > 0 & chgcc_vol_ha == 0)
+  
+  mhv01<-quantile(sub$gscc_vol_ha, 
+           probs = .01)
+  message(" The 1 percentile minimum harvest volume is", mhv01 )
+  return(list(mhv = mhv01, tcas_df = tsa)) #return mutiple outputs in a list
+}
+
+get_mhv_df<-function(db,vdyp_query,spc1_query,mhv01){
+  message("executing get_mhv_df to query vdyp tables to determine maximum volume and apply 1 percentile cut-off")
+  vdyp<-dbGetQuery(db,vdyp_query)%>%
+    group_by(feature_id)%>%
+    summarise(
+      max_vol = max(vol),
+      less_than_mhv = case_when(
+        max_vol < mhv01 ~ 1,
+        TRUE ~ 0
+      )
+    )
+  
+  spc1<-dbGetQuery(db,spc1_query)
+  
+  out_df<-left_join(spc1,vdyp, join_by("feature_id"))
+  
+}
+
+get_patch_table<-function(out_ras_template,
+                          SpatPatch,
+                          patch_stats,
+                          dist2mill,
+                          dist2road){
+  
+  tmp1 <- as.data.frame(out_ras_template,cells = TRUE)
+  #convert to dataframe with unique identifier for each cell
+  tmp2 <- as.data.frame(SpatPatch, cells = TRUE)
+  # join the rasterization value df to geometry frame
+  tmp3 <- left_join(tmp1, tmp2, join_by("cell"))
+  
+  tmp4 <- left_join(tmp3, patch_stats, join_by("layer"=="id"))
+  
+  tmp1 <- as.data.frame(dist2mill,cells = TRUE)
+  tmp2 <- as.data.frame(dist2road, cells = TRUE)
+  tmp3 <- left_join(tmp1, tmp2, join_by("cell"))
+  
+  tmp4 <- left_join(tmp4, tmp3, join_by("cell"))
+  
+  tmp5<-tmp4%>%
+    select(cell,
+           patch_id = layer,
+           area,
+           enn,
+           edist2mill = tsa27_test_sink,
+           edist2road = tsa27_roads_bi)
+}
+
+get_ctime_sample<-function(num,edf){
+  cNum<-as.character(num)
+  bnd<- bcdc_query_geodata("8daa29da-d7f4-401c-83ae-d962e3a28980") %>%
+    filter(TSA_NUMBER == cNum) %>% # filter for Boundary TSA
+    collect()
+  
+  tsa_openings<-bcdc_query_geodata("53a17fec-e9ad-4ac0-95e6-f5106a97e677") %>%
+    filter(INTERSECTS(bnd))%>%
+    collect()
+  
+  #clip to the boundary
+  tsa_openings_clip <- st_intersection(tsa_openings, bnd)
+  
+  #view data
+  SpatBlk<-vect(tsa_openings_clip) # create spatial vector object
+  
+  # create centroid from blocks, keep opening_id and timber mark attribute
+  SpatCent <- centroids(SpatBlk) %>%
+    select(OPENING_ID, TIMBER_MARK) %>%
+    mutate(TIMBER_MARK = paste0("_", TIMBER_MARK))
+  
+  #join datasets
+  blk_sample<-merge(SpatCent,edf,by.x = "TIMBER_MARK",by.y = "mark")
+  
+  # subset to the cycletime variable
+  ctime <- blk_sample %>%
+    filter(prim_cyc_time_all > 0) %>%
+    select(OPENING_ID, TIMBER_MARK, prim_cyc_time_all)
+}
+
+get_ctime<-function(sample,template,bnd){
+  
+  #create df with centroid coordinates and attribute for gstat model from the ctime object
+  pt_df <- data.frame(geom(ctime_sample)[,c("x", "y")], as.data.frame(ctime_sample))
+  
+  #create boundary template model
+  x <- out_ras_template
+  
+  #create the gstats model object using the dataframe with xy cordinates
+  gs <- gstat(formula=prim_cyc_time_all~1, locations=~x+y, data=pt_df)
+  
+  #run the gstats interpolater function with the raster template and gs model
+  idw <- interpolate(x, gs, debug.level=0)
+  
+  # crop the output by the TSA boundary
+  idwr <- mask(idw, bnd)
+  
+  tmp1 <- as.data.frame(out_ras_template,cells = TRUE)
+  #convert to dataframe with unique identifier for each cell
+  tmp2 <- as.data.frame(idwr, cells = TRUE)
+  # join the rasterization value df to geometry frame
+  ctime <- left_join(tmp1, tmp2, join_by("cell"))
+  ctime <- ctime%>%
+    rename(ogc_fid = cell,
+           ctime = var1.pred)%>%
+    select(ogc_fid,ctime)
+}
+
+
+
+```
