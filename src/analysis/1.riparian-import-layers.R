@@ -88,28 +88,28 @@ import_bcgw_to_pg(src_schema    = "WHSE_FOREST_VEGETATION",
 ## Rationale: Needed to calculate floodplain for S1A streams
 ## WHSE_BASEMAPPING.CWB_FLOODPLAINS_BC_AREA_SP
 import_bcgw_to_pg(src_schema    = "WHSE_BASEMAPPING",
-                  src_layer     = "CWB_FLOODPLAINS_BC_AREA_SP",
-                  fdw_schema    = "load",
-                  dst_schema    = "whse_sp",
-                  dst_layer     = "CWB_FLOODPLAINS_BC_AREA_SP",
-                  layer_id      = "floodplains_bc_area_id, floodplain_name, designation_date",
-                  geometry_name = "geometry",
-                  geometry_type = "MultiPolygon",
-                  grouping_name = NULL,
-                  pg_conn_list  = conn_list)
+				  src_layer     = "CWB_FLOODPLAINS_BC_AREA_SP",
+				  fdw_schema    = "load",
+				  dst_schema    = "whse_sp",
+				  dst_layer     = "CWB_FLOODPLAINS_BC_AREA_SP",
+				  layer_id      = "floodplains_bc_area_id, floodplain_name, designation_date",
+				  geometry_name = "geometry",
+				  geometry_type = "MultiPolygon",
+				  grouping_name = NULL,
+				  pg_conn_list  = conn_list)
 
 ## Rationale: Needed to do region specific stream order classification
 ## WHSE_ADMIN_BOUNDARIES.ADM_NR_AREAS_SP
 import_bcgw_to_pg(src_schema    = "WHSE_ADMIN_BOUNDARIES",
-                  src_layer     = "ADM_NR_AREAS_SP",
-                  fdw_schema    = "load",
-                  dst_schema    = "whse_sp",
-                  dst_layer     = "ADM_NR_AREAS_SP",
-                  layer_id      = "area_number, area_name, org_unit, org_unit_name, feature_code, feature_name",
-                  geometry_name = "shape",
-                  geometry_type = "MultiPolygon",
-                  grouping_name = NULL,
-                  pg_conn_list  = conn_list)
+				  src_layer     = "ADM_NR_AREAS_SP",
+				  fdw_schema    = "load",
+				  dst_schema    = "whse_sp",
+				  dst_layer     = "ADM_NR_AREAS_SP",
+				  layer_id      = "area_number, area_name, org_unit, org_unit_name, feature_code, feature_name",
+				  geometry_name = "shape",
+				  geometry_type = "MultiPolygon",
+				  grouping_name = NULL,
+				  pg_conn_list  = conn_list)
 
 
 ## Rationale: channel width needed to calculate riparian buffers
@@ -139,3 +139,25 @@ ogr_cmd <- glue('ogr2ogr -overwrite -a_srs EPSG:3005 -nln {src_lyr} -lco SCHEMA=
 print(ogr_cmd)
 system(ogr_cmd)
 
+## Manually edit down the original excel spreadsheet to only include needed columns
+query <- "DROP TABLE IF EXISTS whse_sp.june13_riparian_data_for_faib"
+run_sql_r(query, conn_list)
+query <- "CREATE TABLE IF NOT EXISTS whse_sp.june13_riparian_data_for_faib
+(
+	objectid integer,
+    evaluation_year integer,
+    evaluation_date character varying(50),
+    year_of_harvest integer,
+    stream_name character varying(50),
+    stream_class_in_field character varying(50),
+    channel_depth real,
+    channel_width real,
+    channel_gradient_pct real,
+    bcalbers_easting double precision,
+    bcalbers_northing double precision
+)
+
+TABLESPACE pg_default;"
+run_sql_r(query, conn_list)
+query <- "COPY whse_sp.june13_riparian_data_for_faib from 'data\\input\\June13_Riparian data_for_FAIB.csv' CSV HEADER"
+run_sql_r(query, conn_list)

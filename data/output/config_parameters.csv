@@ -17,4 +17,6 @@ oracle,bcgw,WHSE_BASEMAPPING.FWA_WETLANDS_POLY,fwa_wetlands,whse,fwa_wetlands,,0
 gdb,S:\FOR\VIC\HTS\FAIB_DATA_FOR_DISTRIBUTION\ForestHarvestRestrictionsAndProtections\Resource_Report_April_2024\PublishedVersion\ForestHarvestingRestrictions.gdb,ForestHarvestingRestrictions,fhr,whse,rr_restriction,rr_restriction is not null,0,0,,
 raster,S:\FOR\VIC\HTS\ANA\workarea\PROVINCIAL\topography.aspect.tif,aspect,,whse,aspect,,0,0,,
 raster,C:\projects\thlb-proxy-comparison-2024-04-16\data\raw\var2011bc.tif,flyingbec2011,,whse,flyingbec2011,,0,0,,
-gdb,C:\projects\requests\riparian_forest_biodiversity-2024-07-31\QS_Plan_Area\QS_Plan_Area.gdb,QS_Plan_Area,,public,QS_Plan_Area,,1,0,,
+gdb,C:\projects\requests\riparian_forest_biodiversity-2024-07-31\QS_Plan_Area\QS_Plan_Area.gdb,QS_Plan_Area,,public,QS_Plan_Area,,0,0,,
+gdb,W:\FOR\VIC\HTS\DAM\WorkArea\Mcdougall\Projects\2024\consolidated_cutblocks\july27_old_method\ccInputs_1.gdb,Cut_Block_all_BC,,whse,cut_block_old,,1,0,,
+gdb,W:\FOR\VIC\HTS\DAM\WorkArea\Mcdougall\Projects\2024\consolidated_cutblocks\july27_new_method\ccInputs_1.gdb,Cut_Block_all_BC,,whse,cut_block_new,,1,0,,

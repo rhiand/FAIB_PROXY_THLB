@@ -1,3 +1,9 @@
+## Identify streams that have upstream catchments extending beyond the borders of 
+## British Columbia (BC). The reason for this is that channel width is determined 
+## by the size of the upstream watershed. Since the upstream watershed area is
+## calculated based on the BC border, any stream with a catchment area outside 
+## BC will yield inaccurate measurements.
+
 library(dadmtools)
 library(keyring)
 
