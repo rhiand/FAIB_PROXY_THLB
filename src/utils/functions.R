@@ -51,7 +51,7 @@ linear_weight <- function(
 		fact numeric NOT NULL,
 		{grid_loop_fld} character varying(32) NOT NULL);")
 	run_sql_r(query, pg_conn_param)
-	
+
 	## retrieve map tiles to loop over from status table
 	query <- glue("SELECT {grid_loop_fld} FROM {dst_schema}.{dst_tbl}_status where status = 'ready'")
 	grid_df <- sql_to_df(query, pg_conn_param)
@@ -64,7 +64,7 @@ linear_weight <- function(
 	print(glue('Reading in raster: {template_tif}'))
 	template_rast <- terra::rast(template_tif)
 	template_raster_datatype <- datatype(template_rast)
-	
+
 	print(glue('Reading in raster: {mask_tif}'))
 	mask_rask <- terra::rast(mask_tif)
 
@@ -85,7 +85,7 @@ linear_weight <- function(
 	## release large rasters from memory
 	template_rast <- NULL
 	mask_rask <- NULL
-	
+
 	for (i in 1:nrow(grid_df)) {
 		iteration_start_time <- Sys.time()
 		grid_row <- grid_df[i, ]
@@ -112,7 +112,7 @@ linear_weight <- function(
 		## https://www.paulamoraga.com/book-spatial/the-terra-package-for-raster-and-vector-data.html
 		results <- terra::extract(rast_clipped, vect, weights = TRUE, na.rm = TRUE)
 		## within the results, records sometimes exist where bc_01ha_gr_skey IS NULL
-		## this happen on the coast when the raster has been masked but the linear features 
+		## this happen on the coast when the raster has been masked but the linear features
 		## exists outside the mask
 		## They are not needed, remove records with NULL values in bc_01ha_gr_skey
 		results <- results[complete.cases(results$bc_01ha_gr_skey), ]
@@ -127,14 +127,14 @@ linear_weight <- function(
 			gr_skey,
 			fact,
 			'{grid_row}'::text as {grid_loop_fld}
-		FROM 
+		FROM
 			{dst_schema}.{dst_tbl}_tmp
 		ON CONFLICT (gr_skey)
-		DO UPDATE set fact = 
-		CASE 
+		DO UPDATE set fact =
+		CASE
 			-- when insert has already happened, overwrite, otherwise add
 			WHEN d.{grid_loop_fld} = EXCLUDED.{grid_loop_fld} THEN EXCLUDED.fact
-			ELSE EXCLUDED.fact + d.fact
+			ELSE CASE WHEN EXCLUDED.fact + d.fact > 1 then 1 ELSE EXCLUDED.fact + d.fact END
 		END;")
 		run_sql_r(query, pg_conn_param)
 		query <- glue("UPDATE {dst_schema}.{dst_tbl}_status SET status = 'completed', modified_at = now() WHERE {grid_loop_fld} = '{grid_row}'")
@@ -149,6 +149,7 @@ linear_weight <- function(
 	end_time <- Sys.time()
 	duration <- round(difftime(end_time, script_start_time, units = "mins"), 2)
 	print(glue('Script finished. Duration: {duration} minutes.'))
+	DBI::dbDisconnect(conn)
 }
 
 
@@ -231,9 +232,9 @@ group_overlapping_ids <- function(df, field1, field2) {
 	new_rows <- data.frame(
   							grouping_id = rep(wetland_i, length(current_overlapping_waterbody_poly_id)),
   							setNames(list(current_overlapping_waterbody_poly_id), field1)
-	)		
+	)
     new_df <- rbind(new_df, new_rows)
-  	
+
     # Assign overlapping ids to a list
     if (length(current_overlapping_waterbody_poly_id) > 1){
       ids_to_check <- as.list(current_overlapping_waterbody_poly_id)
@@ -244,7 +245,7 @@ group_overlapping_ids <- function(df, field1, field2) {
 	## the iteration ensure to capture the entire wetland complex
     while (length(ids_to_check) > 0) {
       for (id_to_check in ids_to_check) {
-  		
+
   		# print(glue('Assessing id: {id_to_check}'))
         # Check for any records in waterbody_poly_id that match the current overlapping_waterbody_poly_id
         matching_rows <- which(df[, field1] == id_to_check)
@@ -264,7 +265,7 @@ group_overlapping_ids <- function(df, field1, field2) {
 		  	new_df <- rbind(new_df, data.frame(grouping_id = wetland_i, setNames(list(overlap_id), field1)))
   		  	# print(glue('Adding {overlap_id} to ids_to_check'))
   		  	ids_to_check <- append(ids_to_check, list(overlap_id))
-  		    }	
+  		    }
   		  }
   		  # remove id from ids to check
   		  # print(glue('removing a {id_to_check} from ids_to_check'))

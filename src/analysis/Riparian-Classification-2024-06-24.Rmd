@@ -852,21 +852,45 @@ run_sql_r(query, conn_list)
 ```
 
 
-Classify stream reaches where modeled channel width does not exist using a stream order based approach. Approach taken from 2024 Boundary TSA for North and South Admin Areas. Source: `file:///G:/!Workgrp/Analysts/!Project/TSA_Projects/active/KootenayLake_TSA13/TSR4/AnalysisReport/TSA13_TSR4_AnalysisReport/03-data-analysis.html#riparian-analysis`
+__Unclassified streams__
+
+Many streams are left unclassified as modeled channel width does not exist. This could be either as the stream's catchment basin expands to outside BC or from gaps within the modeled channel width dataset. Classification split up via admin areas based on advice from Erin Moore suggesting the coast is quite different than the interior.
+
+North and South Admin Areas:
+
+Approach taken from 2024 Boundary TSA for North and South Admin Areas. 
+Source: `file:///G:/!Workgrp/Analysts/!Project/TSA_Projects/active/KootenayLake_TSA13/TSR4/AnalysisReport/TSA13_TSR4_AnalysisReport/03-data-analysis.html#riparian-analysis`
+
+
+```{r eval = TRUE, echo=FALSE}
+library(knitr)
+stream_data <- data.frame(
+  `Stream Classification Assigned` = c("S1B (where not S1A)", "S2", "S3", "S4", "S5", "S6"),
+  `Within Community Watershed OR Fish_Passage` = c(NA, "Yes", "Yes", "Yes", "No", "No"),
+  `Stream Order` = c(">=4", "3", "2", "1", ">1", "1"),
+  check.names=FALSE # to preserve column names with spaces
+)
+
+kable(stream_data, caption='Stream Classification Assignment within North and South Admin Area (when channel width model does not exist)')
+```
+
+Coast Admin Area:
+
 Approach taken from 2020 North Island TSA. Source:
 https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/tsr-annual-allowable-cut/48tsdp_2020.pdf
 
 ```{r eval = TRUE, echo=FALSE}
 library(knitr)
 stream_data <- data.frame(
-  Stream_Classification_Assigned = c("S1B (where not S1A)", "S2", "S3", "S4", "S5", "S6"),
-  Within_Community_Watershed_OR_Fish_Passage = c(NA, "Yes", "Yes", "Yes", "No", "No"),
-  Assumed_Channel_Width_m = c(">20", ">5-20", ">1.5-5", "<1.5", ">3", "<=3"),
-  Stream_Order = c(">=4", "3", "2", "1", ">1", "1")
+  `Stream Classification Assigned` = c("S1B", "S2", "S3", "S4", "S5", "S6"),
+  `Within Community Watershed OR Fish_Passage` = c("Yes", "Yes", "Yes", "Yes", "No", "No"),
+  `Stream Order` = c(">=5", "4", "(3,2)", "1", ">1", "1"),
+  check.names=FALSE # to preserve column names with spaces
 )
 
-kable(stream_data, caption='Stream Classification Assignment (when channel width model does not exist')
+kable(stream_data, caption='Stream Classification Assignment within Coastal Admin Area (when channel width model does not exist)')
 ```
+
 
 ```{r eval = FALSE}
 query <- "ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS adm_nr_areas;"
@@ -1073,9 +1097,12 @@ query <- "UPDATE whse_sp.fwa_rivers_poly
             riparian_class = CASE 
                               WHEN riparian_class = 'S6' THEN 'S5'
                               WHEN riparian_class IN ('S3', 'S4') THEN 'S2'
+                              ELSE riparian_class
                             END;"
+run_sql_r(query, conn_list)
 
 ```
+
 
 
 Since we will only export streams outside of FWA polygons, update the streams layer by adding a field that indicates whether it overlaps with lakes, wetlands, or rivers polygons. This field will be used in a subsequent layer export step.

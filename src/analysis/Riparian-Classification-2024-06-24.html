@@ -658,9 +658,9 @@ conn_list &lt;- dadmtools::get_pg_conn_list()
 import_bcgw_to_pg &lt;- function(
                                 src_schema    = &quot;WHSE_BASEMAPPING&quot;,
                                 src_layer     = &quot;GBA_RAILWAY_TRACKS_SP&quot;,
-                                                fdw_schema    = &quot;load&quot;,
-                                                dst_schema    = &quot;whse_sp&quot;,
-                                                dst_layer     = &quot;GBA_RAILWAY_TRACKS_SP&quot;,
+                                fdw_schema    = &quot;load&quot;,
+                                dst_schema    = &quot;whse_sp&quot;,
+                                dst_layer     = &quot;GBA_RAILWAY_TRACKS_SP&quot;,
                                 layer_id      = &quot;railway_track_id&quot;,
                                 geometry_name = &quot;shape&quot;,
                                 geometry_type = &quot;MultiLineString&quot;,
@@ -805,124 +805,8 @@ group_overlapping_ids &lt;- function(df, field1, field2) {
 Expand for code to import data sources
 </summary>
 <p><br></p>
+<p>See script for codebase</p>
 <p><code>src/analysis/1.riparian-import-layers.R</code></p>
-<pre class="r"><code>library(dadmtools)
-source(&#39;src/utils/functions.R&#39;)
-
-conn_list &lt;- faibDataManagement::get_pg_conn_list()
-
-## WHSE_BASEMAPPING.FWA_STREAM_NETWORKS_SP
-import_bcgw_to_pg(src_schema = &quot;WHSE_BASEMAPPING&quot;,
-                  src_layer     = &quot;FWA_STREAM_NETWORKS_SP&quot;,
-                  fdw_schema    = &quot;load&quot;,
-                  dst_schema    = &quot;whse_sp&quot;,
-                  dst_layer     = &quot;FWA_STREAM_NETWORKS_SP&quot;,
-                  layer_id      = &quot;linear_feature_id, watershed_group_id, edge_type, blue_line_key, watershed_key, fwa_watershed_code, local_watershed_code,watershed_group_code, downstream_route_measure, length_metre, gnis_name, stream_order, stream_magnitude&quot;,
-                  geometry_name = &quot;geometry&quot;,
-                  geometry_type = &quot;MultiLineString&quot;,
-                  grouping_name = &quot;stream&quot;,
-                  conn_list  = conn_list)
-
-## WHSE_BASEMAPPING.FWA_LAKES_POLY
-import_bcgw_to_pg(src_schema = &quot;WHSE_BASEMAPPING&quot;,
-                  src_layer     = &quot;FWA_LAKES_POLY&quot;,
-                  fdw_schema    = &quot;load&quot;,
-                  dst_schema    = &quot;whse_sp&quot;,
-                  dst_layer     = &quot;FWA_LAKES_POLY&quot;,
-                  layer_id      = &quot;waterbody_poly_id,watershed_group_id,waterbody_type,gnis_name_1,fwa_watershed_code,local_watershed_code,watershed_group_code,left_right_tributary,feature_area_sqm,feature_length_m&quot;,
-                  geometry_name = &quot;geometry&quot;,
-                  geometry_type = &quot;MultiPolygon&quot;,
-                  grouping_name = NULL,
-                  conn_list  = conn_list)
-
-## WHSE_BASEMAPPING.FWA_WETLANDS_POLY
-import_bcgw_to_pg(src_schema= &quot;WHSE_BASEMAPPING&quot;,
-                  src_layer     = &quot;FWA_WETLANDS_POLY&quot;,
-                  fdw_schema    = &quot;load&quot;,
-                  dst_schema    = &quot;whse_sp&quot;,
-                  dst_layer     = &quot;FWA_WETLANDS_POLY&quot;,
-                  layer_id      = &quot;waterbody_poly_id,watershed_group_id,waterbody_type,gnis_name_1,fwa_watershed_code,local_watershed_code,watershed_group_code,left_right_tributary,feature_area_sqm,feature_length_m&quot;,
-                  geometry_name = &quot;geometry&quot;,
-                  geometry_type = &quot;MultiPolygon&quot;,
-                  grouping_name = NULL,
-                  conn_list  = conn_list)
-
-
-## Rationale: Needed to calculate riparian buffers
-## WHSE_WATER_MANAGEMENT.WLS_COMMUNITY_WS_PUB_SVW
-import_bcgw_to_pg(src_schema = &quot;WHSE_WATER_MANAGEMENT&quot;,
-                  src_layer     = &quot;WLS_COMMUNITY_WS_PUB_SVW&quot;,
-                  fdw_schema    = &quot;load&quot;,
-                  dst_schema    = &quot;whse_sp&quot;,
-                  dst_layer     = &quot;WLS_COMMUNITY_WS_PUB_SVW&quot;,
-                  layer_id      = &quot;wls_cw_sysid, cw_code, cw_name, cw_source_name, pod_number, cw_legislation, cw_date_created, cw_status, organization&quot;,
-                  geometry_name = &quot;shape&quot;,
-                  geometry_type = &quot;MultiPolygon&quot;,
-                  grouping_name = NULL,
-                  conn_list  = conn_list)
-
-## Rationale: Needed to calculate riparian buffers
-## whse_forest_vegetation.bec_biogeoclimatic_poly
-import_bcgw_to_pg(src_schema = &quot;WHSE_FOREST_VEGETATION&quot;,
-                  src_layer     = &quot;bec_biogeoclimatic_poly&quot;,
-                  fdw_schema    = &quot;load&quot;,
-                  dst_schema    = &quot;whse_sp&quot;,
-                  dst_layer     = &quot;bec_biogeoclimatic_poly&quot;,
-                  layer_id      = &quot;zone, subzone, variant, phase, natural_disturbance, map_label, bgc_label, zone_name, subzone_name, variant_name, phase_name, natural_disturbance_name, feature_area_sqm, feature_length_m&quot;,
-                  geometry_name = &quot;geometry&quot;,
-                  geometry_type = &quot;MultiPolygon&quot;,
-                  grouping_name = NULL,
-                  conn_list  = conn_list)
-
-## Rationale: channel width needed to calculate riparian buffers
-## Data source from Simon Norris/Craig Mount
-## see data\raw\raw_README.txt for further details
-query &lt;- &quot;DROP TABLE IF EXISTS whse_sp.fwa_stream_networks_channel_width;&quot;
-run_sql_r(query, conn_list)
-query &lt;- &quot;CREATE TABLE whse_sp.fwa_stream_networks_channel_width
-(
-    linear_feature_id integer,
-    channel_width_source character varying(50),
-    channel_width real
-)
-TABLESPACE pg_default;&quot;
-run_sql_r(query, conn_list)
-query &lt;- &quot;COPY whse_sp.fwa_stream_networks_channel_width from &#39;data\\input\\fwa_stream_networks_channel_width.csv&#39; CSV HEADER&quot;
-run_sql_r(query, conn_list)
-
-## Rationale: channel width needed to calculate riparian buffers
-## Data source from Simon Norris/Craig Mount
-## see data\raw\raw_README.txt for further details
-src_path &lt;- &quot;data\\input\\fishpassage.gpkg&quot;
-src_lyr &lt;- &quot;modelled_habitat_potential&quot;
-## import the integratedroads buffers using ogr2ogr
-ogr_cmd &lt;- glue(&#39;ogr2ogr -overwrite -a_srs EPSG:3005 -nln {src_lyr} -lco SCHEMA=whse_sp -nlt MULTILINESTRING -lco OVERWRITE=YES --config PG_USE_COPY YES -f PostgreSQL PG:dbname=prov_data {src_path}&#39;)
-# Execute the command
-print(ogr_cmd)
-system(ogr_cmd)
-
-## Manually edit down the original excel spreadsheet to only include needed columns
-query &lt;- &quot;DROP TABLE IF EXISTS whse_sp.june13_riparian_data_for_faib&quot;
-run_sql_r(query, conn_list)
-query &lt;- &quot;CREATE TABLE IF NOT EXISTS whse_sp.june13_riparian_data_for_faib
-(
-    objectid integer,
-    evaluation_year integer,
-    evaluation_date character varying(50),
-    year_of_harvest integer,
-    stream_name character varying(50),
-    stream_class_in_field character varying(50),
-    channel_depth real,
-    channel_width real,
-    channel_gradient_pct real,
-    bcalbers_easting double precision,
-    bcalbers_northing double precision
-)
-
-TABLESPACE pg_default;&quot;
-run_sql_r(query, conn_list)
-query &lt;- &quot;COPY whse_sp.june13_riparian_data_for_faib from &#39;data\\input\\June13_Riparian data_for_FAIB.csv&#39; CSV HEADER&quot;
-run_sql_r(query, conn_list)</code></pre>
 </details>
 </div>
 <div id="stream-classification" class="section level3">
@@ -1404,64 +1288,111 @@ AND
 AND
   riparian_class IS NULL;&quot;
 run_sql_r(query, conn_list)</code></pre>
-<p>Classify stream reaches where modeled channel width does not exist
-using a stream order based approach. Approach taken from 2024 Boundary
-TSA for North and South Admin Areas. Source:
-<code>file:///G:/!Workgrp/Analysts/!Project/TSA_Projects/active/KootenayLake_TSA13/TSR4/AnalysisReport/TSA13_TSR4_AnalysisReport/03-data-analysis.html#riparian-analysis</code>
-Approach taken from 2020 North Island TSA. Source: <a href="https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/tsr-annual-allowable-cut/48tsdp_2020.pdf" class="uri">https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/tsr-annual-allowable-cut/48tsdp_2020.pdf</a></p>
+<p><strong>Unclassified streams</strong></p>
+<p>Many streams are left unclassified as modeled channel width does not
+exist. This could be either as the stream’s catchment basin expands to
+outside BC or from gaps within the modeled channel width dataset.
+Classification split up via admin areas based on advice from Erin Moore
+suggesting the coast is quite different than the interior.</p>
+<p>North and South Admin Areas:</p>
+<p>Approach taken from 2024 Boundary TSA for North and South Admin
+Areas. Source:
+<code>file:///G:/!Workgrp/Analysts/!Project/TSA_Projects/active/KootenayLake_TSA13/TSR4/AnalysisReport/TSA13_TSR4_AnalysisReport/03-data-analysis.html#riparian-analysis</code></p>
 <pre><code>## Warning: package &#39;knitr&#39; was built under R version 4.3.3</code></pre>
 <table>
-<caption>Stream Classification Assignment (when channel width model does
-not exist</caption>
+<caption>Stream Classification Assignment within North and South Admin
+Area (when channel width model does not exist)</caption>
 <colgroup>
-<col width="27%" />
-<col width="38%" />
-<col width="21%" />
-<col width="11%" />
+<col width="35%" />
+<col width="49%" />
+<col width="14%" />
 </colgroup>
 <thead>
 <tr class="header">
-<th align="left">Stream_Classification_Assigned</th>
-<th align="left">Within_Community_Watershed_OR_Fish_Passage</th>
-<th align="left">Assumed_Channel_Width_m</th>
-<th align="left">Stream_Order</th>
+<th align="left">Stream Classification Assigned</th>
+<th align="left">Within Community Watershed OR Fish_Passage</th>
+<th align="left">Stream Order</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td align="left">S1B (where not S1A)</td>
 <td align="left">NA</td>
-<td align="left">&gt;20</td>
 <td align="left">&gt;=4</td>
 </tr>
 <tr class="even">
 <td align="left">S2</td>
 <td align="left">Yes</td>
-<td align="left">&gt;5-20</td>
 <td align="left">3</td>
 </tr>
 <tr class="odd">
 <td align="left">S3</td>
 <td align="left">Yes</td>
-<td align="left">&gt;1.5-5</td>
 <td align="left">2</td>
 </tr>
 <tr class="even">
 <td align="left">S4</td>
 <td align="left">Yes</td>
-<td align="left">&lt;1.5</td>
 <td align="left">1</td>
 </tr>
 <tr class="odd">
 <td align="left">S5</td>
 <td align="left">No</td>
-<td align="left">&gt;3</td>
 <td align="left">&gt;1</td>
 </tr>
 <tr class="even">
 <td align="left">S6</td>
 <td align="left">No</td>
-<td align="left">&lt;=3</td>
+<td align="left">1</td>
+</tr>
+</tbody>
+</table>
+<p>Coast Admin Area:</p>
+<p>Approach taken from 2020 North Island TSA. Source: <a href="https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/tsr-annual-allowable-cut/48tsdp_2020.pdf" class="uri">https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/tsr-annual-allowable-cut/48tsdp_2020.pdf</a></p>
+<table>
+<caption>Stream Classification Assignment within Coastal Admin Area
+(when channel width model does not exist)</caption>
+<colgroup>
+<col width="35%" />
+<col width="49%" />
+<col width="14%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">Stream Classification Assigned</th>
+<th align="left">Within Community Watershed OR Fish_Passage</th>
+<th align="left">Stream Order</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">S1B</td>
+<td align="left">Yes</td>
+<td align="left">&gt;=5</td>
+</tr>
+<tr class="even">
+<td align="left">S2</td>
+<td align="left">Yes</td>
+<td align="left">4</td>
+</tr>
+<tr class="odd">
+<td align="left">S3</td>
+<td align="left">Yes</td>
+<td align="left">(3,2)</td>
+</tr>
+<tr class="even">
+<td align="left">S4</td>
+<td align="left">Yes</td>
+<td align="left">1</td>
+</tr>
+<tr class="odd">
+<td align="left">S5</td>
+<td align="left">No</td>
+<td align="left">&gt;1</td>
+</tr>
+<tr class="even">
+<td align="left">S6</td>
+<td align="left">No</td>
 <td align="left">1</td>
 </tr>
 </tbody>
@@ -1660,7 +1591,9 @@ query &lt;- &quot;UPDATE whse_sp.fwa_rivers_poly
             riparian_class = CASE 
                               WHEN riparian_class = &#39;S6&#39; THEN &#39;S5&#39;
                               WHEN riparian_class IN (&#39;S3&#39;, &#39;S4&#39;) THEN &#39;S2&#39;
-                            END;&quot;</code></pre>
+                              ELSE riparian_class
+                            END;&quot;
+run_sql_r(query, conn_list)</code></pre>
 <p>Since we will only export streams outside of FWA polygons, update the
 streams layer by adding a field that indicates whether it overlaps with
 lakes, wetlands, or rivers polygons. This field will be used in a
@@ -2841,6 +2774,51 @@ system(&quot;ogr2ogr -f \&quot;FileGDB\&quot; C:\\projects\\THLB_Proxy\\data\\ou
 
 ## streams
 system(&quot;ogr2ogr -f \&quot;FileGDB\&quot; C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\&quot;dbname=&#39;prov_data&#39; host=&#39;localhost&#39; user=&#39;postgres&#39;\&quot; -nlt MULTILINESTRING -nln fwa_stream_networks_sp_modelled_habitat_potential -sql \&quot;SELECT fid, linear_feature_id::int, fish_habitat_id, blue_line_key, watershed_key, gnis_name, fwa_watershed_code, watershed_group_code, downstream_route_measure, waterbody_key, fwa_fcode_label, observation_id, gradient_barrier_030_id,gradient_barrier_050_id,gradient_barrier_080_id,gradient_barrier_150_id,gradient_barrier_220_id,gradient_barrier_300_id,intermittent_id,fish_obstacle_point_id,obstruction_id,subsurfaceflow_id,fish_habitat,slope,slope_class,stream_order,stream_magnitude,geom,channel_width,channel_width_source,community_watershed,riparian_class,riparian_class_reason,riparian_data_source FROM whse_sp.modelled_habitat_potential WHERE NOT inside_fwa_polygon AND riparian_class IS NOT NULL\&quot; -update&quot;)</code></pre>
+</details>
+</div>
+<div id="rasterize-the-buffers" class="section level3">
+<h3>Rasterize the buffers</h3>
+<details>
+<summary>
+Convert the rasters into a gr_skey lookup table
+</summary>
+<p><br></p>
+<pre class="r"><code>source(&#39;src/utils/functions.R&#39;)
+
+grid_loop_fld &lt;- &quot;map_tile&quot;
+
+spatial_query &lt;- &quot;SELECT
+    geom
+FROM
+    whse_sp.riparian_buffers vect
+WHERE
+    {grid_loop_fld} = &#39;{grid_row}&#39;&quot;
+
+spatial_query_when_error &lt;- &quot;SELECT
+    geom
+FROM
+    whse_sp.riparian_buffers vect
+WHERE
+    {grid_loop_fld} = &#39;{grid_row}&#39;&quot;
+
+tbl_comment &lt;- &quot;COMMENT ON TABLE {dst_schema}.{dst_tbl} IS &#39;Table created at {today_date}.
+Table contains the gr_skey pixel percent coverage by the following layers:
+Layer: whse_sp.riparian_buffers
+Buffer: riparian_buffer_width_m&#39;&quot;
+
+linear_weight(template_tif           = &quot;data\\input\\bc_01ha_gr_skey.tif&quot;,  ## &quot;S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_01ha_gr_skey.tif&quot;
+            mask_tif                 = &quot;data\\input\\BC_Boundary_Terrestrial.tif&quot;, ## &#39;S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\BC_Boundary_Terrestrial.tif&#39;,
+            crop_extent              = c(273287.5,1870587.5,367787.5,1735787.5),
+            grid_tbl                 = &quot;whse_sp.nts_50k_grid&quot;,
+            grid_loop_fld            = &quot;map_tile&quot;,
+            grid_geom_fld            = &quot;geom&quot;,
+            dst_schema               = &quot;whse&quot;,
+            dst_tbl                  = &quot;bc_riparian_buffers&quot;,
+            pg_conn_param            = pg_conn_param,
+            create_vector_lyr        = TRUE,
+            spatial_query            = spatial_query,
+            spatial_query_when_error = spatial_query_when_error,
+            tbl_comment              = tbl_comment)</code></pre>
 </details>
 </div>
 </div>
