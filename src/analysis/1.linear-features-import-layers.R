@@ -5,7 +5,7 @@ library(devtools)
 library(dadmtools)
 source('src/utils/functions.R')
 ## relies on install_github("bcgov/FAIB_DATA_MANAGEMENT") being installed at some point
-conn_list <- faibDataManagement::get_pg_conn_list()
+conn_list <- dadmtools::get_pg_conn_list()
 
 ## Import 20k grid
 ## WHSE_BASEMAPPING.BCGS_20K_GRID

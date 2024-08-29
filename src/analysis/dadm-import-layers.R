@@ -17,7 +17,7 @@ import_gr_skey_tif_to_pg_rast(
 
 
 batch_import_to_pg_gr_skey(
-  in_csv            = 'data\\output\\config_parameters.csv',
+  in_csv            = 'data\\input\\config_parameters.csv',
   pg_conn_param     = dadmtools::get_pg_conn_list(),
   ora_conn_param    = dadmtools::get_ora_conn_list(),
   crop_extent       = c(273287.5,1870587.5,367787.5,1735787.5), ## c(xmin,xmax,ymin,ymax)

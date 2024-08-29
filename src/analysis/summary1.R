@@ -1,16 +1,16 @@
 library(RPostgres)
 library(glue)
-library(faibDataManagement)
+library(dadmtools)
 
 ## relies on install_github("bcgov/FAIB_DATA_MANAGEMENT") being installed at some point
-conn_list <- faibDataManagement::get_pg_conn_list()
+conn_list <- dadmtools::get_pg_conn_list()
 ## relies on the keyring connList being populated
 conn <- DBI::dbConnect(conn_list["driver"][[1]],
 				host = conn_list["host"][[1]],
-								user = conn_list["user"][[1]],
-								dbname = conn_list["dbname"][[1]],
-								password = conn_list["password"][[1]],
-								port = conn_list["port"][[1]])
+				user = conn_list["user"][[1]],
+				dbname = conn_list["dbname"][[1]],
+				password = conn_list["password"][[1]],
+				port = conn_list["port"][[1]])
 
 query <- "SELECT
 	'FALB' as land_classification

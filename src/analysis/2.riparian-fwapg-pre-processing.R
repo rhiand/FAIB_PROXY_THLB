@@ -48,7 +48,7 @@ for (i in 1:nrow(bl_keys)){
 ## There were 28 stream reaches that had a processing ERROR - they were manually reviewed it doesn't look like their drainage were outside BC
 ## The output table was imported into prov_data database in the public schema via pg_dump | psql
 
-conn_list <- faibDataManagement::get_pg_conn_list()
+conn_list <- dadmtools::get_pg_conn_list()
 ## During manually review, it was found that Hay River was missed so it was inserted
 query <- "INSERT INTO public.fwa_upstreambordercrossings_output VALUES (359571420, 'AB_120')"
 run_sql_r(query, conn_list)
