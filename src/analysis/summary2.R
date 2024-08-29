@@ -1,10 +1,10 @@
 library(RPostgres)
 library(glue)
-library(faibDataManagement)
+library(dadmtools)
 start_time <- Sys.time()
 print(glue("Script started at {format(start_time, '%Y-%m-%d %I:%M:%S %p')}"))
 ## relies on install_github("bcgov/FAIB_DATA_MANAGEMENT") being installed at some point
-conn_list <- faibDataManagement::get_pg_conn_list()
+conn_list <- dadmtools::get_pg_conn_list()
 ## relies on the keyring connList being populated
 conn <- DBI::dbConnect(conn_list["driver"][[1]],
 				host = conn_list["host"][[1]],

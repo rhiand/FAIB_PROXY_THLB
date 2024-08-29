@@ -293,3 +293,66 @@ group_overlapping_ids <- function(df, field1, field2) {
 
 # results <- group_overlapping_ids(test_input, 'waterbody_poly_id', 'overlapping_waterbody_poly_id')
 # all.equal(results, expected_results)
+
+## get_dem function extracts the unit's dem from the image warehouse...need network access/VPN active and a mapped path to the image warehouse
+## imagefiles.bcgov\imagery (mapped to R: on my computer)
+# function has two arguments:
+  # bnd_path: path tsa fgdb that includes a 'bnd' feature class.
+  # clip: the bounding box for the tsa.
+
+get_dem<-function(){
+  message("executing get_dem function to extract provincial dem from image warehouse")
+  dem_path <-  "R:\\dem\\elevation\\trim_25m\\bcalbers\\tif\\bc_elevation_25m_bcalb.tif"
+  rast(dem_path)  #get provincial dem and convert to terra::SpatRaster
+}
+
+## The get_slope() function converts a unit's dem to percent slope
+  # one function argument of dem: the dem raster (e.g., 'elevation' in operability script.)
+
+get_slope<- function(dem){
+  message("executing get_slope function to convert unit dem to percent slope")
+  slp_degrees <- terra::terrain(dem, "slope") # use terra::terrain function to convert dem to degrees slope
+  slp_percent <- tan(pi / 180 * slp_degrees) * 100 # convert degrees to percent
+}
+
+## get_stability function extracts stability table to spatial object
+# stability table needs to exist in postgres. Function arguments:
+  # db = postgress connection
+  # stab_query = sql query to the terrain stability data
+  # ras_template_25m is the 25m raster template bounding box. E.g., ras_template_25m <-ras_template25(out_extents,tsa_lbl,25)
+# NOTE: "class2" is the name given to the binary field in the stability table in postgress. consider adding this as a function argument so that one can easily adjust based on the variable name.
+
+get_stability<-function(db, stab_query, ras_template_25m, field){ # extract stability table from postgres using 25m template ("x")
+  op<-st_read(db,query = stab_query) #use sf::st_read function to create stability spatial object
+  SpatOP <- vect(op) # convert to terra: SpatVector
+  stability <- terra::rasterize(SpatOP, ras_template_25m, field) # rasterize on binary field "class2"
+}
+
+ras_template25 <- function(extents, res) {
+  ## HDE: filtered out as not needed
+  # filter extents to tsa of interest:
+#   filtered_extents <- extents %>% 
+#     filter(tsa == tsa_lbl)
+  
+  # pull out dimensions and extents:
+  nr <- extents %>%
+    pull(n_row) * 4
+  nc <- extents %>%
+    pull(n_col) * 4
+  xmn <- extents %>%
+    pull(x_min)
+  xmx <- extents %>%
+    pull(x_max)
+  ymn <- extents %>%
+    pull(y_min)
+  ymx <- extents %>%
+    pull(y_max)
+  
+  x <- rast(
+    nrows = nr, ncols = nc, xmin = xmn, xmax = xmx,
+    ymin = ymn, ymax = ymx,
+    crs = "epsg:3005",
+    resolution = c(res, res),
+    vals = -99
+  )
+}
