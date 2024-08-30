@@ -20,4 +20,4 @@ raster,C:\projects\thlb-proxy-comparison-2024-04-16\data\raw\var2011bc.tif,flyin
 gdb,C:\projects\requests\riparian_forest_biodiversity-2024-07-31\QS_Plan_Area\QS_Plan_Area.gdb,QS_Plan_Area,,public,QS_Plan_Area,,0,0,,
 gdb,W:\FOR\VIC\HTS\DAM\WorkArea\Mcdougall\Projects\2024\consolidated_cutblocks\july27_old_method\ccInputs_1.gdb,Cut_Block_all_BC,,whse,cut_block_old,,0,0,,
 gdb,W:\FOR\VIC\HTS\DAM\WorkArea\Mcdougall\Projects\2024\consolidated_cutblocks\july27_new_method\ccInputs_1.gdb,Cut_Block_all_BC,,whse,cut_block_new,,0,0,,
-gdb,S:\FOR\VIC\HTS\FAIB_DATA_FOR_DISTRIBUTION\THLB\TSA_THLB\TSA_THLB_2024_07_11.gdb,THLB,,whse,thlb_tsa,,1,0,,
+gdb,S:\FOR\VIC\HTS\FAIB_DATA_FOR_DISTRIBUTION\THLB\TSA_THLB\TSA_THLB_2024_07_11.gdb,prov_THLB_tsas,,whse,thlb_tsa,,1,0,,

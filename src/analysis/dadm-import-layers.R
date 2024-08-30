@@ -1,10 +1,5 @@
 library(devtools)
 library(dadmtools)
-library(RPostgres)
-library(glue)
-library(terra)
-library(keyring)
-library(sf)
 
 import_gr_skey_tif_to_pg_rast(
   template_tif      = 'S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_01ha_gr_skey.tif',
