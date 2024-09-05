@@ -4,23 +4,37 @@ library(rvest)
 source('src/utils/functions.R')
 conn_list <- dadmtools::get_pg_conn_list()
 
-# Define the URL
-url <- "https://www.env.gov.bc.ca/esd/distdata/ecosystems/TEI/TEI_Data/"
 
-# Read the webpage content
-webpage <- read_html(url)
+import_bcgw_to_pg(src_schema    = "WHSE_TERRESTRIAL_ECOLOGY",
+				  src_layer     = "STE_TER_ATTRIBUTE_POLYS_SVW",
+				  fdw_schema    = "load",
+				  dst_schema    = "whse_sp",
+				  dst_layer     = "STE_TER_ATTRIBUTE_POLYS_SVW",
+				  layer_id      = "teis_id, slope_stability_class_w_roads, slope_stability_class_txt, project_type",
+				  geometry_name = "geometry",
+				  geometry_type = "MultiPolygon",
+				  grouping_name = "NULL",
+				  pg_conn_list  = conn_list)
 
-# Extract all the links
-links <- webpage %>% html_nodes("a") %>% html_attr("href")
+import_bcgw_to_pg(src_schema    = "WHSE_FOREST_VEGETATION",
+				  src_layer     = "VEG_CONSOLIDATED_CUT_BLOCKS_SP",
+				  fdw_schema    = "load",
+				  dst_schema    = "whse_sp",
+				  dst_layer     = "VEG_CONSOLIDATED_CUT_BLOCKS_SP",
+				  layer_id      = "veg_consolidated_cut_block_id, harvest_year",
+				  geometry_name = "shape",
+				  geometry_type = "MultiPolygon",
+				  grouping_name = "NULL",
+				  pg_conn_list  = conn_list)
 
-# Filter the links that end with .zip
-zip_files <- links[grepl("\\.zip$", links)]
-
-# If the links are relative, prepend the base URL
-zip_files <- ifelse(grepl("^http", zip_files), zip_files, paste0(url, zip_files))
-
-# Print the list of .zip files
-print(zip_files)
-
-# Download the file
-download.file(url, destfile)
+## post processing the stability layer
+query <- "DROP TABLE IF EXISTS whse_sp.ste_ter_attribute_polys_svw_union;"
+run_sql_r(query, conn_list)
+query <- "CREATE TABLE whse_sp.ste_ter_attribute_polys_svw_union AS
+SELECT
+	ST_Union(stab.geom) as geom
+FROM
+whse_sp.ste_ter_attribute_polys_svw stab
+WHERE
+	stab.slope_stability_class_txt IN ('Potentially unstable', 'Potentially unstable after road building', 'Unstable')"
+run_sql_r(query, conn_list)

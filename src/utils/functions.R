@@ -323,36 +323,61 @@ get_slope<- function(dem){
 # NOTE: "class2" is the name given to the binary field in the stability table in postgress. consider adding this as a function argument so that one can easily adjust based on the variable name.
 
 get_stability<-function(db, stab_query, ras_template_25m, field){ # extract stability table from postgres using 25m template ("x")
-  op<-st_read(db,query = stab_query) #use sf::st_read function to create stability spatial object
-  SpatOP <- vect(op) # convert to terra: SpatVector
-  stability <- terra::rasterize(SpatOP, ras_template_25m, field) # rasterize on binary field "class2"
+  op <- st_read(db, query = stab_query) #use sf::st_read function to create stability spatial object
+  spatial_op <- vect(op) # convert to terra: SpatVector
+  return(terra::rasterize(spatial_op, ras_template_25m, field)) # rasterize on binary field "class2"
 }
 
-ras_template25 <- function(extents, res) {
-  ## HDE: filtered out as not needed
-  # filter extents to tsa of interest:
-#   filtered_extents <- extents %>% 
-#     filter(tsa == tsa_lbl)
+
+# the create_sampler() function extracts the blocks within the unit (specified in the query) - creates a spatial vector of blks
+# for example, sampler<-create_sampler(db,blk_query)
+# function arguments:
+  # db = database connection
+  # q = SQL query to the data. for example, blk_query<-"select cc_harvest_year, wkb_geometry from tsa02_ar_table join tsa02_skey using (ogc_fid) where cc_harvest_year > 0;"
+
+create_sampler <- function(db, q){ 
+  blks <- st_read(db, query = q) 
+  Sp
+  atBlks <- vect(blks)
+}
+# The elev_inop() function determines the 99 percentile of elevation within blocks ('sampler' output)
+# function arguments:
+  # elevation: the 25m elevation raster
+  # sampler: the spatial vector of blks 
+  # unit: The spatial vector of the boundary of interest (e.g., unit<-create_unit(bnd_path))
+
+elev_inop <- function(elevation, sampler, unit){
+  message("Executing elev_inop function to sample elevation by cutblocks to determine 99 percent cutoff")
+  blk_elev <- terra::extract(elevation, sampler) # extract the elevation within the boundary of 'sampler' in this case cutblocks.
+  blkelev99 <- quantile(blk_elev$bc_elevation_25m_bcalb, probs = 0.99, na.rm = TRUE) # determine 99th percentile
+  message("blk 99 percentile is ", blkelev99)
   
-  # pull out dimensions and extents:
-  nr <- extents %>%
-    pull(n_row) * 4
-  nc <- extents %>%
-    pull(n_col) * 4
-  xmn <- extents %>%
-    pull(x_min)
-  xmx <- extents %>%
-    pull(x_max)
-  ymn <- extents %>%
-    pull(y_min)
-  ymx <- extents %>%
-    pull(y_max)
+  unit_elev2 <- terra::extract(elevation, unit) # extract elevation for the unit
+  unitelev100 <- quantile(unit_elev2$bc_elevation_25m_bcalb, probs = 1, na.rm = TRUE) # determine maximum elevation within the unit.
+  message("the unit maximum is ", unitelev100)
   
-  x <- rast(
-    nrows = nr, ncols = nc, xmin = xmn, xmax = xmx,
-    ymin = ymn, ymax = ymx,
-    crs = "epsg:3005",
-    resolution = c(res, res),
-    vals = -99
-  )
+  elev_cutoff <- c(-Inf, blkelev99, 0, blkelev99, unitelev100, 1, unitelev100, Inf, 0)
+  elev_matrix <- matrix(elev_cutoff, ncol = 3, byrow = TRUE)
+  ### reclassify elevation raster based on cutoffs
+  elev_reclass <- terra::classify(elevation, elev_matrix) 
+  
+}
+
+
+# determine the 99th percentile of slope within block boundaries.
+slp_inop<-function(slope,sampler,unit){
+  message("executing slp_inop function to sample slope by blk to determine 99 percent cutoff")
+  blk_slp <- terra::extract(slope,sampler)
+  blk_slp99<-quantile(blk_slp$slope, probs = 0.99, na.rm = TRUE)
+  message("blk 99 percentile is ", blk_slp99)
+  
+  unit_slp <- terra::extract(slope, unit)
+  unit_slp100<-quantile(unit_slp$slope, probs = 1, na.rm = TRUE)
+  message("the unit maximum is ", unit_slp100)
+  
+  slp_cutoff <- c(-Inf, blk_slp99, 0, blk_slp99, unit_slp100, 1, unit_slp100, Inf, 0)
+  slp_matrix <- matrix(slp_cutoff, ncol = 3, byrow = TRUE)
+  #### reclassify elevation slope based on cutoffs
+  slp_reclass <- terra::classify(slope, slp_matrix) 
+  
 }
