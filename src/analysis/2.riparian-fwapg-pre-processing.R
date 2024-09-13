@@ -86,5 +86,16 @@ run_sql_r(query, conn_list)
 ## pg_dump -d prov_data -U postgres -h 142.36.123.95 -t public.stream_reaches_with_contributing_areas_outside_bc > stream_reaches_with_contributing_areas_outside_bc.sql
 ## the above was edited to include: DROP TABLE IF EXISTS public.stream_reaches_with_contributing_areas_outside_bc; at the top of the file
 
+## post processing bcts riparian class field
+query <- "ALTER TABLE whse_sp.bcts_field_streams ADD COLUMN IF NOT EXISTS class_clean text;"
+run_sql_r(query, conn_list)
+
+## TODO finish up string tidying
+query <- "select 
+	fid,
+	REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(btrim(class), '(', ''), ')', ''), '-B', ''), '-A', ''), 'A', ''), '-S', '')
+from 
+	whse_sp.bcts_field_streams"
+
 
 

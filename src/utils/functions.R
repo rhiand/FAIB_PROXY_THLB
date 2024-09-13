@@ -300,19 +300,30 @@ group_overlapping_ids <- function(df, field1, field2) {
   # bnd_path: path tsa fgdb that includes a 'bnd' feature class.
   # clip: the bounding box for the tsa.
 
-get_dem<-function(){
-  message("executing get_dem function to extract provincial dem from image warehouse")
-  dem_path <-  "R:\\dem\\elevation\\trim_25m\\bcalbers\\tif\\bc_elevation_25m_bcalb.tif"
-  rast(dem_path)  #get provincial dem and convert to terra::SpatRaster
+get_dem <- function(clip) {
+	message("Executing get_dem function to extract provincial dem from image warehouse")
+	dem_path <-  "R:\\dem\\elevation\\trim_25m\\bcalbers\\tif\\bc_elevation_25m_bcalb.tif"
+	bc_dem <- rast(dem_path)  #get provincial dem and convert to terra::SpatRaster
+	unit_elev <- terra::crop(bc_dem, clip)  #clip provincial raster to unit bounding box
+	rm(bc_dem) # remove the provincial dem
+	return(mask(unit_elev, clip)) # clip elevation raster from bounding box down to the unit boundary
 }
 
 ## The get_slope() function converts a unit's dem to percent slope
   # one function argument of dem: the dem raster (e.g., 'elevation' in operability script.)
 
-get_slope<- function(dem){
-  message("executing get_slope function to convert unit dem to percent slope")
-  slp_degrees <- terra::terrain(dem, "slope") # use terra::terrain function to convert dem to degrees slope
-  slp_percent <- tan(pi / 180 * slp_degrees) * 100 # convert degrees to percent
+get_slope<- function(clip){
+	#   message("executing get_slope function to convert unit dem to percent slope")
+	#   slp_degrees <- terra::terrain(dem, "slope") # use terra::terrain function to convert dem to degrees slope
+	#   slp_percent<- tan(pi / 180 * slp_degrees) * 100 # convert degrees to percent
+	##  HDE: no longer calculating slope on the fly as it takes too long to run the province
+	##  instead, slope has been written to: S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_slope_25m_bcalb.tif
+	##  leaving above code to see how it was originally calculated
+	slope_path <- "S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_slope_25m_bcalb.tif"
+	bc_slope <- rast(slope_path)  #get provincial slope and convert to terra::SpatRaster
+	unit_slope <- terra::crop(bc_slope, clip)  #clip provincial raster to unit bounding box
+	rm(bc_slope) # remove the provincial slope
+	return(mask(unit_slope, clip)) # clip slope raster from bounding box down to the unit boundary
 }
 
 ## get_stability function extracts stability table to spatial object
@@ -337,8 +348,7 @@ get_stability<-function(db, stab_query, ras_template_25m, field){ # extract stab
 
 create_sampler <- function(db, q){ 
   blks <- st_read(db, query = q) 
-  Sp
-  atBlks <- vect(blks)
+  return(vect(blks))
 }
 # The elev_inop() function determines the 99 percentile of elevation within blocks ('sampler' output)
 # function arguments:
@@ -350,34 +360,87 @@ elev_inop <- function(elevation, sampler, unit){
   message("Executing elev_inop function to sample elevation by cutblocks to determine 99 percent cutoff")
   blk_elev <- terra::extract(elevation, sampler) # extract the elevation within the boundary of 'sampler' in this case cutblocks.
   blkelev99 <- quantile(blk_elev$bc_elevation_25m_bcalb, probs = 0.99, na.rm = TRUE) # determine 99th percentile
-  message("blk 99 percentile is ", blkelev99)
-  
+  message("Cut block dem 99 percentile is ", blkelev99)
+  df_to_pg(Id(schema = 'thlb_proxy', table = glue('inoperable_gr_skey')), )
   unit_elev2 <- terra::extract(elevation, unit) # extract elevation for the unit
   unitelev100 <- quantile(unit_elev2$bc_elevation_25m_bcalb, probs = 1, na.rm = TRUE) # determine maximum elevation within the unit.
-  message("the unit maximum is ", unitelev100)
+  message("The unit maximum is ", unitelev100)
   
   elev_cutoff <- c(-Inf, blkelev99, 0, blkelev99, unitelev100, 1, unitelev100, Inf, 0)
   elev_matrix <- matrix(elev_cutoff, ncol = 3, byrow = TRUE)
   ### reclassify elevation raster based on cutoffs
-  elev_reclass <- terra::classify(elevation, elev_matrix) 
-  
+  return(terra::classify(elevation, elev_matrix))
 }
 
 
 # determine the 99th percentile of slope within block boundaries.
-slp_inop<-function(slope,sampler,unit){
-  message("executing slp_inop function to sample slope by blk to determine 99 percent cutoff")
+slp_inop <- function(slope, sampler, unit){
+  message("Executing slp_inop function to sample slope by cut block to determine 99 percent cutoff")
   blk_slp <- terra::extract(slope,sampler)
-  blk_slp99<-quantile(blk_slp$slope, probs = 0.99, na.rm = TRUE)
-  message("blk 99 percentile is ", blk_slp99)
+  blk_slp99 <- quantile(blk_slp$slope, probs = 0.99, na.rm = TRUE)
+  message("Cut block slope 99 percentile is ", blk_slp99)
   
   unit_slp <- terra::extract(slope, unit)
-  unit_slp100<-quantile(unit_slp$slope, probs = 1, na.rm = TRUE)
-  message("the unit maximum is ", unit_slp100)
+  unit_slp100 <- quantile(unit_slp$slope, probs = 1, na.rm = TRUE)
+  message("The unit maximum is ", unit_slp100)
   
   slp_cutoff <- c(-Inf, blk_slp99, 0, blk_slp99, unit_slp100, 1, unit_slp100, Inf, 0)
   slp_matrix <- matrix(slp_cutoff, ncol = 3, byrow = TRUE)
   #### reclassify elevation slope based on cutoffs
-  slp_reclass <- terra::classify(slope, slp_matrix) 
-  
+  return(terra::classify(slope, slp_matrix))
+}
+
+# The aggregate function combines the area that is inoperable due to elevation, stability and slope and aggregates to 100m resoltion. 
+# function arguments:
+  # stability: binary raster where 1 = unstable (inoperable); 0 = stable (operable)
+  # inoperable_elevation: binary raster where 1 = high elevation > 99th percentile (inoperable); 0 = elevation within practice limits (operable)
+  # inoperable_slope: binary raster where 1 = high slope > 99th percentile (inoperable); 0 slope within practice limits (operable)
+  # out_ras_template: the 100m resolution raster template for the unit.
+
+aggregate <- function(stability, inoperable_elevation, inoperable_slope, out_ras_template) {
+	message("Executing aggregation function to calculate proportion inoperable")
+	# combine stability, slope and elevation rasters to get overall inoperable raster. values range from 0 (operable) to 3 (all three variables inoperable)
+	# message("Performing raster math")
+	res25m <- stability + inoperable_elevation + inoperable_slope
+	writeRaster(res25m, "data\\analysis\\res25m.tif", overwrite=TRUE)
+
+	### reclassify the raster values: 
+	## if the value in the res25m raster cell is between -Inf and 0, the new value is 0; 
+	## between 1 and 3, the new value is 1; 
+	## between 3 and Inf, value is 0. 
+	## Essentially any cell where at least one factor is 'inoperable' gets a value of 1.
+	res_cutoff <- c(-Inf, 0, 0, 1, 3, 1, 3, Inf, 0)
+	res_matrix <- matrix(res_cutoff, ncol = 3, byrow = TRUE)
+	# message("Reclassifying raster math product")
+	res_reclass <- terra::classify(res25m, res_matrix)
+	# writeRaster(res_reclass, "data\\analysis\\res_reclass.tif", overwrite=TRUE)
+
+
+	#plot(res_reclass)
+	## aggregate to 1 ha.cells with a value of 16 (4*4) representing 100% inoperable
+	## cells with values < 16 and are partially inoperable
+	# message("Aggregating from 25m to 100m raster")
+
+	res_agg <- terra::aggregate(res_reclass, fact = 4, fun = "sum", na.rm = TRUE)
+	# writeRaster(res_agg, "data\\analysis\\res_reclass.tif", overwrite=TRUE)
+
+
+	# plot(res_agg)
+	## calculate the proportion of cell that is inoperable - scale by 1000.
+	resultant <- round(res_agg * 1000 / 16)
+	# plot(resultant)
+
+	# set the extent of the result to match the 100m raster template
+	ext(resultant) <- ext(out_ras_template)
+
+	# identify extent of 100m raster template:
+	#e<-ext(out_ras_template)
+	# assign the 100m raster template extent to the resultant:
+	#ext(resultant)<-e
+	# convert the results and the template to data frames
+	tmp2 <- as.data.frame(out_ras_template, cells = TRUE)
+	tmp3 <- as.data.frame(resultant, cells = TRUE)
+
+	# merge the data frame based on cell ID
+	return(left_join(tmp2, tmp3, by = join_by("cell")))
 }

@@ -10,7 +10,7 @@ spatial_query <- "WITH buffered_intersects AS (
 SELECT
 	ST_Buffer(vect.geom, 15) as geom
 FROM
-	whse_sp.GBA_RAILWAY_TRACKS_SP vect
+	thlb_proxy.GBA_RAILWAY_TRACKS_SP vect
 JOIN
 	{grid_tbl} grid
 ON
@@ -21,7 +21,7 @@ UNION ALL
 SELECT
 	ST_Buffer(vect.geom, 25) as geom
 FROM
-	whse_sp.GBA_TRANSMISSION_LINES_SP vect
+	thlb_proxy.GBA_TRANSMISSION_LINES_SP vect
 JOIN
 	{grid_tbl} grid
 ON
@@ -32,7 +32,7 @@ UNION ALL
 SELECT
 	ST_Buffer(vect.geom, 15) as geom
 FROM
-	whse_sp.DRP_OIL_GAS_PIPELINES_BC_SP vect
+	thlb_proxy.DRP_OIL_GAS_PIPELINES_BC_SP vect
 JOIN
 	{grid_tbl} grid
 ON
@@ -43,7 +43,7 @@ UNION ALL
 SELECT
 	ST_Buffer(vect.geom, 15) as geom
 FROM
-	whse_sp.OG_PIPELINE_AREA_PERMIT_SP vect
+	thlb_proxy.OG_PIPELINE_AREA_PERMIT_SP vect
 JOIN
 	{grid_tbl} grid
 ON
@@ -54,7 +54,7 @@ UNION ALL
 SELECT
 	vect.geom as geom -- no buffer needed, already buffered
 FROM
-	whse_sp.ta_crown_rights_of_way_svw vect
+	thlb_proxy.ta_crown_rights_of_way_svw vect
 JOIN
 	{grid_tbl} grid
 ON
@@ -65,7 +65,7 @@ UNION ALL
 SELECT
 	vect.geom as geom -- no buffer needed, already buffered
 FROM
-	whse_sp.integratedroadsbuffers vect
+	thlb_proxy.integratedroadsbuffers vect
 JOIN
 	{grid_tbl} grid
 ON
@@ -90,7 +90,7 @@ spatial_query_when_error <- "WITH buffered_intersects AS (
 SELECT
 	ST_Buffer(vect.geom, 15) as geom
 FROM
-	whse_sp.GBA_RAILWAY_TRACKS_SP vect
+	thlb_proxy.GBA_RAILWAY_TRACKS_SP vect
 JOIN
 	{grid_tbl} grid
 ON
@@ -101,7 +101,7 @@ UNION ALL
 SELECT
 	ST_Buffer(vect.geom, 25) as geom
 FROM
-	whse_sp.GBA_TRANSMISSION_LINES_SP vect
+	thlb_proxy.GBA_TRANSMISSION_LINES_SP vect
 JOIN
 	{grid_tbl} grid
 ON
@@ -112,7 +112,7 @@ UNION ALL
 SELECT
 	ST_Buffer(vect.geom, 15) as geom
 FROM
-	whse_sp.DRP_OIL_GAS_PIPELINES_BC_SP vect
+	thlb_proxy.DRP_OIL_GAS_PIPELINES_BC_SP vect
 JOIN
 	{grid_tbl} grid
 ON
@@ -123,7 +123,7 @@ UNION ALL
 SELECT
 	ST_Buffer(vect.geom, 15) as geom
 FROM
-	whse_sp.OG_PIPELINE_AREA_PERMIT_SP vect
+	thlb_proxy.OG_PIPELINE_AREA_PERMIT_SP vect
 JOIN
 	{grid_tbl} grid
 ON
@@ -134,7 +134,7 @@ UNION ALL
 SELECT
 	vect.geom as geom -- no buffer needed, already buffered
 FROM
-	whse_sp.ta_crown_rights_of_way_svw vect
+	thlb_proxy.ta_crown_rights_of_way_svw vect
 JOIN
 	{grid_tbl} grid
 ON
@@ -145,7 +145,7 @@ UNION ALL
 SELECT
 	vect.geom as geom -- no buffer needed, already buffered
 FROM
-	whse_sp.integratedroadsbuffers vect
+	thlb_proxy.integratedroadsbuffers vect
 JOIN
 	{grid_tbl} grid
 ON
@@ -168,19 +168,19 @@ GROUP BY
 
 tbl_comment <- "COMMENT ON TABLE {dst_schema}.{dst_tbl} IS 'Table created at {today_date}.
 Table contains the gr_skey pixel percent coverage by the following layers:
-Layer: whse_sp.GBA_RAILWAY_TRACKS_SP
+Layer: thlb_proxy.GBA_RAILWAY_TRACKS_SP
 Buffer: 15
 
-Layer: whse_sp.GBA_TRANSMISSION_LINES_SP
+Layer: thlb_proxy.GBA_TRANSMISSION_LINES_SP
 Buffer: 25
 
-Layer: whse_sp.DRP_OIL_GAS_PIPELINES_BC_SP
+Layer: thlb_proxy.DRP_OIL_GAS_PIPELINES_BC_SP
 Buffer: 15
 
-Layer: whse_sp.OG_PIPELINE_AREA_PERMIT_SP
+Layer: thlb_proxy.OG_PIPELINE_AREA_PERMIT_SP
 Buffer: 15
 
-Layer: whse_sp.integratedroadsbuffers
+Layer: thlb_proxy.integratedroadsbuffers
 Buffer: No buffer, layer already buffered in Analysis Ready Dataset
 
 Layer: WHSE_TANTALIS.TA_CROWN_RIGHTS_OF_WAY_SVW'"

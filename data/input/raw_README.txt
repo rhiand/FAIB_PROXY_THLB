@@ -1,6 +1,10 @@
 Hailey Eckstrand
 June 5, 2024
 
+BCTS_StreamData.gdb.zip
+BCTS_StreamData.gpkg
+Source -> From Mike Fowler: "There is a geopackage callled: BCTS_Field_Streams that is my attempt to extract the field surveyed streams from the BCTS stream inventory.  The zip file in the same folder is the BCTS source dataset in it's entirety.  The CLASS field is sadly not domain controlled and has (S6), S6, S6-A etc for values.  I will let you do the string massage magic to better consolidate the stream classes!"
+
 bc_01ha_gr_skey.tif
 Source -> S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_01ha_gr_skey.tif
 

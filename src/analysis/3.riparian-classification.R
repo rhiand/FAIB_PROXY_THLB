@@ -5,25 +5,25 @@ source('src/utils/functions.R')
 conn_list <- dadmtools::get_pg_conn_list()
 
 
-## Create new fields in the `whse_sp.fwa_wetlands_poly` layer for population
-query <- "ALTER TABLE whse_sp.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_class;"
+## Create new fields in the `thlb_proxy.fwa_wetlands_poly` layer for population
+query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_class;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS riparian_class varchar(2);"
+query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS riparian_class varchar(2);"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_class_reason;"
+query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_class_reason;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS riparian_class_reason varchar(200);"
+query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS riparian_class_reason varchar(200);"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_data_source;"
+query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_data_source;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS riparian_data_source varchar(200);"
+query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS riparian_data_source varchar(200);"
 run_sql_r(query, conn_list)
 
 ## 48 (1) Wetlands have the following riparian classes:
 ## (a) W1, if the wetland is greater than 5 ha in size;"_
 
 print(glue('Processing W1 wetlands'))
-query <- "UPDATE whse_sp.fwa_wetlands_poly SET
+query <- "UPDATE thlb_proxy.fwa_wetlands_poly SET
 riparian_class = 'W1',
 riparian_class_reason = 'wetland is greater than 5 ha in size',
 riparian_data_source = 'FWA area'
@@ -47,9 +47,9 @@ SELECT
 	sum(ST_Area(ST_Intersection(wetland.geom, bec.geom))) as intersect_area,
 	ST_Area(wetland.geom) as wetland_area
 FROM
-	whse_sp.bec_biogeoclimatic_poly bec
+	thlb_proxy.bec_biogeoclimatic_poly bec
 JOIN
-	whse_sp.fwa_wetlands_poly wetland
+	thlb_proxy.fwa_wetlands_poly wetland
 ON
 	ST_Intersects(bec.geom, wetland.geom)
 AND
@@ -71,7 +71,7 @@ WHERE
 	(intersect_area/wetland_area) > 0.5 -- Include when the majority of the wetland area (I.e., > 50%) overlaps with the bec zone/subzone, otherwise exclude
 )
 UPDATE
-	whse_sp.fwa_wetlands_poly wet
+	thlb_proxy.fwa_wetlands_poly wet
 SET
 	riparian_class = 'W2',
 	riparian_class_reason = 'wetland is not less than 1 ha and not more than 5 ha in size and is in one of the following biogeoclimatic zones or subzones PP, BG, CDF, IDF (xh, xw or xm), CWG (xm, dm or ds)',
@@ -89,7 +89,7 @@ run_sql_r(query, conn_list)
 
 print(glue('Processing W3 wetlands'))
 query <- "UPDATE
-	whse_sp.fwa_wetlands_poly
+	thlb_proxy.fwa_wetlands_poly
 SET
 	riparian_class = 'W3',
   riparian_class_reason = 'wetland is not less than 1 ha and not more than 5 ha in size and is in a biogeoclimatic zone or subzone other than PP, BG, CDF, IDF (xh, xw or xm), CWG (xm, dm or ds)',
@@ -117,9 +117,9 @@ SELECT
 	sum(ST_Area(ST_Intersection(wetland.geom, bec.geom))) as intersect_area,
 	ST_Area(wetland.geom) as wetland_area
 FROM
-	whse_sp.bec_biogeoclimatic_poly bec
+	thlb_proxy.bec_biogeoclimatic_poly bec
 JOIN
-	whse_sp.fwa_wetlands_poly wetland
+	thlb_proxy.fwa_wetlands_poly wetland
 ON
 	ST_Intersects(bec.geom, wetland.geom)
 AND
@@ -139,7 +139,7 @@ WHERE
 	(intersect_area/wetland_area) > 0.5 -- Include when the majority of the wetland area (I.e., > 50%) overlaps with the bec zone/subzone, otherwise exclude
 )
 UPDATE
-	whse_sp.fwa_wetlands_poly wet
+	thlb_proxy.fwa_wetlands_poly wet
 SET
 	riparian_class = 'W4',
 	riparian_class_reason = 'not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone PP, BG, IDF (xh, xw, xm)',
@@ -156,9 +156,9 @@ SELECT
 	sum(ST_Area(ST_Intersection(wetland.geom, bec.geom))) as intersect_area,
 	ST_Area(wetland.geom) as wetland_area
 FROM
-	whse_sp.bec_biogeoclimatic_poly bec
+	thlb_proxy.bec_biogeoclimatic_poly bec
 JOIN
-	whse_sp.fwa_wetlands_poly wetland
+	thlb_proxy.fwa_wetlands_poly wetland
 ON
 	ST_Intersects(bec.geom, wetland.geom)
 AND
@@ -178,7 +178,7 @@ WHERE
 	(intersect_area/wetland_area) > 0.5 -- Include when the majority of the wetland area (I.e., > 50%) overlaps with the bec zone/subzone, otherwise exclude
 )
 UPDATE
-	whse_sp.fwa_wetlands_poly wet
+	thlb_proxy.fwa_wetlands_poly wet
 SET
 	riparian_class = 'W4',
 	riparian_class_reason = 'not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone CDF, CWH (xm, dm, ds)',
@@ -201,21 +201,21 @@ run_sql_r(query, conn_list)
 ## As mentioned in section: References and resources > Wetland additional notes - further clarification states that a W5 class is a wetland complex meaning there are 2 or more individual wetlands with overlapping RMAs. A W1 has an RMA of 50. To have two of them overlap, you would need a distance of less than 100m between them. W2, W3, and W4 wetlands have RMAs of 30. (Source: Lisa Nordin, OCF, MOF) As such - for the analysis, buffers based on the wetland classification were created:
 
 
-query <- "ALTER TABLE whse_sp.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS geom_buffer geometry(MultiPolygon, 3005);"
+query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS geom_buffer geometry(MultiPolygon, 3005);"
 run_sql_r(query, conn_list)
 query <- "UPDATE
-  whse_sp.fwa_wetlands_poly
+  thlb_proxy.fwa_wetlands_poly
 SET
   geom_buffer = CASE
                 WHEN riparian_class = 'W1' THEN ST_Buffer(geom, 50)
                 WHEN riparian_class IN ('W2', 'W3', 'W4') THEN ST_Buffer(geom, 30)
                 END;"
 run_sql_r(query, conn_list)
-query <- "DROP INDEX IF EXISTS whse_sp.fwa_wetlands_poly_geom_buffer_idx;"
+query <- "DROP INDEX IF EXISTS thlb_proxy.fwa_wetlands_poly_geom_buffer_idx;"
 run_sql_r(query, conn_list)
-query <- "CREATE INDEX fwa_wetlands_poly_geom_buffer_idx ON whse_sp.fwa_wetlands_poly USING gist(geom_buffer);"
+query <- "CREATE INDEX fwa_wetlands_poly_geom_buffer_idx ON thlb_proxy.fwa_wetlands_poly USING gist(geom_buffer);"
 run_sql_r(query, conn_list)
-query <- "ANALYZE whse_sp.fwa_wetlands_poly"
+query <- "ANALYZE thlb_proxy.fwa_wetlands_poly"
 run_sql_r(query, conn_list)
 
 
@@ -225,9 +225,9 @@ query <- "SELECT
 	a.waterbody_poly_id::integer as waterbody_poly_id,
 	b.waterbody_poly_id::integer as overlapping_waterbody_poly_id
 FROM
-	whse_sp.fwa_wetlands_poly a
+	thlb_proxy.fwa_wetlands_poly a
 JOIN
-	whse_sp.fwa_wetlands_poly b ON
+	thlb_proxy.fwa_wetlands_poly b ON
    (a.geom_buffer && b.geom_buffer AND ST_Relate(a.geom_buffer, b.geom_buffer, '2********'))
 WHERE
 	a.waterbody_poly_id != b.waterbody_poly_id
@@ -255,7 +255,7 @@ SELECT
 FROM
   public.w5_temp_table
 JOIN
-  whse_sp.fwa_wetlands_poly
+  thlb_proxy.fwa_wetlands_poly
 USING
   (waterbody_poly_id)
 GROUP BY
@@ -273,7 +273,7 @@ USING
 	(grouping_id)
 )
 UPDATE
-	whse_sp.fwa_wetlands_poly
+	thlb_proxy.fwa_wetlands_poly
 SET
 	riparian_class = 'W5',
 	riparian_class_reason = '2 or more W1 within 100m, a W1 and >= 1 non-W1s (not including non-classifieds) within 80m, 2 or more non-W1s (not including non-classifieds) within 60m AND combined size is >= 5ha',
@@ -281,33 +281,33 @@ SET
 FROM
 	w5s
 WHERE
-	w5s.waterbody_poly_id = whse_sp.fwa_wetlands_poly.waterbody_poly_id"
+	w5s.waterbody_poly_id = thlb_proxy.fwa_wetlands_poly.waterbody_poly_id"
 run_sql_r(query, conn_list)
 
 query <- "DROP TABLE IF EXISTS public.w5_temp_table;"
 run_sql_r(query, conn_list)
 
 
-## Create new fields in the `whse_sp.fwa_lakes_poly` layer for population
+## Create new fields in the `thlb_proxy.fwa_lakes_poly` layer for population
 
-query <- "ALTER TABLE whse_sp.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_class;"
+query <- "ALTER TABLE thlb_proxy.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_class;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_lakes_poly ADD COLUMN IF NOT EXISTS riparian_class varchar(3);"
+query <- "ALTER TABLE thlb_proxy.fwa_lakes_poly ADD COLUMN IF NOT EXISTS riparian_class varchar(3);"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_class_reason;"
+query <- "ALTER TABLE thlb_proxy.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_class_reason;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_lakes_poly ADD COLUMN IF NOT EXISTS riparian_class_reason varchar(200);"
+query <- "ALTER TABLE thlb_proxy.fwa_lakes_poly ADD COLUMN IF NOT EXISTS riparian_class_reason varchar(200);"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_data_source;"
+query <- "ALTER TABLE thlb_proxy.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_data_source;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_lakes_poly ADD COLUMN IF NOT EXISTS riparian_data_source varchar(200);"
+query <- "ALTER TABLE thlb_proxy.fwa_lakes_poly ADD COLUMN IF NOT EXISTS riparian_data_source varchar(200);"
 run_sql_r(query, conn_list)
 
 ## > _"49 (1) Lakes have the following riparian classes:
 ## (a) L1-A, if the lake is 1000 ha or greater in size;"_
 
 print(glue('Processing L1A lakes'))
-query <- "UPDATE whse_sp.fwa_lakes_poly
+query <- "UPDATE thlb_proxy.fwa_lakes_poly
 SET
 	riparian_class = 'L1A',
 	riparian_class_reason = 'if the lake is 1000 ha or greater in size',
@@ -321,7 +321,7 @@ run_sql_r(query, conn_list)
 ##  (ii) the minister designates the lake as L1-B;"_
 
 print(glue('Processing L1B lakes'))
-query <- "UPDATE whse_sp.fwa_lakes_poly
+query <- "UPDATE thlb_proxy.fwa_lakes_poly
 SET
 	riparian_class = 'L1B',
 	riparian_class_reason = 'the lake is greater than 5 ha but less than 1000 h',
@@ -349,9 +349,9 @@ SELECT
 	sum(ST_Area(ST_Intersection(lake.geom, bec.geom))) as intersect_area,
 	ST_Area(lake.geom) as lake_area
 FROM
-	whse_sp.bec_biogeoclimatic_poly bec
+	thlb_proxy.bec_biogeoclimatic_poly bec
 JOIN
-	whse_sp.fwa_lakes_poly lake
+	thlb_proxy.fwa_lakes_poly lake
 ON
 	ST_Intersects(bec.geom, lake.geom)
 AND
@@ -373,7 +373,7 @@ WHERE
 	(intersect_area/lake_area) > 0.5 -- Include when the majority of the lake area (I.e., > 50%) overlaps with the bec zone/subzone, otherwise exclude
 )
 UPDATE
-	whse_sp.fwa_lakes_poly wet
+	thlb_proxy.fwa_lakes_poly wet
 SET
 	riparian_class = 'L2',
 	riparian_class_reason = 'lake is not less than 1 ha and not more than 5 ha in size and is located in a biogeoclimatic zones or subzone PP, BG, CDF, IDF (xh, xw, xm), CWH (xm, dm, ds)',
@@ -390,7 +390,7 @@ run_sql_r(query, conn_list)
 
 print(glue('Processing L3 lakes'))
 query <- "UPDATE
-				whse_sp.fwa_lakes_poly
+				thlb_proxy.fwa_lakes_poly
 		  SET
 		  	riparian_class = 'L3',
 				riparian_class_reason = 'lake is not less than 1 ha and not more than 5 ha in size and is in a biogeoclimatic zone or subzone other than PP, BG, CDF, IDF (xh, xw, xm), CWH (xm, dm, ds)',
@@ -416,9 +416,9 @@ SELECT
 	sum(ST_Area(ST_Intersection(lake.geom, bec.geom))) as intersect_area,
 	ST_Area(lake.geom) as lake_area
 FROM
-	whse_sp.bec_biogeoclimatic_poly bec
+	thlb_proxy.bec_biogeoclimatic_poly bec
 JOIN
-	whse_sp.fwa_lakes_poly lake
+	thlb_proxy.fwa_lakes_poly lake
 ON
 	ST_Intersects(bec.geom, lake.geom)
 AND
@@ -438,7 +438,7 @@ WHERE
 	(intersect_area/lake_area) > 0.5 -- Include when the majority of the lake area (I.e., > 50%) overlaps with the bec zone/subzone, otherwise exclude
 )
 UPDATE
-	whse_sp.fwa_lakes_poly wet
+	thlb_proxy.fwa_lakes_poly wet
 SET
 	riparian_class = 'L4',
 	riparian_class_reason = 'not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone PP, BG, IDF (xh, xw, xm)',
@@ -456,9 +456,9 @@ SELECT
 	sum(ST_Area(ST_Intersection(lake.geom, bec.geom))) as intersect_area,
 	ST_Area(lake.geom) as lake_area
 FROM
-	whse_sp.bec_biogeoclimatic_poly bec
+	thlb_proxy.bec_biogeoclimatic_poly bec
 JOIN
-	whse_sp.fwa_lakes_poly lake
+	thlb_proxy.fwa_lakes_poly lake
 ON
 	ST_Intersects(bec.geom, lake.geom)
 AND
@@ -478,7 +478,7 @@ WHERE
 	(intersect_area/lake_area) > 0.5 -- Include when the majority of the lake area (I.e., > 50%) overlaps with the bec zone/subzone, otherwise exclude
 )
 UPDATE
-	whse_sp.fwa_lakes_poly wet
+	thlb_proxy.fwa_lakes_poly wet
 SET
 	riparian_class = 'L4',
 	riparian_class_reason = 'not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone CDF, CWH (xm, dm, ds)',
@@ -489,27 +489,27 @@ WHERE
 	l4.waterbody_poly_id = wet.waterbody_poly_id"
 run_sql_r(query, conn_list)
 
-## Add fields to `whse_sp.modelled_habitat_potential` for later use
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_class;"
+## Add fields to `thlb_proxy.modelled_habitat_potential` for later use
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_class;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS riparian_class varchar(3);"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN IF NOT EXISTS riparian_class varchar(3);"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_class_reason;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_class_reason;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS riparian_class_reason text;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN IF NOT EXISTS riparian_class_reason text;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_data_source;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_data_source;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS riparian_data_source text;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN IF NOT EXISTS riparian_data_source text;"
 run_sql_r(query, conn_list)
 
-## Update `whse_sp.modelled_habitat_potential` with modeled channel_width
-print(glue('Updating whse_sp.modelled_habitat_potential with channel width'))
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS channel_width real;"
+## Update `thlb_proxy.modelled_habitat_potential` with modeled channel_width
+print(glue('Updating thlb_proxy.modelled_habitat_potential with channel width'))
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN IF NOT EXISTS channel_width real;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS channel_width_source text;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN IF NOT EXISTS channel_width_source text;"
 run_sql_r(query, conn_list)
-query <- "UPDATE whse_sp.modelled_habitat_potential SET channel_width_source = a.channel_width_source, channel_width = a.channel_width FROM whse_sp.fwa_stream_networks_channel_width a WHERE a.linear_feature_id = whse_sp.modelled_habitat_potential.linear_feature_id;"
+query <- "UPDATE thlb_proxy.modelled_habitat_potential SET channel_width_source = a.channel_width_source, channel_width = a.channel_width FROM thlb_proxy.fwa_stream_networks_channel_width a WHERE a.linear_feature_id = thlb_proxy.modelled_habitat_potential.linear_feature_id;"
 run_sql_r(query, conn_list)
 
 ## In order to easily calculate which linestrings are within community watersheds, generate a geometry of the centerpoint on the linestring.
@@ -517,114 +517,114 @@ run_sql_r(query, conn_list)
 ## Luckily all lines are single multilinestrings so it is a straight conversion
 
 
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS geom_ls geometry(LineString, 3005);"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN IF NOT EXISTS geom_ls geometry(LineString, 3005);"
 run_sql_r(query, conn_list)
 query <- "WITH a AS (
 SELECT
 	fid,
 	(ST_Dump(geom)).geom AS geom
 FROM
-	whse_sp.modelled_habitat_potential
+	thlb_proxy.modelled_habitat_potential
 )
-UPDATE whse_sp.modelled_habitat_potential s SET geom_ls = a.geom
+UPDATE thlb_proxy.modelled_habitat_potential s SET geom_ls = a.geom
 FROM
 a WHERE s.fid = a.fid"
 run_sql_r(query, conn_list)
 
 ## generate the centerpoint
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS line_center_point geometry(Point, 3005);"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN IF NOT EXISTS line_center_point geometry(Point, 3005);"
 run_sql_r(query, conn_list)
-query <- "UPDATE whse_sp.modelled_habitat_potential s SET line_center_point = ST_LineInterpolatePoint(geom_ls, 0.5);"
+query <- "UPDATE thlb_proxy.modelled_habitat_potential s SET line_center_point = ST_LineInterpolatePoint(geom_ls, 0.5);"
 run_sql_r(query, conn_list)
 
 
 ## drop the interim linestring geometry
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS geom_ls"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS geom_ls"
 run_sql_r(query, conn_list)
 
 ## create some indexes - high use table
-query <- "DROP INDEX IF EXISTS whse_sp.modelled_habitat_potential_buffer_idx;"
+query <- "DROP INDEX IF EXISTS thlb_proxy.modelled_habitat_potential_buffer_idx;"
 run_sql_r(query, conn_list)
 query <- "CREATE INDEX IF NOT EXISTS modelled_habitat_potential_buffer_idx
-    ON whse_sp.modelled_habitat_potential USING gist
+    ON thlb_proxy.modelled_habitat_potential USING gist
     (riparian_buffer_geom)
     TABLESPACE pg_default;"
 run_sql_r(query, conn_list)
 
-query <- "DROP INDEX IF EXISTS whse_sp.modelled_habitat_potential_center_point_idx;"
+query <- "DROP INDEX IF EXISTS thlb_proxy.modelled_habitat_potential_center_point_idx;"
 run_sql_r(query, conn_list)
 query <- "CREATE INDEX IF NOT EXISTS modelled_habitat_potential_center_point_idx
-    ON whse_sp.modelled_habitat_potential USING gist
+    ON thlb_proxy.modelled_habitat_potential USING gist
     (line_center_point)
     TABLESPACE pg_default;"
 run_sql_r(query, conn_list)
 
-query <- "DROP INDEX IF EXISTS whse_sp.modelled_habitat_potential_comm_ws_idx;"
+query <- "DROP INDEX IF EXISTS thlb_proxy.modelled_habitat_potential_comm_ws_idx;"
 run_sql_r(query, conn_list)
 query <- "CREATE INDEX IF NOT EXISTS modelled_habitat_potential_comm_ws_idx
-    ON whse_sp.modelled_habitat_potential USING btree
+    ON thlb_proxy.modelled_habitat_potential USING btree
     (community_watershed ASC NULLS LAST)
     TABLESPACE pg_default;"
 run_sql_r(query, conn_list)
 
-query <- "DROP INDEX IF EXISTS whse_sp.modelled_habitat_potential_fish_idx;"
+query <- "DROP INDEX IF EXISTS thlb_proxy.modelled_habitat_potential_fish_idx;"
 run_sql_r(query, conn_list)
 query <- "CREATE INDEX IF NOT EXISTS modelled_habitat_potential_fish_idx
-    ON whse_sp.modelled_habitat_potential USING btree
+    ON thlb_proxy.modelled_habitat_potential USING btree
     (fish_habitat)
     TABLESPACE pg_default;"
 run_sql_r(query, conn_list)
 
-query <- "DROP INDEX IF EXISTS whse_sp.modelled_habitat_potential_gnis_name_idx;"
+query <- "DROP INDEX IF EXISTS thlb_proxy.modelled_habitat_potential_gnis_name_idx;"
 run_sql_r(query, conn_list)
 query <- "CREATE INDEX IF NOT EXISTS modelled_habitat_potential_gnis_name_idx
-    ON whse_sp.modelled_habitat_potential USING btree
+    ON thlb_proxy.modelled_habitat_potential USING btree
     (gnis_name)
     TABLESPACE pg_default;"
 run_sql_r(query, conn_list)
 
-query <- "DROP INDEX IF EXISTS whse_sp.modelled_habitat_potential_lfi_geom_geom_idx;"
+query <- "DROP INDEX IF EXISTS thlb_proxy.modelled_habitat_potential_lfi_geom_geom_idx;"
 run_sql_r(query, conn_list)
 query <- "CREATE INDEX IF NOT EXISTS modelled_habitat_potential_lfi_geom_geom_idx
-    ON whse_sp.modelled_habitat_potential USING gist
+    ON thlb_proxy.modelled_habitat_potential USING gist
     (geom)
     TABLESPACE pg_default;"
 run_sql_r(query, conn_list)
 
-query <- "DROP INDEX IF EXISTS whse_sp.modelled_habitat_potential_lfi_idx;"
+query <- "DROP INDEX IF EXISTS thlb_proxy.modelled_habitat_potential_lfi_idx;"
 run_sql_r(query, conn_list)
 query <- "CREATE INDEX IF NOT EXISTS modelled_habitat_potential_lfi_idx
-    ON whse_sp.modelled_habitat_potential USING btree
+    ON thlb_proxy.modelled_habitat_potential USING btree
     (linear_feature_id ASC NULLS LAST)
     TABLESPACE pg_default;"
 run_sql_r(query, conn_list)
 
-query <- "DROP INDEX IF EXISTS whse_sp.modelled_habitat_potential_width_idx;"
+query <- "DROP INDEX IF EXISTS thlb_proxy.modelled_habitat_potential_width_idx;"
 run_sql_r(query, conn_list)
 query <- "CREATE INDEX IF NOT EXISTS modelled_habitat_potential_width_idx
-    ON whse_sp.modelled_habitat_potential USING btree
+    ON thlb_proxy.modelled_habitat_potential USING btree
     (channel_width ASC NULLS LAST)
     TABLESPACE pg_default;"
 run_sql_r(query, conn_list)
-query <- "ANALYZE whse_sp.modelled_habitat_potential;"
+query <- "ANALYZE thlb_proxy.modelled_habitat_potential;"
 run_sql_r(query, conn_list)
 
 ## add community watershed field
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN IF NOT EXISTS community_watershed boolean DEFAULT False;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN IF NOT EXISTS community_watershed boolean DEFAULT False;"
 run_sql_r(query, conn_list)
 
 query <- "WITH a AS (
 SELECT
 	stream.linear_feature_id
 FROM
-	whse_sp.modelled_habitat_potential stream
+	thlb_proxy.modelled_habitat_potential stream
 JOIN
-	whse_sp.wls_community_ws_pub_svw cw
+	thlb_proxy.wls_community_ws_pub_svw cw
 ON
 	ST_Intersects(cw.geom, stream.line_center_point)
 )
 UPDATE
-  whse_sp.modelled_habitat_potential s
+  thlb_proxy.modelled_habitat_potential s
 SET
   community_watershed = True
 FROM
@@ -640,10 +640,10 @@ run_sql_psql(sql_var = NULL, sql_file = 'data//input//stream_reaches_within_floo
 
 ## It is known that any stream reach from the Fish Habitat Accessibility MODEL (I.e. fish passage dataset) that has a contributing area outside BC will be invalid. In order to identify those stream reaches, bring in the manually created dataset of stream id's where contributing area is outside BC. This table was initialized by using Simon Norris's [fwapg](https://github.com/smnorris/fwapg) package and then iterating over every blue_line_key in the province using this [function](https://github.com/smnorris/fwapg/blob/main/db/functions/FWA_UpstreamBorderCrossings.sql). See helper script here: `src/analysis/2.riparian-fwapg-pre-processing.R`. The results stream reaches were manually reviewed and removed if ~ 80-90% of the contributing area was within BC. Stream reaches identified as having contributing area's outside BC were compared with Foundry Spatial's BC Water Tools watershed reporting tool (where watersheds extend outside the province in the following NRO regions: Skeena, Peace, Omineca, Kootenay).
 ## The channel width for identified stream reaches with contributing area's outside BC's channel_width are set to NULL.
-query <- "UPDATE whse_sp.modelled_habitat_potential SET riparian_class = NULL, riparian_class_reason = NULL"
+query <- "UPDATE thlb_proxy.modelled_habitat_potential SET riparian_class = NULL, riparian_class_reason = NULL"
 run_sql_r(query, conn_list)
 run_sql_psql(sql_var = NULL, sql_file = 'data//input//stream_reaches_with_contributing_areas_outside_BC.sql', pg_db = 'prov_data', host = 'localhost')
-query <- "UPDATE whse_sp.modelled_habitat_potential a SET channel_width = NULL FROM public.stream_reaches_with_contributing_areas_outside_bc outside_bc where outside_bc.linear_feature_id = a.linear_feature_id;"
+query <- "UPDATE thlb_proxy.modelled_habitat_potential a SET channel_width = NULL FROM public.stream_reaches_with_contributing_areas_outside_bc outside_bc where outside_bc.linear_feature_id = a.linear_feature_id;"
 run_sql_r(query, conn_list)
 
 
@@ -655,7 +655,7 @@ WITH main_rivers AS (
 	SELECT
 		fid
 	FROM
-		whse_sp.modelled_habitat_potential
+		thlb_proxy.modelled_habitat_potential
 	WHERE
 		channel_width >= 100
 	AND
@@ -673,9 +673,9 @@ WITH main_rivers AS (
 	SELECT
 	  fishy_streams.fid
 	FROM
-	  whse_sp.modelled_habitat_potential fishy_streams
+	  thlb_proxy.modelled_habitat_potential fishy_streams
 	JOIN
-	  whse_sp.cwb_floodplains_bc_area_sp floodplain
+	  thlb_proxy.cwb_floodplains_bc_area_sp floodplain
 	ON
 	  ST_Contains(floodplain.geom, fishy_streams.line_center_point)
 	LEFT JOIN
@@ -697,7 +697,7 @@ WITH main_rivers AS (
 	FROM
 		main_rivers
 	JOIN
-		whse_sp.modelled_habitat_potential USING (fid)
+		thlb_proxy.modelled_habitat_potential USING (fid)
 ), main_rivers_merged_length_g_1km AS (
 	SELECT
  		geom
@@ -710,7 +710,7 @@ WITH main_rivers AS (
 	SELECT
 		fid
 	FROM
-		whse_sp.modelled_habitat_potential
+		thlb_proxy.modelled_habitat_potential
 	WHERE
 		channel_width >= 100
 	AND
@@ -728,9 +728,9 @@ WITH main_rivers AS (
 	SELECT
 	  fishy_streams.fid
 	FROM
-	  whse_sp.modelled_habitat_potential fishy_streams
+	  thlb_proxy.modelled_habitat_potential fishy_streams
 	JOIN
-	  whse_sp.cwb_floodplains_bc_area_sp floodplain
+	  thlb_proxy.cwb_floodplains_bc_area_sp floodplain
 	ON
 	  ST_Contains(floodplain.geom, fishy_streams.line_center_point)
 	LEFT JOIN
@@ -751,7 +751,7 @@ WITH main_rivers AS (
 	FROM
 		secondary_rivers
 	JOIN
-		whse_sp.modelled_habitat_potential USING (fid)
+		thlb_proxy.modelled_habitat_potential USING (fid)
 ), secondary_rivers_merged_length_g_1km AS (
 	SELECT
  		geom
@@ -774,14 +774,14 @@ SELECT
 	fishy_streams.fid,
 	fishy_streams.geom
 FROM
-	whse_sp.modelled_habitat_potential fishy_streams
+	thlb_proxy.modelled_habitat_potential fishy_streams
 JOIN
 	combined
 ON
 	ST_DWithin(fishy_streams.line_center_point, combined.geom, 1) -- join with original table to get the fid
 )
 UPDATE
-  whse_sp.modelled_habitat_potential
+  thlb_proxy.modelled_habitat_potential
 SET
   riparian_class = 'S1A',
 	riparian_class_reason = 'stream averages, over a one km length, either a stream width or an active flood plain width of 100 m or greater',
@@ -789,13 +789,13 @@ SET
 FROM
 	filtered_s1a
 WHERE
-	filtered_s1a.fid = whse_sp.modelled_habitat_potential.fid"
+	filtered_s1a.fid = thlb_proxy.modelled_habitat_potential.fid"
 run_sql_r(query, conn_list)
 
 
 ## "(b) S1B, if the stream width is greater than 20 m but the stream does not have a riparian class of S1A"_
 query <- "UPDATE
-	whse_sp.modelled_habitat_potential
+	thlb_proxy.modelled_habitat_potential
 SET
 	riparian_class = 'S1B',
 	riparian_class_reason = 'stream that is a fish stream or is located in a community watershed and width is greater than 20 m but the stream does not have a riparian class of S1A',
@@ -816,7 +816,7 @@ run_sql_r(query, conn_list)
 
 ## "(c) S2, if the stream width is not less than 5 m but not more than 20 m"
 query <- "UPDATE
-	whse_sp.modelled_habitat_potential
+	thlb_proxy.modelled_habitat_potential
 SET
 	riparian_class = 'S2',
 	riparian_class_reason = 'stream that is a fish stream or is located in a community watershed and width is not less than 5 m but not more than 20 m',
@@ -837,7 +837,7 @@ run_sql_r(query, conn_list)
 
 ## (d)S3, if the stream width is not less than 1.5 m but is less than 5 m;
 query <- "UPDATE
-	whse_sp.modelled_habitat_potential
+	thlb_proxy.modelled_habitat_potential
 SET
 	riparian_class = 'S3',
 	riparian_class_reason = 'stream that is a fish stream or is located in a community watershed and width is not less than 1.5 m but is less than 5 m;',
@@ -858,7 +858,7 @@ run_sql_r(query, conn_list)
 
 ## (e) S4, if the stream width is less than 1.5 m."
 query <- "UPDATE
-	whse_sp.modelled_habitat_potential
+	thlb_proxy.modelled_habitat_potential
 SET
 	riparian_class = 'S4',
 	riparian_class_reason = 'stream that is a fish stream or is located in a community watershed and width is less than 1.5 m',
@@ -879,7 +879,7 @@ run_sql_r(query, conn_list)
 ## (a)S5, if the stream width is greater than 3 m;"_
 
 query <- "UPDATE
-	whse_sp.modelled_habitat_potential
+	thlb_proxy.modelled_habitat_potential
 SET
 	riparian_class = 'S5',
 	riparian_class_reason = 'stream that is not a fish stream and is located outside of a community watershed and width is greater than 3 m;',
@@ -900,7 +900,7 @@ run_sql_r(query, conn_list)
 
 ## "(b)S6, if the stream width is 3 m or less."
 query <- "UPDATE
-	whse_sp.modelled_habitat_potential
+	thlb_proxy.modelled_habitat_potential
 SET
 	riparian_class = 'S6',
 	riparian_class_reason = 'stream that is not a fish stream and is located outside of a community watershed and width is 3 m or less',
@@ -917,36 +917,36 @@ AND
   riparian_class IS NULL;"
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS adm_nr_areas;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS adm_nr_areas;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN adm_nr_areas varchar(5);"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN adm_nr_areas varchar(5);"
 run_sql_r(query, conn_list)
-query <- "UPDATE whse_sp.modelled_habitat_potential fishy SET adm_nr_areas =
+query <- "UPDATE thlb_proxy.modelled_habitat_potential fishy SET adm_nr_areas =
 CASE
   WHEN adm.area_name = 'Coast Natural Resource Area' then 'coast'
   WHEN adm.area_name = 'South Natural Resource Area' then 'south'
   WHEN adm.area_name = 'North Natural Resource Area' then 'north'
 END
 FROM
-  whse_sp.adm_nr_areas_sp adm
+  thlb_proxy.adm_nr_areas_sp adm
 WHERE
 ST_Intersects(adm.geom, fishy.line_center_point);"
 run_sql_r(query, conn_list)
 
 ## Bring into tsa in case its needed
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS tsa;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS tsa;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN tsa smallint;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN tsa smallint;"
 run_sql_r(query, conn_list)
-query <- "UPDATE whse_sp.modelled_habitat_potential fishy SET tsa = adm.tsa
+query <- "UPDATE thlb_proxy.modelled_habitat_potential fishy SET tsa = adm.tsa
 FROM
-  whse_sp.tsa_boundaries_2020 adm
+  thlb_proxy.tsa_boundaries_2020 adm
 WHERE
 ST_Intersects(adm.geom, fishy.line_center_point);"
 run_sql_r(query, conn_list)
 
 query <- "UPDATE
-	whse_sp.modelled_habitat_potential
+	thlb_proxy.modelled_habitat_potential
 SET
 	riparian_class = CASE
 	WHEN adm_nr_areas = 'coast' THEN
@@ -1030,18 +1030,18 @@ run_sql_r(query, conn_list)
 
 ## FWA Rivers
 ## For stream classification, the FWA rivers polygonal dataset is usually used in Timber Supply Analyses. It is important to include it to ensure the river area's are included in the riparian zones. In order to determine the stream classification per FWA River Poly, the most common (I.e. mode) classification was used.
-query <- "ALTER TABLE whse_sp.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_class;"
+query <- "ALTER TABLE thlb_proxy.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_class;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_class_reason;"
+query <- "ALTER TABLE thlb_proxy.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_class_reason;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_data_source;"
+query <- "ALTER TABLE thlb_proxy.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_data_source;"
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE whse_sp.fwa_rivers_poly ADD COLUMN riparian_class varchar(3);"
+query <- "ALTER TABLE thlb_proxy.fwa_rivers_poly ADD COLUMN riparian_class varchar(3);"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_rivers_poly ADD COLUMN riparian_class_reason text;"
+query <- "ALTER TABLE thlb_proxy.fwa_rivers_poly ADD COLUMN riparian_class_reason text;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_rivers_poly ADD COLUMN riparian_data_source text;"
+query <- "ALTER TABLE thlb_proxy.fwa_rivers_poly ADD COLUMN riparian_data_source text;"
 run_sql_r(query, conn_list)
 
 query <- "WITH most_common_class AS (
@@ -1049,16 +1049,16 @@ query <- "WITH most_common_class AS (
 		rivers.waterbody_poly_id,
 		MODE() WITHIN GROUP (order by fishy.riparian_class) AS riparian_class_model
 	FROM
-		whse_sp.fwa_rivers_poly rivers
+		thlb_proxy.fwa_rivers_poly rivers
 	JOIN
-		whse_sp.modelled_habitat_potential fishy
+		thlb_proxy.modelled_habitat_potential fishy
 	ON
 		ST_Intersects(rivers.geom, fishy.line_center_point)
 	GROUP BY
 		waterbody_poly_id
 )
 UPDATE
-	whse_sp.fwa_rivers_poly riv
+	thlb_proxy.fwa_rivers_poly riv
 SET
 	riparian_class = a.riparian_class_model,
 	riparian_class_reason = 'Most common stream classification within rivers polygon',
@@ -1076,14 +1076,14 @@ query <- "WITH nearest_river_polys AS (
 		l.distance,
 		l.riparian_class
     FROM
-        whse_sp.fwa_rivers_poly riv_with_nulls
+        thlb_proxy.fwa_rivers_poly riv_with_nulls
     CROSS JOIN LATERAL (
         SELECT
 		l.waterbody_poly_id,
 		l.riparian_class,
 		ST_Distance(riv_with_nulls.geom, l.geom) as distance
         FROM
-			whse_sp.fwa_rivers_poly l
+			thlb_proxy.fwa_rivers_poly l
 		WHERE
 			l.riparian_class IS NOT NULL
         ORDER BY riv_with_nulls.geom <-> l.geom
@@ -1092,7 +1092,7 @@ query <- "WITH nearest_river_polys AS (
 	WHERE
 		riv_with_nulls.riparian_class IS NULL
 )
-UPDATE whse_sp.fwa_rivers_poly r
+UPDATE thlb_proxy.fwa_rivers_poly r
 SET
 	riparian_class = nearest_river_polys.riparian_class
 FROM
@@ -1101,7 +1101,7 @@ WHERE
 	nearest_river_polys.waterbody_poly_id = r.waterbody_poly_id;"
 run_sql_r(query, conn_list)
 
-query <- "UPDATE whse_sp.fwa_rivers_poly
+query <- "UPDATE thlb_proxy.fwa_rivers_poly
           SET
             riparian_class = CASE
                               WHEN riparian_class = 'S6' THEN 'S5'
@@ -1113,29 +1113,29 @@ run_sql_r(query, conn_list)
 
 ## Since we will only export streams outside of FWA polygons, update the streams layer by adding a field that indicates whether it overlaps with lakes, wetlands, or rivers polygons. This field will be used in a subsequent layer export step.
 ## update streams that overlap with rivers
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS inside_fwa_polygon;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS inside_fwa_polygon;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN inside_fwa_polygon boolean default FALSE;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN inside_fwa_polygon boolean default FALSE;"
 run_sql_r(query, conn_list)
 
-query <- "UPDATE whse_sp.modelled_habitat_potential fishy SET inside_fwa_polygon = TRUE
+query <- "UPDATE thlb_proxy.modelled_habitat_potential fishy SET inside_fwa_polygon = TRUE
 FROM
-  whse_sp.fwa_rivers_poly riv
+  thlb_proxy.fwa_rivers_poly riv
 WHERE
   ST_Intersects(riv.geom, fishy.line_center_point)"
 run_sql_r(query, conn_list)
 
-query <- "UPDATE whse_sp.modelled_habitat_potential fishy SET inside_fwa_polygon = TRUE
+query <- "UPDATE thlb_proxy.modelled_habitat_potential fishy SET inside_fwa_polygon = TRUE
 FROM
-  whse_sp.fwa_lakes_poly lake
+  thlb_proxy.fwa_lakes_poly lake
 WHERE
   ST_Intersects(lake.geom, fishy.line_center_point)"
 run_sql_r(query, conn_list)
 
 
-query <- "UPDATE whse_sp.modelled_habitat_potential fishy SET inside_fwa_polygon = TRUE
+query <- "UPDATE thlb_proxy.modelled_habitat_potential fishy SET inside_fwa_polygon = TRUE
 FROM
-  whse_sp.fwa_wetlands_poly wetland
+  thlb_proxy.fwa_wetlands_poly wetland
 WHERE
   ST_Intersects(wetland.geom, fishy.line_center_point)"
 run_sql_r(query, conn_list)
@@ -1164,17 +1164,17 @@ s6_buffer  <- 1
 
 
 ## lakes
-query <- "ALTER TABLE whse_sp.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_buffer_geom;"
+query <- "ALTER TABLE thlb_proxy.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_buffer_geom;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_lakes_poly ADD COLUMN riparian_buffer_geom geometry(MultiPolygon, 3005);"
-run_sql_r(query, conn_list)
-
-query <- "ALTER TABLE whse_sp.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_buffer_width_m;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_lakes_poly ADD COLUMN riparian_buffer_width_m smallint;"
+query <- "ALTER TABLE thlb_proxy.fwa_lakes_poly ADD COLUMN riparian_buffer_geom geometry(MultiPolygon, 3005);"
 run_sql_r(query, conn_list)
 
-query <- glue("UPDATE whse_sp.fwa_lakes_poly SET riparian_buffer_width_m = CASE
+query <- "ALTER TABLE thlb_proxy.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_buffer_width_m;"
+run_sql_r(query, conn_list)
+query <- "ALTER TABLE thlb_proxy.fwa_lakes_poly ADD COLUMN riparian_buffer_width_m smallint;"
+run_sql_r(query, conn_list)
+
+query <- glue("UPDATE thlb_proxy.fwa_lakes_poly SET riparian_buffer_width_m = CASE
 	WHEN riparian_class = 'L1A' THEN {l1a_buffer}
 	WHEN riparian_class = 'L1B' THEN {l1b_buffer}
 	WHEN riparian_class = 'L2'  THEN {l2_buffer}
@@ -1182,29 +1182,29 @@ query <- glue("UPDATE whse_sp.fwa_lakes_poly SET riparian_buffer_width_m = CASE
 	WHEN riparian_class = 'L4'  THEN {l4_buffer}
 	END;")
 run_sql_r(query, conn_list)
-query <- "UPDATE whse_sp.fwa_lakes_poly SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m);"
+query <- "UPDATE thlb_proxy.fwa_lakes_poly SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m);"
 run_sql_r(query, conn_list)
 
 query <- "CREATE INDEX IF NOT EXISTS fwa_lakes_poly_buffer_idx
-    ON whse_sp.fwa_lakes_poly USING gist
+    ON thlb_proxy.fwa_lakes_poly USING gist
     (riparian_buffer_geom)
     TABLESPACE pg_default;"
 run_sql_r(query, conn_list)
 
-query <- "ANALYZE whse_sp.fwa_lakes_poly;"
+query <- "ANALYZE thlb_proxy.fwa_lakes_poly;"
 run_sql_r(query, conn_list)
 
 ## wetland
-query <- "ALTER TABLE whse_sp.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_buffer_geom;"
+query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_buffer_geom;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_wetlands_poly ADD COLUMN riparian_buffer_geom geometry(MultiPolygon, 3005);"
+query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly ADD COLUMN riparian_buffer_geom geometry(MultiPolygon, 3005);"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_buffer_width_m;"
+query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_buffer_width_m;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_wetlands_poly ADD COLUMN riparian_buffer_width_m smallint;"
+query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly ADD COLUMN riparian_buffer_width_m smallint;"
 run_sql_r(query, conn_list)
 
-query <- glue("UPDATE whse_sp.fwa_wetlands_poly SET riparian_buffer_width_m = CASE
+query <- glue("UPDATE thlb_proxy.fwa_wetlands_poly SET riparian_buffer_width_m = CASE
 	WHEN riparian_class = 'W1'  THEN {w1_buffer}
 	WHEN riparian_class = 'W2'  THEN {w2_buffer}
 	WHEN riparian_class = 'W3'  THEN {w3_buffer}
@@ -1212,30 +1212,30 @@ query <- glue("UPDATE whse_sp.fwa_wetlands_poly SET riparian_buffer_width_m = CA
 	WHEN riparian_class = 'W5'  THEN {w5_buffer}
 	END;")
 run_sql_r(query, conn_list)
-query <- "UPDATE whse_sp.fwa_wetlands_poly SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m);"
+query <- "UPDATE thlb_proxy.fwa_wetlands_poly SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m);"
 run_sql_r(query, conn_list)
 
 query <- "CREATE INDEX IF NOT EXISTS fwa_wetlands_poly_buffer_idx
-    ON whse_sp.fwa_wetlands_poly USING gist
+    ON thlb_proxy.fwa_wetlands_poly USING gist
     (riparian_buffer_geom)
     TABLESPACE pg_default;"
 run_sql_r(query, conn_list)
 
-query <- "ANALYZE whse_sp.fwa_wetlands_poly;"
+query <- "ANALYZE thlb_proxy.fwa_wetlands_poly;"
 run_sql_r(query, conn_list)
 
 ## rivers
-query <- "ALTER TABLE whse_sp.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_buffer_geom;"
+query <- "ALTER TABLE thlb_proxy.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_buffer_geom;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_rivers_poly ADD COLUMN riparian_buffer_geom geometry(MultiPolygon, 3005);"
-run_sql_r(query, conn_list)
-
-query <- "ALTER TABLE whse_sp.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_buffer_width_m;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.fwa_rivers_poly ADD COLUMN riparian_buffer_width_m smallint;"
+query <- "ALTER TABLE thlb_proxy.fwa_rivers_poly ADD COLUMN riparian_buffer_geom geometry(MultiPolygon, 3005);"
 run_sql_r(query, conn_list)
 
-query <- glue("UPDATE whse_sp.fwa_rivers_poly SET riparian_buffer_width_m = CASE
+query <- "ALTER TABLE thlb_proxy.fwa_rivers_poly DROP COLUMN IF EXISTS riparian_buffer_width_m;"
+run_sql_r(query, conn_list)
+query <- "ALTER TABLE thlb_proxy.fwa_rivers_poly ADD COLUMN riparian_buffer_width_m smallint;"
+run_sql_r(query, conn_list)
+
+query <- glue("UPDATE thlb_proxy.fwa_rivers_poly SET riparian_buffer_width_m = CASE
 	WHEN riparian_class = 'S1A' THEN {s1a_buffer}
 	WHEN riparian_class = 'S1B' THEN {s1b_buffer}
 	WHEN riparian_class = 'S2'  THEN {s2_buffer}
@@ -1245,29 +1245,29 @@ query <- glue("UPDATE whse_sp.fwa_rivers_poly SET riparian_buffer_width_m = CASE
 	WHEN riparian_class = 'S6'  THEN {s6_buffer}
 	END;")
 run_sql_r(query, conn_list)
-query <- "UPDATE whse_sp.fwa_rivers_poly SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m);"
+query <- "UPDATE thlb_proxy.fwa_rivers_poly SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m);"
 run_sql_r(query, conn_list)
 
 query <- "CREATE INDEX IF NOT EXISTS fwa_rivers_poly_buffer_idx
-    ON whse_sp.fwa_rivers_poly USING gist
+    ON thlb_proxy.fwa_rivers_poly USING gist
     (riparian_buffer_geom)
     TABLESPACE pg_default;"
 run_sql_r(query, conn_list)
 
-query <- "ANALYZE whse_sp.fwa_rivers_poly;"
+query <- "ANALYZE thlb_proxy.fwa_rivers_poly;"
 run_sql_r(query, conn_list)
 
 ## stream network
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_buffer_geom;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_buffer_geom;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN riparian_buffer_geom geometry(MultiPolygon, 3005);"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN riparian_buffer_geom geometry(MultiPolygon, 3005);"
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_buffer_width_m;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_buffer_width_m;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.modelled_habitat_potential ADD COLUMN riparian_buffer_width_m smallint;"
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN riparian_buffer_width_m smallint;"
 run_sql_r(query, conn_list)
-query <- glue("UPDATE whse_sp.modelled_habitat_potential SET riparian_buffer_width_m = CASE
+query <- glue("UPDATE thlb_proxy.modelled_habitat_potential SET riparian_buffer_width_m = CASE
 	WHEN riparian_class = 'S1A' THEN {s1a_buffer}
 	WHEN riparian_class = 'S1B' THEN {s1b_buffer}
 	WHEN riparian_class = 'S2'  THEN {s2_buffer}
@@ -1277,25 +1277,25 @@ query <- glue("UPDATE whse_sp.modelled_habitat_potential SET riparian_buffer_wid
 	WHEN riparian_class = 'S6'  THEN {s6_buffer}
 	END;")
 run_sql_r(query, conn_list)
-query <- "UPDATE whse_sp.modelled_habitat_potential SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m) WHERE riparian_buffer_width_m IS NOT NULL;"
+query <- "UPDATE thlb_proxy.modelled_habitat_potential SET riparian_buffer_geom = ST_Buffer(geom, riparian_buffer_width_m) WHERE riparian_buffer_width_m IS NOT NULL;"
 run_sql_r(query, conn_list)
 
 query <- "CREATE INDEX IF NOT EXISTS modelled_habitat_potential_buffer_idx
-    ON whse_sp.modelled_habitat_potential USING gist
+    ON thlb_proxy.modelled_habitat_potential USING gist
     (riparian_buffer_geom)
     TABLESPACE pg_default;"
 run_sql_r(query, conn_list)
 
-query <- "ANALYZE whse_sp.modelled_habitat_potential;"
+query <- "ANALYZE thlb_proxy.modelled_habitat_potential;"
 run_sql_r(query, conn_list)
 
 # merge all the vector together into one buffer layer
 # cannot do the entir province in one go - chop up via mapsheet
 
-grid_table <- "whse_sp.nts_50k_grid"
+grid_table <- "thlb_proxy.nts_50k_grid"
 grid_loop_fld <- "map_tile"
 grid_geom_fld <- "geom"
-buffer_table_name <- "whse_sp.riparian_buffers"
+buffer_table_name <- "thlb_proxy.riparian_buffers"
 
 query <- glue("DROP TABLE IF EXISTS {buffer_table_name};")
 run_sql_r(query, conn_list)
@@ -1315,7 +1315,7 @@ WITH all_buffers_appended AS (
   SELECT
     riparian_buffer_geom as geom
   FROM
-    whse_sp.modelled_habitat_potential streams
+    thlb_proxy.modelled_habitat_potential streams
   JOIN
     {grid_table} grd
   ON
@@ -1330,7 +1330,7 @@ WITH all_buffers_appended AS (
   SELECT
     riparian_buffer_geom
   FROM
-    whse_sp.fwa_lakes_poly lakes
+    thlb_proxy.fwa_lakes_poly lakes
   JOIN
     {grid_table} grd
   ON
@@ -1345,7 +1345,7 @@ WITH all_buffers_appended AS (
   SELECT
     riparian_buffer_geom
   FROM
-    whse_sp.fwa_wetlands_poly wet
+    thlb_proxy.fwa_wetlands_poly wet
   JOIN
     {grid_table} grd
   ON
@@ -1360,7 +1360,7 @@ WITH all_buffers_appended AS (
   SELECT
     riparian_buffer_geom
   FROM
-    whse_sp.fwa_rivers_poly streams
+    thlb_proxy.fwa_rivers_poly streams
   JOIN
     {grid_table} grd
   ON
@@ -1430,37 +1430,37 @@ linear_weight(template_tif           = "data\\input\\bc_01ha_gr_skey.tif",  ## "
 
 
 ## rivers
-system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_rivers_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM whse_sp.fwa_rivers_poly WHERE riparian_class IS NOT NULL\"")
+system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_rivers_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM thlb_proxy.fwa_rivers_poly WHERE riparian_class IS NOT NULL\"")
 
 ## lakes
-system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_lakes_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM whse_sp.fwa_lakes_poly WHERE riparian_class IS NOT NULL\" -update")
+system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_lakes_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM thlb_proxy.fwa_lakes_poly WHERE riparian_class IS NOT NULL\" -update")
 
 ## wetlands
-system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_wetlands_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM whse_sp.fwa_wetlands_poly WHERE riparian_class IS NOT NULL\" -update")
+system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_wetlands_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM thlb_proxy.fwa_wetlands_poly WHERE riparian_class IS NOT NULL\" -update")
 
 ## streams
-system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTILINESTRING -nln fwa_stream_networks_sp_modelled_habitat_potential -sql \"SELECT fid, linear_feature_id::int, fish_habitat_id, blue_line_key, watershed_key, gnis_name, fwa_watershed_code, watershed_group_code, downstream_route_measure, waterbody_key, fwa_fcode_label, observation_id, gradient_barrier_030_id,gradient_barrier_050_id,gradient_barrier_080_id,gradient_barrier_150_id,gradient_barrier_220_id,gradient_barrier_300_id,intermittent_id,fish_obstacle_point_id,obstruction_id,subsurfaceflow_id,fish_habitat,slope,slope_class,stream_order,stream_magnitude,geom,channel_width,channel_width_source,community_watershed,riparian_class,riparian_class_reason,riparian_data_source FROM whse_sp.modelled_habitat_potential WHERE NOT inside_fwa_polygon AND riparian_class IS NOT NULL\" -update")
+system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTILINESTRING -nln fwa_stream_networks_sp_modelled_habitat_potential -sql \"SELECT fid, linear_feature_id::int, fish_habitat_id, blue_line_key, watershed_key, gnis_name, fwa_watershed_code, watershed_group_code, downstream_route_measure, waterbody_key, fwa_fcode_label, observation_id, gradient_barrier_030_id,gradient_barrier_050_id,gradient_barrier_080_id,gradient_barrier_150_id,gradient_barrier_220_id,gradient_barrier_300_id,intermittent_id,fish_obstacle_point_id,obstruction_id,subsurfaceflow_id,fish_habitat,slope,slope_class,stream_order,stream_magnitude,geom,channel_width,channel_width_source,community_watershed,riparian_class,riparian_class_reason,riparian_data_source FROM thlb_proxy.modelled_habitat_potential WHERE NOT inside_fwa_polygon AND riparian_class IS NOT NULL\" -update")
 
 
 ## Add geometry field to the FREP monitoring data
 ## one time
-query <- "ALTER TABLE whse_sp.june13_riparian_data_for_faib DROP COLUMN IF NOT EXISTS geom;"
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF NOT EXISTS geom;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.june13_riparian_data_for_faib ADD COLUMN IF NOT EXISTS geom Geometry(Point, 3005);"
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN IF NOT EXISTS geom Geometry(Point, 3005);"
 run_sql_r(query, conn_list)
-query <- "UPDATE whse_sp.june13_riparian_data_for_faib SET geom = ST_SetSRID(ST_Point(bcalbers_easting, bcalbers_northing), 3005);"
+query <- "UPDATE thlb_proxy.june13_riparian_data_for_faib SET geom = ST_SetSRID(ST_Point(bcalbers_easting, bcalbers_northing), 3005);"
 run_sql_r(query, conpg_conn_listn_list)
 
 ## Compare the modeled stream width with FREP data
-Add a linking key (Ie. `modelled_habitat_potential_fid`) to `whse_sp.june13_riparian_data_for_faib` with the fid of the nearest linestring of `whse_sp.modelled_habitat_potential`
-query <- "ALTER TABLE whse_sp.june13_riparian_data_for_faib DROP COLUMN IF EXISTS modelled_habitat_potential_fid;"
+Add a linking key (Ie. `modelled_habitat_potential_fid`) to `thlb_proxy.june13_riparian_data_for_faib` with the fid of the nearest linestring of `thlb_proxy.modelled_habitat_potential`
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS modelled_habitat_potential_fid;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.june13_riparian_data_for_faib ADD COLUMN modelled_habitat_potential_fid INTEGER;"
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN modelled_habitat_potential_fid INTEGER;"
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE whse_sp.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_line;"
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_line;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.june13_riparian_data_for_faib ADD COLUMN distance_to_line real;"
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN distance_to_line real;"
 run_sql_r(query, conn_list)
 
 query <- "WITH nearest_lines AS (
@@ -1469,17 +1469,17 @@ query <- "WITH nearest_lines AS (
         l.fid AS line_fid,
 		l.distance
     FROM
-        whse_sp.june13_riparian_data_for_faib r
+        thlb_proxy.june13_riparian_data_for_faib r
     CROSS JOIN LATERAL (
         SELECT
 		fid,
 		ST_Distance(r.geom, l.geom) as distance
-        FROM whse_sp.modelled_habitat_potential l
+        FROM thlb_proxy.modelled_habitat_potential l
         ORDER BY r.geom <-> l.geom
         LIMIT 1
     ) l
 )
-UPDATE whse_sp.june13_riparian_data_for_faib r
+UPDATE thlb_proxy.june13_riparian_data_for_faib r
 SET
 	modelled_habitat_potential_fid = nl.line_fid,
 	distance_to_line= nl.distance
@@ -1490,14 +1490,14 @@ WHERE
 run_sql_r(query, conn_list)
 
 
-query <- "ALTER TABLE whse_sp.june13_riparian_data_for_faib DROP COLUMN IF EXISTS fwa_rivers_poly_waterbody_poly_id;"
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS fwa_rivers_poly_waterbody_poly_id;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.june13_riparian_data_for_faib ADD COLUMN fwa_rivers_poly_waterbody_poly_id INTEGER;"
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN fwa_rivers_poly_waterbody_poly_id INTEGER;"
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE whse_sp.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_poly;"
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_poly;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse_sp.june13_riparian_data_for_faib ADD COLUMN distance_to_poly real;"
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN distance_to_poly real;"
 run_sql_r(query, conn_list)
 
 query <- "WITH nearest_lines AS (
@@ -1506,17 +1506,17 @@ query <- "WITH nearest_lines AS (
         l.waterbody_poly_id AS line_fid,
 		l.distance
     FROM
-        whse_sp.june13_riparian_data_for_faib r
+        thlb_proxy.june13_riparian_data_for_faib r
     CROSS JOIN LATERAL (
         SELECT
           waterbody_poly_id,
           ST_Distance(r.geom, l.geom) as distance
-        FROM whse_sp.fwa_rivers_poly l
+        FROM thlb_proxy.fwa_rivers_poly l
         ORDER BY r.geom <-> l.geom
         LIMIT 1
     ) l
 )
-UPDATE whse_sp.june13_riparian_data_for_faib r
+UPDATE thlb_proxy.june13_riparian_data_for_faib r
 SET
 	fwa_rivers_poly_waterbody_poly_id = nl.line_fid,
 	distance_to_poly= nl.distance
@@ -1570,9 +1570,9 @@ query <- "SELECT
 	ELSE 0
 	END as match
 FROM
-whse_sp.june13_riparian_data_for_faib frep
-LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, channel_width, fid FROM whse_sp.modelled_habitat_potential) stream ON frep.modelled_habitat_potential_fid = stream.fid
-LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, waterbody_poly_id from whse_sp.fwa_rivers_poly) riv ON riv.waterbody_poly_id = frep.fwa_rivers_poly_waterbody_poly_id
+thlb_proxy.june13_riparian_data_for_faib frep
+LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, channel_width, fid FROM thlb_proxy.modelled_habitat_potential) stream ON frep.modelled_habitat_potential_fid = stream.fid
+LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, waterbody_poly_id from thlb_proxy.fwa_rivers_poly) riv ON riv.waterbody_poly_id = frep.fwa_rivers_poly_waterbody_poly_id
 WHERE 
 	stream_class_in_field in ('S1', 'S2', 'S3', 'S4', 'S5', 'S6')
 ORDER BY distance desc"
