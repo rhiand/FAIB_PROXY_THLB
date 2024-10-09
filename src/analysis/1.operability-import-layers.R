@@ -27,28 +27,18 @@ import_bcgw_to_pg(src_schema    = "WHSE_FOREST_VEGETATION",
 				  grouping_name = "NULL",
 				  pg_conn_list  = conn_list)
 
-import_bcgw_to_pg(src_schema    = "WHSE_ADMIN_BOUNDARIES",
-				  src_layer     = "ADM_NR_REGIONS_SP",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "ADM_NR_REGIONS_SP",
-				  layer_id      = "region_name",
-				  geometry_name = "shape",
-				  geometry_type = "MultiPolygon",
-				  grouping_name = "NULL",
-				  pg_conn_list  = conn_list)
-
-
 ## post processing the stability layer
+## Filter the dataset retaining:
+classes_to_keep <- "('Potentially unstable', 'Potentially unstable after road building', 'Unstable')"
 query <- "DROP TABLE IF EXISTS thlb_proxy.ste_ter_attribute_polys_svw_union;"
 run_sql_r(query, conn_list)
-query <- "CREATE TABLE thlb_proxy.ste_ter_attribute_polys_svw_union AS
+query <- glue("CREATE TABLE thlb_proxy.ste_ter_attribute_polys_svw_union AS
 SELECT
 	ST_Union(stab.geom) as geom
 FROM
 thlb_proxy.ste_ter_attribute_polys_svw stab
 WHERE
-	stab.slope_stability_class_txt IN ('Potentially unstable', 'Potentially unstable after road building', 'Unstable')"
+	stab.slope_stability_class_txt IN {classes_to_keep}")
 run_sql_r(query, conn_list)
 
 query <- "CREATE TABLE thlb_proxy.ste_ter_attribute_polys_svw_ar AS

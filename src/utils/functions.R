@@ -356,41 +356,50 @@ create_sampler <- function(db, q){
   # sampler: the spatial vector of blks 
   # unit: The spatial vector of the boundary of interest (e.g., unit<-create_unit(bnd_path))
 
-elev_inop <- function(elevation, sampler, unit){
-  message("Executing elev_inop function to sample elevation by cutblocks to determine 99 percent cutoff")
-  blk_elev <- terra::extract(elevation, sampler) # extract the elevation within the boundary of 'sampler' in this case cutblocks.
-  blkelev99 <- quantile(blk_elev$bc_elevation_25m_bcalb, probs = 0.99, na.rm = TRUE) # determine 99th percentile
-  message("Cut block dem 99 percentile is ", blkelev99)
-  df_to_pg(Id(schema = 'thlb_proxy', table = glue('inoperable_gr_skey')), )
-  unit_elev2 <- terra::extract(elevation, unit) # extract elevation for the unit
-  unitelev100 <- quantile(unit_elev2$bc_elevation_25m_bcalb, probs = 1, na.rm = TRUE) # determine maximum elevation within the unit.
-  message("The unit maximum is ", unitelev100)
-  
-  elev_cutoff <- c(-Inf, blkelev99, 0, blkelev99, unitelev100, 1, unitelev100, Inf, 0)
-  elev_matrix <- matrix(elev_cutoff, ncol = 3, byrow = TRUE)
-  ### reclassify elevation raster based on cutoffs
-  return(terra::classify(elevation, elev_matrix))
+elev_inop <- function(elevation, sampler, unit, tsa_number, conn_list){
+	message("Executing elev_inop function to sample elevation by cutblocks to determine 99 percent cutoff")
+	blk_elev <- terra::extract(elevation, sampler) # extract the elevation within the boundary of 'sampler' in this case cutblocks.
+	blkelev99 <- quantile(blk_elev$bc_elevation_25m_bcalb, probs = 0.99, na.rm = TRUE) # determine 99th percentile
+	message("Cut block dem 99 percentile is ", blkelev99)
+	rm(blk_elev)
+
+	unit_elev2 <- terra::extract(elevation, unit) # extract elevation for the unit
+	unitelev100 <- quantile(unit_elev2$bc_elevation_25m_bcalb, probs = 1, na.rm = TRUE) # determine maximum elevation within the unit.
+	message("The unit maximum is ", unitelev100)
+	rm(unit_elev2)
+
+	elev_cutoff <- c(-Inf, blkelev99, 0, blkelev99, unitelev100, 1, unitelev100, Inf, 0)
+	elev_matrix <- matrix(elev_cutoff, ncol = 3, byrow = TRUE)
+	### reclassify elevation raster based on cutoffs
+	df <- data.frame(cutblock_percentile_99 = blkelev99, unit_max = unitelev100, tsa = tsa_number, grid = 'elevation')
+	df_to_pg(Id(schema = 'thlb_proxy', table = glue('inoperable_thresholds')), df, conn_list, overwrite=FALSE, append=TRUE)
+	return(terra::classify(elevation, elev_matrix))
 }
 
 
 # determine the 99th percentile of slope within block boundaries.
-slp_inop <- function(slope, sampler, unit){
-  message("Executing slp_inop function to sample slope by cut block to determine 99 percent cutoff")
-  blk_slp <- terra::extract(slope,sampler)
-  blk_slp99 <- quantile(blk_slp$slope, probs = 0.99, na.rm = TRUE)
-  message("Cut block slope 99 percentile is ", blk_slp99)
-  
-  unit_slp <- terra::extract(slope, unit)
-  unit_slp100 <- quantile(unit_slp$slope, probs = 1, na.rm = TRUE)
-  message("The unit maximum is ", unit_slp100)
-  
-  slp_cutoff <- c(-Inf, blk_slp99, 0, blk_slp99, unit_slp100, 1, unit_slp100, Inf, 0)
-  slp_matrix <- matrix(slp_cutoff, ncol = 3, byrow = TRUE)
-  #### reclassify elevation slope based on cutoffs
-  return(terra::classify(slope, slp_matrix))
+slp_inop <- function(slope, sampler, unit, tsa_number, conn_list){
+	message("Executing slp_inop function to sample slope by cut block to determine 99 percent cutoff")
+	blk_slp <- terra::extract(slope,sampler)
+	blk_slp99 <- quantile(blk_slp$slope, probs = 0.99, na.rm = TRUE)
+	message("Cut block slope 99 percentile is ", blk_slp99)
+	rm(blk_slp)
+
+	unit_slp <- terra::extract(slope, unit)
+	unit_slp100 <- quantile(unit_slp$slope, probs = 1, na.rm = TRUE)
+	message("The unit maximum is ", unit_slp100)
+	rm(unit_slp)
+
+	slp_cutoff <- c(-Inf, blk_slp99, 0, blk_slp99, unit_slp100, 1, unit_slp100, Inf, 0)
+	slp_matrix <- matrix(slp_cutoff, ncol = 3, byrow = TRUE)
+	df <- data.frame(cutblock_percentile_99 = blk_slp99, unit_max = unit_slp100, tsa = tsa_number, grid = 'slope')
+	df_to_pg(Id(schema = 'thlb_proxy', table = glue('inoperable_thresholds')), df, conn_list, overwrite=FALSE, append=TRUE)
+
+	#### reclassify elevation slope based on cutoff
+	return(terra::classify(slope, slp_matrix))
 }
 
-# The aggregate function combines the area that is inoperable due to elevation, stability and slope and aggregates to 100m resoltion. 
+# The aggregate function combines the area that is inoperable due to elevation, stability and slope and aggregates to 100m resolution. 
 # function arguments:
   # stability: binary raster where 1 = unstable (inoperable); 0 = stable (operable)
   # inoperable_elevation: binary raster where 1 = high elevation > 99th percentile (inoperable); 0 = elevation within practice limits (operable)
@@ -402,7 +411,7 @@ aggregate <- function(stability, inoperable_elevation, inoperable_slope, out_ras
 	# combine stability, slope and elevation rasters to get overall inoperable raster. values range from 0 (operable) to 3 (all three variables inoperable)
 	# message("Performing raster math")
 	res25m <- stability + inoperable_elevation + inoperable_slope
-	writeRaster(res25m, "data\\analysis\\res25m.tif", overwrite=TRUE)
+	# writeRaster(res25m, "data\\analysis\\res25m.tif", overwrite=TRUE)
 
 	### reclassify the raster values: 
 	## if the value in the res25m raster cell is between -Inf and 0, the new value is 0; 
@@ -443,4 +452,93 @@ aggregate <- function(stability, inoperable_elevation, inoperable_slope, out_ras
 
 	# merge the data frame based on cell ID
 	return(left_join(tmp2, tmp3, by = join_by("cell")))
+}
+
+
+# This function reads and cleans two ecas data files, combines them and performs data filtering and calculation.
+# ecas_interior_path_2023 Path to the 2023 data CSV file.
+# ecas_interior_path_2016 Path to the 2016 data CSV file.
+# tsa_num = TSA number for filtering.
+
+# the function returns a list containing the 1st percentile minimum harvest volume (mhv) and the filtered data frame "tcas_df".
+# 
+get_ecas <- function(ecas_interior_path_2023, ecas_interior_path_2016, tsa_num=27){
+	message("Executing get_ecas function which cleans and combines stone queries: ignore warnings")
+
+	# Read data from CSV files:
+	ecas2023 <- read_csv(ecas_interior_path_2023,
+						show_col_types = FALSE) %>% 
+	rename_all(~ str_replace(., "^\\S* ", "")) %>% # Strip any leading non-whitespace characters and spaces
+	clean_names() %>% # make labels snake_case (each space is replaced with an underscore)
+	mutate_if(is.numeric, ~ replace_na(., 0)) # if numeric replace NAs with zeros
+
+
+
+	ecas2016 <- read_csv(ecas_interior_path_2016,
+						show_col_types = FALSE) %>%
+		# Remove all starting 'x' from column names
+		# rename_all(~ str_replace(., "^x", "")) %>%
+		# Strip any leading non-whitespace characters and spaces
+		rename_all(~ str_replace(., "^\\S* ", "")) %>%
+		clean_names() %>%
+		# Convert variables from character to numeric
+		mutate(
+			man_unit = as.numeric(man_unit), 
+			indicated_rate = as.numeric(indicated_rate),
+			total_toa_amount = as.numeric(total_toa_amount)
+		) %>%
+		mutate_if(is.numeric, ~ replace_na(., 0))
+
+  # Identify columns with type mismatches and remove them:
+  col_list <- compare_df_cols(ecas2023,  # dump cols from 2016 with type mismatch
+                              ecas2016,
+                              return = "mismatch") %>%
+    select(column_name) %>%
+    pull()
+  
+	#   ecas2016 <- ecas2016 %>% select(all_of(-col_list)) # removes columns from ecas2016 that are not in ecas 2023
+	ecas2016 <- ecas2016 %>%
+		select(-one_of(col_list))  # Use -one_of() to drop the columns
+
+	
+  # combine the clean data:
+  ecas <- bind_rows(   
+    list(
+      e2023 = ecas2023,
+      e2016 = ecas2016
+    ),
+    .id = "id"
+  ) %>%
+    mutate_if(is.numeric, ~ replace_na(., 0)) %>%
+    remove_empty("cols") %>%
+    group_by(mark) %>%
+    # only keep record with most recent appraisal effective date.
+    arrange(desc(app_eff_date)) %>%
+    slice(1) %>%
+    ungroup()
+  
+  # Filter data based on TSA number and licence types (limit the sample to major licensees and BCTS):
+  tsa <- ecas %>% 
+    filter(man_unit == tsa_num) %>%
+    filter(!str_detect(licence, "T|L|W")) # filter to records where the licence does not contain "T", "L", or "W".
+  
+  # calculate the volume per hectare based on harvest system. 
+  # gscc = ground skidding clear cut
+  # chgcc = cable/highlead volume
+  tsa <- tsa %>% mutate(tvph = case_when( # assign system values to TVPH variable
+    gscc_vol_ha > 0 & chgcc_vol_ha == 0 ~ gscc_vol_ha, 
+    chgcc_vol_ha > 0 & gscc_vol_ha == 0 ~ chgcc_vol_ha,
+    TRUE ~ ncv / tot_merch_area
+  ))
+  
+  # filter to ground skid clear cut timber marks.
+  sub <- tsa %>% filter(gscc_vol > 0 & chgcc_vol_ha == 0)
+  
+  mhv01<-quantile(sub$gscc_vol_ha, 
+           probs = .01)
+  message(" The 1 percentile minimum harvest volume is ", mhv01 )
+  
+  # store/return as a list with the mhv variable (1st percentile of observed min vol/ha) and the combined/cleaned ecas data frame.
+  # minimum vol/ha is for ground_skid only and includes all species.
+  return(list(mhv = mhv01, tcas_df = tsa)) 
 }

@@ -4,7 +4,7 @@ source('src/utils/functions.R')
 ## one time runs are commented out to help with rerunning code
 conn_list <- dadmtools::get_pg_conn_list()
 
-
+## WETLANDS
 ## Create new fields in the `thlb_proxy.fwa_wetlands_poly` layer for population
 query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly DROP COLUMN IF EXISTS riparian_class;"
 run_sql_r(query, conn_list)
@@ -287,7 +287,7 @@ run_sql_r(query, conn_list)
 query <- "DROP TABLE IF EXISTS public.w5_temp_table;"
 run_sql_r(query, conn_list)
 
-
+## LAKES
 ## Create new fields in the `thlb_proxy.fwa_lakes_poly` layer for population
 
 query <- "ALTER TABLE thlb_proxy.fwa_lakes_poly DROP COLUMN IF EXISTS riparian_class;"
@@ -489,6 +489,8 @@ WHERE
 	l4.waterbody_poly_id = wet.waterbody_poly_id"
 run_sql_r(query, conn_list)
 
+
+## STREAMS
 ## Add fields to `thlb_proxy.modelled_habitat_potential` for later use
 query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS riparian_class;"
 run_sql_r(query, conn_list)

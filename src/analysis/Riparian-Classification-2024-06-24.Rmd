@@ -13,13 +13,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Riparian Classification
 
-This document outlines data sources, methods and assumptions of how the riparian classification dataset was modeled. Analysis was performed in June, 2024 by Hailey Eckstrand.  
+This document outlines data sources, methods and assumptions of how the riparian classification dataset was modeled. Analysis was performed in June, 2024 by FAIB.
 
 Contact: Hailey.Eckstrand@gov.bc.ca  
 
-### Summary (tl;dr)
+### Summary
 
 The riparian classes were derived using the following input datasets and methodology. 
+
 Data Sources:
 
 * FWA Wetlands, metadata [link](https://catalogue.data.gov.bc.ca/dataset/freshwater-atlas-wetlands)
@@ -32,40 +33,40 @@ Data Sources:
 + Fish Habitat Accessibility MODEL to determine fish presence/absence (obtained from: Simon Norris via Craig Mount)
 + Modeled channel width (obtained from: Simon Norris via Craig Mount)
 
-Layers were classified according to this FRPA [regulation](https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829).
 
-Methodology: 
+__Classification Data Inputs and Key Assumptions__
+
+Layers were classified according to this FRPA [regulation guidelines] (https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829).
+
+__Streams__
+The primary data sources used to derive stream classifications were the Fish Habitat Accessibility Model, FWA Rivers, Community Watersheds, the Mapped Floodplains in BC, and modeled channel width. The data format of the Fish Habitat Accessibility Model is a spatial linestring stream network for the province, identical to the FWA Stream Network but divided into smaller segments or reaches.
+
+In order to assign stream riparian classes, the following pre-processing steps were performed:
+
+* Each stream network reach was assigned a value for community watershed presence: TRUE if the stream falls within a community watershed, and FALSE if it does not.
+* Each stream network is assigned a modeled channel width. See Data Sources for further description of the channel width model and its limitations. When channel width was unavailable, stream order was used as a proxy for channel width.
+* Each stream network reach was assigned a value for active floodplain presence: TRUE if the stream falls within an active floodplain, and FALSE if it does not.
+
+Stream classification was assigned to each stream reach using the above added attributes. For a complete stream classification, the FWA Rivers polygon dataset is typically used in Timber Supply Analyses. It is important to include this dataset to ensure that river areas are accounted for in riparian zones. To classify each FWA River polygon, the most common stream classification (i.e., the mode) from the overlapping stream reaches was assigned to the polygon. As river polygons are known to be large rivers, it was assumed erroneous if any were classified as S6 (channel width <= 3m), S3 (channel width >= 1.5m and < 5m) or S4 (< 1.5m). Any FWA rivers classified as S6 were altered to S5 and any classified as S3 or S4 were changed to S2. 
+
+__Lakes__
+The FWA Lake polygons served as the primary spatial layer for deriving area-based classifications. For the L2, L3, and L4 classifications, Biogeoclimatic Ecosystem Classification (BEC) attributes were required. To assign BEC zones and subzones to each lake, a spatial intersection was performed between the BEC layer and the lake polygons. If a lake intersected multiple BEC zones or subzones, the zone or subzone covering the largest portion of the lake was selected.
+
+__Wetlands__
+The FWA Wetland polygons served as the primary spatial layer for deriving area-based classifications. For the W2, W3, and W4 classifications, Biogeoclimatic Ecosystem Classification (BEC) attributes were required. To assign BEC zones and subzones to each wetland, a spatial intersection was performed between the BEC layer and the wetlands polygons. If a wetland intersected multiple BEC zones or subzones, the zone or subzone covering the largest portion of the wetland was selected.
+
+__Tools and Technologies__
 
 The methodology used an integrated approach using R and PostGIS. R scripts were used to construct and execute SQL queries on the PostGIS database. The heavy spatial operations were performed directly within the PostGIS database, leveraging its robust spatial functions and indexes. 
-
-The analysis used modeled stream width, community watersheds and modeled fish presence/absence to generate classifications. This is different from the common method that analysts perform where stream order is used as a proxy for channel width.
-
-Although management zone width and base area retention is prescribing forester, this analysis followed FRPA Division 3 — Riparian Areas, subsection 52 - Basal Area to be Retained Within Riparian Management Zone (%).
-
-The classification results were compared with Boundary TSA and found to be identical, except for explainable differences where the methods diverged.
-The results were outputted into a geopackage intended for the analysis ready data (ARD).
-
 
 ### Known Limitations
 <details>
   <summary> Expand for known limitations of provincial modeled lake, wetland and stream classification </summary>
   <br>
   
-__Analysis Methodology Limitations__
-
-__Double Lined Rivers__ - The classification of double-lined rivers (I.e., FWA Rivers Polygons) differs from regulation. This analysis uses a two-step approach:
-
-1. Each stream reach is classified individually.
-2. The most common riparian class among all the stream reaches that intersect with an FWA Rivers Polygon is identified.
-The FWA Rivers Polygon is then assigned the most common riparian class from the intersecting stream reaches.
-
-As FWA Rivers are known to be large rivers, it was assumed erroneous if any were classified as S6 (channel width <= 3m), S3 (channel width >= 1.5m and < 5m) or S4 (< 1.5m). Any FWA rivers classified as S6 were altered to S5 and any classified as S3 or S4 were changed to S2. 
-
-Many double-lined rivers were not classified because they lack a stream reach within them. This commonly occurs in braided rivers, where a smaller river polygon is attached to a larger polygon but lacks any stream network linework. In these instances, the FWA polygon was assigned the lowest classification among all touching FWA polygons.
-
 __General Limitations__
 
-__Stream__ - Riparian stream classification can only be assigned if the channels have been measured and sampled for fish presence or absence, which requires field work. As such, no provincial riparian classification database exists. This stream classification model is __not appropriate__ for operational use. It is acceptable for generating broad landscape level summary stats for something like AAC Impacts and TSR.
+__Stream__ - Riparian stream classification can only be assigned if the channels have been measured and sampled for fish presence or absence, which requires field work. As such, no provincial riparian classification database exists. This stream classification model is __not appropriate for operational use__. It is acceptable for generating broad landscape level summary stats for something like AAC Impacts and TSR.
 
 Lisa Nordin, Aquatic Resources Stewardship Evaluation Office, was contacted to get clarification on regulation. During the email exchange, she identified common misclassifications and other inherent problems with using modeled data and the FWA.
 
@@ -81,6 +82,23 @@ Identified problems with using the FWA wetlands for classify riparian zones for 
 > _"Non classified wetlands (NCWs) are not included management areas. However, it should be noted that in many (many!) cases, NCWs were incorrectly identified as being separate when in fact they are not - sometimes because of a treed section between them and the next wetland that makes a GIS user believe it is not a wetland type, or incorrect spatial vegetation layers. This was occurring so frequently, webinars for practioners were ran on wetland identification and delineation, [link](https://www.fpbc.ca/professional-development/continuing-professional-development/offerings/webinar-recordings/) . The video describes the value of ground verification and site indicators, but there is also some good info on spatial sources of information."_
 
 Lisa is correct to have these concerns about the classification of S5 and S6 streams and non-classified wetlands from an operational perspective. Hence the usage limitations for this modeled dataset.
+
+__Analysis Methodology Limitations__
+
+__FWA River Polygons__ - A review of several TSAs was conducted to understand how river polygons are classified. The guidelines specify that a stream is classified as S1A if it averages, over a one-kilometer length, either a stream width or an active floodplain width of 100 meters or more. A stream is classified as S1B if its width exceeds 20 meters but it does not meet the criteria for S1A. Since TSAs often lacked access to channel width data, they typically classified river polygons S1A or S1B by manually measuring features from the river polygon or satellite imagery. As this analysis has access to modelled channel width, that was leveraged to classify the river polygons.
+
+The following approach was used:
+
+1. Each stream reach is classified individually.
+2. The stream reaches within a river polygon are identified
+3. The river polygon is assigned the classification of the most common riparian class (I.e., mode) of the stream reaches that it overlaps.
+
+As FWA Rivers are known to be large rivers, it was assumed erroneous if any were classified as S6 (channel width <= 3m), S3 (channel width >= 1.5m and < 5m) or S4 (< 1.5m). Any FWA rivers classified as S6 were altered to S5 and any classified as S3 or S4 were changed to S2. 
+
+Many river polygons were not classified because they lack a stream reach within them. This commonly occurs in braided rivers, where a smaller river polygon is attached to a larger polygon but lacks any stream network linework. In these instances, the FWA polygon was assigned the lowest classification among all intersecting FWA polygons.
+
+This approach is considered a limitation as it is new and differs from TSA analysis.
+
 
 </details>
 
@@ -105,15 +123,15 @@ Externally provided data sources:
 * __FREP riparian 2006 - 2023 monitoring data__ - Lisa Nordin has provided an abbreviated version of the data. Sensitive fields were removed and it was recommended to use Albers for the spatial coordinates as the data specialist ensures Albers is correct.
   + Filename: `data/input/June13_Riparian data_for_FAIB.xlsx`
   
-* __Fish Habitat Accessibility MODEL__ - Fish presence/absence is required to determine stream classification. The provincial BC Fish Passage database was obtained with the approval of Craig Mount. Approval was granted provided the usage is not for operational purposes as the model is only appropriate for use as a broad landscape analysis tool. The dataset was provided by Simon Norris, the Fish Passage contractor. Dataset contains linear_feature_id, allowing them to be related to the FWA stream network table.
+* __Fish Habitat Accessibility MODEL__ - Fish presence/absence is required to determine stream classification. The provincial BC Fish Passage database was obtained with the approval of Craig Mount. Approval was granted provided the usage is not for operational purposes as the model is only appropriate for use as a broad landscape analysis tool. The dataset was provided by Simon Norris, the Fish Passage contractor. The dataset is identical to the FWA stream network table but divided into smaller segments. The dataset contains linear_feature_id, allowing it to be related to the FWA stream network table.
   + Filename: `data/input/fishpassage.gpkg.zip`
 
-* __Channel width__ - Also provided by Craig Mount. The channel width model is invalid when the contributing area is outside BC. There is no field that identifies when contributing area extends to outside BC. Note from Simon, June 19, 2024 - "Some progress is being made on that though - turns out Daniel W at the Cultus Lake lab has done the required trans-boundary stream work. He is sharing the data - I haven't seen it yet but I hope to be able to incorporate fixed per-stream upstream area numbers in fwapg sometime soon." The dataset was also provided by Simon Norris. Dataset contains linear_feature_id, allowing them to be related to the FWA stream network table.
+* __Channel width__ - Also provided by Craig Mount. The channel width model is invalid when the contributing area is outside BC. There is no field that identifies when contributing area extends to outside BC. Note from Simon, June 19, 2024 - "Some progress is being made on that though - turns out Daniel W at the Cultus Lake lab has done the required trans-boundary stream work. He is sharing the data - I haven't seen it yet but I hope to be able to incorporate fixed per-stream upstream area numbers in fwapg sometime soon." The dataset was also provided by Simon Norris. Dataset contains linear_feature_id, allowing them to be related to the FWA stream network table. For this analysis, stream reaches with a contributing area outside BC were identified manually and set to NULL. 
   + Filename: `data/input/fwa_stream_networks_channel_width.csv.gz`
 
 
 Description of how channel width was calculated:  
-•	“To obtain estimates of channel width upstream of crossing locations, where available, bcfishpass was utilized to pull average channel gradients from Fisheries Information Summary System (FISS) site assessment data (MoE 2019b) or PSCIS assessment data (MoE 2021) and associate with stream segment lines. When both FISS and PSCIS values were associated with a particular stream segment, or multiple FISS channel widths are available a mean of the average channel widths was used. To model channel width for 2nd order and above stream segments without associated FISS or PSCIS sites, first fwapg was used to estimate the drainage area upstream of the segment. Then, rasters from ClimateBC (Wang et al. 2012) were downloaded to a postgresql database, sampled for upstream watershed areas associated with each stream segment and a mean annual precipitation weighted by upstream watershed area was calculated. In early 2021, Bayesian statistical methods were developed to predict channel width in all provincial freshwater atlas stream segments where width measurements had not previously been measured in the field. The model was based on the relationship between watershed area and mean annual precipitation weighted by upstream watershed area (Thorley and Irvine 2021). In December of 2021, Thorley and Irvine (2021) methods were updated using on a power model derived by Finnegan et al. (2005) which relates stream discharge to watershed area and mean annual precipitation. Data (n = 24849) on watershed size, mean annual precipitation and measured channel width was extracted from the provincial freshwater atlas (FLNRORD 2021; GeoBC 2022), the BC Data Catalogue fisheries datasets (MoE 2020b, 2021) and Wang et al. (2012) utilizing bcfishpass (Norris [2020] 2021) and fwapg (Norris [2019] 2021). Details of this analysis and subsequent outputs can be reviewed [here](https://www.poissonconsulting.ca/f/859859031) (Thorley, Norris, and Irvine 2021).”  Reference: BC Fish Passage [paper](https://a100.gov.bc.ca/pub/acat/documents/r62435/PEA_F23_F_3761_DCA_1697814406164_EFF767D4C4.pdf)
+•	_“To obtain estimates of channel width upstream of crossing locations, where available, bcfishpass was utilized to pull average channel gradients from Fisheries Information Summary System (FISS) site assessment data (MoE 2019b) or PSCIS assessment data (MoE 2021) and associate with stream segment lines. When both FISS and PSCIS values were associated with a particular stream segment, or multiple FISS channel widths are available a mean of the average channel widths was used. To model channel width for 2nd order and above stream segments without associated FISS or PSCIS sites, first fwapg was used to estimate the drainage area upstream of the segment. Then, rasters from ClimateBC (Wang et al. 2012) were downloaded to a postgresql database, sampled for upstream watershed areas associated with each stream segment and a mean annual precipitation weighted by upstream watershed area was calculated. In early 2021, Bayesian statistical methods were developed to predict channel width in all provincial freshwater atlas stream segments where width measurements had not previously been measured in the field. The model was based on the relationship between watershed area and mean annual precipitation weighted by upstream watershed area (Thorley and Irvine 2021). In December of 2021, Thorley and Irvine (2021) methods were updated using on a power model derived by Finnegan et al. (2005) which relates stream discharge to watershed area and mean annual precipitation. Data (n = 24849) on watershed size, mean annual precipitation and measured channel width was extracted from the provincial freshwater atlas (FLNRORD 2021; GeoBC 2022), the BC Data Catalogue fisheries datasets (MoE 2020b, 2021) and Wang et al. (2012) utilizing bcfishpass (Norris [2020] 2021) and fwapg (Norris [2019] 2021). Details of this analysis and subsequent outputs can be reviewed [here](https://www.poissonconsulting.ca/f/859859031) (Thorley, Norris, and Irvine 2021).”_  Reference: BC Fish Passage [paper](https://a100.gov.bc.ca/pub/acat/documents/r62435/PEA_F23_F_3761_DCA_1697814406164_EFF767D4C4.pdf)
 
 Channel width code - https://github.com/smnorris/fwapg/tree/main/extras/channel_width/sql
 
@@ -146,6 +164,13 @@ It was unclear whether "non-W1 wetlands" included non-classified wetlands and un
 > _"The FPPR definitions carried over from the Code and are based on those in the FPC Riparian Management Area Guidebook (which is no longer referenced in our regulation). The W5 class is a wetland complex meaning there are 2 or more individual wetlands with overlapping RMAs. The FPPR s.48(2) is just outlining the distance when that would occur. So, a W1 has an RMA of 50. To have two of them overlap, you would need a distance of less than 100m between them.  W2, W3, and W4 wetlands have RMAs of 30. So if you had one W1 and any one of the others, then 80m is your max overlap distance. Two of the smaller wetlands together would be 60m, but the polygon (including the distance between them) has to be more than 5 ha for it to be a W5, hence the "and" after iii. 
 To answer your second questions, unfortunately NCWs are not included in the W5 classification because they do not have an RMA associated with them."_
 
+As such, W5's were assigned using the following workflow:
+
+* buffer's were created on polygons classified as W1 (50m), W2 (30m), W3 (30m) or W4 (30m)  
+* all buffers that overlapped with one or more other buffers were identified and grouped together  
+* the sum of the wetland area of all identified overlapping groups was calculated  
+* if the area was >= 5 ha, W5 was assigned  
+
 </details>
 
 ### Setup
@@ -161,12 +186,10 @@ Once the setup is done for R `dadmtools` R package, bring in the required librar
 ## The following 2 lines are for your first time installing dadmtools library
 install.packages("devtools")
 library(devtools)
-##install_github("bcgov/FAIB_DADMTOOLS")
-install_github("IaianMcDougall/FAIB_DADMTOOLS")
+install_github("bcgov/FAIB_DADMTOOLS")
 install.packages("dplyr")
 
 ```
-
 
 #### __R custom functions used in analysis__
 
@@ -459,14 +482,6 @@ run_sql_r(query, conn_list)
 query <- "UPDATE thlb_proxy.modelled_habitat_potential s SET line_center_point = ST_LineInterpolatePoint(geom_ls, 0.5);"
 run_sql_r(query, conn_list)
 
-## create an index on the center point
-query <- "DROP INDEX IF EXISTS thlb_proxy.modelled_habitat_potential_center_point_idx;"
-run_sql_r(query, conn_list)
-query <- "CREATE INDEX modelled_habitat_potential_center_point_idx ON thlb_proxy.modelled_habitat_potential USING gist(line_center_point);"
-run_sql_r(query, conn_list)
-query <- "ANALYZE thlb_proxy.modelled_habitat_potential;"
-run_sql_r(query, conn_list)
-
 ## drop the interim linestring geometry
 query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS geom_ls"
 run_sql_r(query, conn_list)
@@ -495,20 +510,6 @@ WHERE
 run_sql_r(query, conn_list)
 
 
-```
-Add some indexes for speed
-```{r eval = FALSE}
-query <- "CREATE INDEX modelled_habitat_potential_fish_idx ON thlb_proxy.modelled_habitat_potential USING btree(fish_habitat)"
-run_sql_r(query, conn_list)
-
-query <- "CREATE INDEX modelled_habitat_potential_comm_ws_idx ON thlb_proxy.modelled_habitat_potential USING btree(community_watershed)"
-run_sql_r(query, conn_list)
-
-query <- "CREATE INDEX modelled_habitat_potential_width_idx ON thlb_proxy.modelled_habitat_potential USING btree(channel_width)"
-run_sql_r(query, conn_list)
-
-query <- "ANALYZE thlb_proxy.modelled_habitat_potential"
-run_sql_r(query, conn_list)
 ```
 
 Bring in manually created dataset of stream id's within floodplain where the width was less than 100m
@@ -704,6 +705,7 @@ run_sql_r(query, conn_list)
 
 ```
 __Calculate S1B streams:__
+
 > _"(b) S1B, if the stream width is greater than 20 m but the stream does not have a riparian class of S1A"_
 
 ```{r eval = FALSE}
@@ -728,6 +730,7 @@ AND
 run_sql_r(query, conn_list)
 ```
 __Calculate S2 streams:__
+
 > _"(c) S2, if the stream width is not less than 5 m but not more than 20 m"_
 
 ```{r eval = FALSE}
@@ -754,6 +757,7 @@ run_sql_r(query, conn_list)
 ```
 
 __Calculate S3 streams:__
+
 > _"(d)S3, if the stream width is not less than 1.5 m but is less than 5 m;"_
 
 ```{r eval = FALSE}
@@ -780,6 +784,7 @@ run_sql_r(query, conn_list)
 ```
 
 __Calculate S4 streams:__
+
 > _"(e) S4, if the stream width is less than 1.5 m."_
 
 ```{r eval = FALSE}
@@ -803,6 +808,7 @@ run_sql_r(query, conn_list)
 ```
 
 __Calculate S5 streams:__
+
 > _"(3)A stream that is not a fish stream and is located outside of a community watershed has the following riparian class:
  (a)S5, if the stream width is greater than 3 m;"_
 
@@ -828,6 +834,7 @@ run_sql_r(query, conn_list)
 ```
 
 __Calculate S6 streams:__
+
 > _"(b)S6, if the stream width is 3 m or less."_
 
 ```{r eval = FALSE}
@@ -854,9 +861,9 @@ run_sql_r(query, conn_list)
 
 __Unclassified streams__
 
-Many streams are left unclassified as modeled channel width does not exist. This could be either as the stream's catchment basin expands to outside BC or from gaps within the modeled channel width dataset. Classification split up via admin areas based on advice from Erin Moore suggesting the coast is quite different than the interior.
+Many streams have a NULL value for modeled channel width. This may occur either because the stream's catchment basin extends beyond BC or due to gaps in the modeled channel width dataset. Stream classification was divided by administrative areas, following advice from Erin Moore, who noted significant differences between coastal and interior regions.
 
-North and South Admin Areas:
+_North and South Admin Areas_
 
 Approach taken from 2024 Boundary TSA for North and South Admin Areas. 
 Source: `file:///G:/!Workgrp/Analysts/!Project/TSA_Projects/active/KootenayLake_TSA13/TSR4/AnalysisReport/TSA13_TSR4_AnalysisReport/03-data-analysis.html#riparian-analysis`
@@ -874,7 +881,7 @@ stream_data <- data.frame(
 kable(stream_data, caption='Stream Classification Assignment within North and South Admin Area (when channel width model does not exist)')
 ```
 
-Coast Admin Area:
+_Coast Admin Area_
 
 Approach taken from 2020 North Island TSA. Source:
 https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/tsr-annual-allowable-cut/48tsdp_2020.pdf
