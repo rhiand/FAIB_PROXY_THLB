@@ -1,6 +1,6 @@
 src_type,src_path,src_lyr,suffix,dst_schema,dst_tbl,query,inc,rslt_ind,flds_to_keep,notes
 gdb,S:\FOR\VIC\HTS\FAIB_DATA_FOR_DISTRIBUTION\ForestHarvestRestrictionsAndProtections\Resource_Report_July_2023\PublishedVersion\ForestHarvestingRestrictions.gdb,ForestHarvestingRestrictions,fhr,whse,rr_restriction,rr_restriction is not null,0,0,,
-gdb,S:\FOR\VIC\HTS\FAIB_DATA_FOR_DISTRIBUTION\THLB\TFL_TSA_THLB\2023\BC_THLB_ALL_20231115.gdb,THLB,thlb,whse,all_thlb,,0,0,"fid,tsa_number,thlb_fact,tsr_report_year,abt_name",
+gdb,S:\FOR\VIC\HTS\FAIB_DATA_FOR_DISTRIBUTION\THLB\TFL_TSA_THLB\2024\BC_THLB_ALL_20240707.gdb,THLB,thlb,whse,thlb_tsa_tfl,,1,0,,
 oracle,bcgw,WHSE_ADMIN_BOUNDARIES.ADM_NR_DISTRICTS_SP,nr_district,whse,adm_nr_districts_sp,,0,0,"objectid,DISTRICT_NAME,ORG_UNIT,ORG_UNIT_NAME,REGION_ORG_UNIT,REGION_ORG_UNIT_NAME",
 oracle,bcgw,WHSE_FOREST_VEGETATION.F_OWN,f_own,whse,f_own,,0,0,"objectid,own,schedule,ownership_description,data_source",
 gdb,W:\FOR\VIC\HTS\ANA\Workarea\PROVINCIAL\provincial.gdb,tsa_boundaries_2020,tsa,whse,tsa_boundaries,,0,0,,
@@ -20,4 +20,4 @@ raster,C:\projects\thlb-proxy-comparison-2024-04-16\data\raw\var2011bc.tif,flyin
 gdb,C:\projects\requests\riparian_forest_biodiversity-2024-07-31\QS_Plan_Area\QS_Plan_Area.gdb,QS_Plan_Area,,public,QS_Plan_Area,,0,0,,
 gdb,W:\FOR\VIC\HTS\DAM\WorkArea\Mcdougall\Projects\2024\consolidated_cutblocks\july27_old_method\ccInputs_1.gdb,Cut_Block_all_BC,,whse,cut_block_old,,0,0,,
 gdb,W:\FOR\VIC\HTS\DAM\WorkArea\Mcdougall\Projects\2024\consolidated_cutblocks\july27_new_method\ccInputs_1.gdb,Cut_Block_all_BC,,whse,cut_block_new,,0,0,,
-gdb,S:\FOR\VIC\HTS\FAIB_DATA_FOR_DISTRIBUTION\THLB\TSA_THLB\TSA_THLB_2024_07_11.gdb,prov_THLB_tsas,,whse,thlb_tsa,,1,0,,
+gdb,S:\FOR\VIC\HTS\FAIB_DATA_FOR_DISTRIBUTION\THLB\TSA_THLB\TSA_THLB_2024_07_11.gdb,prov_THLB_tsas,,whse,thlb_tsa,,0,0,,
