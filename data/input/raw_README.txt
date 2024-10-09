@@ -1,6 +1,20 @@
 Hailey Eckstrand
 June 5, 2024
 
+ISTONE II All marks as of March 29 2016.xlsx
+CSTONE II All marks as of March 8 2016.xlsx
+Source -> G:\!Transfr\Stone_queries\2016\March 19, 2016
+InteriorStoneQuery2016.csv
+Source -> The first sheet of "ISTONE II All marks as of March 29 2016.xlsx", with the first 9 rows removed and saved as a csv.
+CoastStoneQuery2016.csv
+Source -> The first sheet of "CSTONE II All marks as of March 8 2016.xlsx", with the first 9 rows removed and saved as a csv.
+
+
+InteriorStoneQuery2023.csv
+Source -> G:\!Transfr\Stone_queries\2023\InteriorStoneQuery.csv
+CoastStoneQuery2023.csv
+Source -> G:\!Transfr\Stone_queries\2023\CoastStoneQuery.csv
+
 BCTS_StreamData.gdb.zip
 BCTS_StreamData.gpkg
 Source -> From Mike Fowler: "There is a geopackage callled: BCTS_Field_Streams that is my attempt to extract the field surveyed streams from the BCTS stream inventory.  The zip file in the same folder is the BCTS source dataset in it's entirety.  The CLASS field is sadly not domain controlled and has (S6), S6, S6-A etc for values.  I will let you do the string massage magic to better consolidate the stream classes!"
