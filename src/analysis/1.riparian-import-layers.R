@@ -9,107 +9,107 @@ conn_list <- dadmtools::get_pg_conn_list()
 
 ## Rationale: Kootenay Lake data package for riparian etc
 ## WHSE_BASEMAPPING.FWA_STREAM_NETWORKS_SP
-import_bcgw_to_pg(src_schema    = "WHSE_BASEMAPPING",
-				  src_layer     = "FWA_STREAM_NETWORKS_SP",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "FWA_STREAM_NETWORKS_SP",
-				  layer_id      = "linear_feature_id, watershed_group_id, edge_type, blue_line_key, watershed_key, fwa_watershed_code, local_watershed_code,watershed_group_code, downstream_route_measure, length_metre, gnis_name, stream_order, stream_magnitude",
-				  geometry_name = "geometry",
-				  geometry_type = "MultiLineString",
-				  grouping_name = "stream",
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_BASEMAPPING",
+				  src_layer      = "FWA_STREAM_NETWORKS_SP",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "FWA_STREAM_NETWORKS_SP",
+				  fields_to_keep = "linear_feature_id, watershed_group_id, edge_type, blue_line_key, watershed_key, fwa_watershed_code, local_watershed_code,watershed_group_code, downstream_route_measure, length_metre, gnis_name, stream_order, stream_magnitude",
+				  geometry_name  = "geometry",
+				  geometry_type  = "MultiLineString",
+				  grouping_name  = "stream",
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Kootenay Lake data package for riparian etc
 ## WHSE_BASEMAPPING.FWA_RIVERS_POLY
-import_bcgw_to_pg(src_schema    = "WHSE_BASEMAPPING",
-				  src_layer     = "FWA_RIVERS_POLY",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "FWA_RIVERS_POLY",
-				  layer_id      = "waterbody_poly_id,watershed_group_id,waterbody_type,gnis_name_1,fwa_watershed_code,local_watershed_code,watershed_group_code,left_right_tributary,feature_area_sqm,feature_length_m",
-				  geometry_name = "geometry",
-				  geometry_type = "MultiPolygon",
-				  grouping_name = NULL,
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_BASEMAPPING",
+				  src_layer      = "FWA_RIVERS_POLY",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "FWA_RIVERS_POLY",
+				  fields_to_keep = "waterbody_poly_id,watershed_group_id,waterbody_type,gnis_name_1,fwa_watershed_code,local_watershed_code,watershed_group_code,left_right_tributary,feature_area_sqm,feature_length_m",
+				  geometry_name  = "geometry",
+				  geometry_type  = "MultiPolygon",
+				  grouping_name  = NULL,
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Kootenay Lake data package for riparian etc
 ## WHSE_BASEMAPPING.FWA_LAKES_POLY
-import_bcgw_to_pg(src_schema    = "WHSE_BASEMAPPING",
-				  src_layer     = "FWA_LAKES_POLY",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "FWA_LAKES_POLY",
-				  layer_id      = "waterbody_poly_id,watershed_group_id,waterbody_type,gnis_name_1,fwa_watershed_code,local_watershed_code,watershed_group_code,left_right_tributary,feature_area_sqm,feature_length_m",
-				  geometry_name = "geometry",
-				  geometry_type = "MultiPolygon",
-				  grouping_name = NULL,
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_BASEMAPPING",
+				  src_layer      = "FWA_LAKES_POLY",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "FWA_LAKES_POLY",
+				  fields_to_keep = "waterbody_poly_id,watershed_group_id,waterbody_type,gnis_name_1,fwa_watershed_code,local_watershed_code,watershed_group_code,left_right_tributary,feature_area_sqm,feature_length_m",
+				  geometry_name  = "geometry",
+				  geometry_type  = "MultiPolygon",
+				  grouping_name  = NULL,
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Kootenay Lake data package for riparian etc
 ## WHSE_BASEMAPPING.FWA_WETLANDS_POLY
-import_bcgw_to_pg(src_schema    = "WHSE_BASEMAPPING",
-				  src_layer     = "FWA_WETLANDS_POLY",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "FWA_WETLANDS_POLY",
-				  layer_id      = "waterbody_poly_id,watershed_group_id,waterbody_type,gnis_name_1,fwa_watershed_code,local_watershed_code,watershed_group_code,left_right_tributary,feature_area_sqm,feature_length_m",
-				  geometry_name = "geometry",
-				  geometry_type = "MultiPolygon",
-				  grouping_name = NULL,
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_BASEMAPPING",
+				  src_layer      = "FWA_WETLANDS_POLY",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "FWA_WETLANDS_POLY",
+				  fields_to_keep = "waterbody_poly_id,watershed_group_id,waterbody_type,gnis_name_1,fwa_watershed_code,local_watershed_code,watershed_group_code,left_right_tributary,feature_area_sqm,feature_length_m",
+				  geometry_name  = "geometry",
+				  geometry_type  = "MultiPolygon",
+				  grouping_name  = NULL,
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Needed to calculate riparian buffers
 ## WHSE_WATER_MANAGEMENT.WLS_COMMUNITY_WS_PUB_SVW
-import_bcgw_to_pg(src_schema    = "WHSE_WATER_MANAGEMENT",
-				  src_layer     = "WLS_COMMUNITY_WS_PUB_SVW",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "WLS_COMMUNITY_WS_PUB_SVW",
-				  layer_id      = "wls_cw_sysid, cw_code, cw_name, cw_source_name, pod_number, cw_legislation, cw_date_created, cw_status, organization",
-				  geometry_name = "shape",
-				  geometry_type = "MultiPolygon",
-				  grouping_name = NULL,
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_WATER_MANAGEMENT",
+				  src_layer      = "WLS_COMMUNITY_WS_PUB_SVW",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "WLS_COMMUNITY_WS_PUB_SVW",
+				  fields_to_keep = "wls_cw_sysid, cw_code, cw_name, cw_source_name, pod_number, cw_legislation, cw_date_created, cw_status, organization",
+				  geometry_name  = "shape",
+				  geometry_type  = "MultiPolygon",
+				  grouping_name  = NULL,
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Needed to calculate riparian buffers
 ## whse_forest_vegetation.bec_biogeoclimatic_poly
-import_bcgw_to_pg(src_schema    = "WHSE_FOREST_VEGETATION",
-				  src_layer     = "bec_biogeoclimatic_poly",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "bec_biogeoclimatic_poly",
-				  layer_id      = "zone, subzone, variant, phase, natural_disturbance, map_label, bgc_label, zone_name, subzone_name, variant_name, phase_name, natural_disturbance_name, feature_area_sqm, feature_length_m",
-				  geometry_name = "geometry",
-				  geometry_type = "MultiPolygon",
-				  grouping_name = NULL,
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_FOREST_VEGETATION",
+				  src_layer      = "bec_biogeoclimatic_poly",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "bec_biogeoclimatic_poly",
+				  fields_to_keep = "zone, subzone, variant, phase, natural_disturbance, map_label, bgc_label, zone_name, subzone_name, variant_name, phase_name, natural_disturbance_name, feature_area_sqm, feature_length_m",
+				  geometry_name  = "geometry",
+				  geometry_type  = "MultiPolygon",
+				  grouping_name  = NULL,
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Needed to calculate floodplain for S1A streams
 ## WHSE_BASEMAPPING.CWB_FLOODPLAINS_BC_AREA_SP
-import_bcgw_to_pg(src_schema    = "WHSE_BASEMAPPING",
-				  src_layer     = "CWB_FLOODPLAINS_BC_AREA_SP",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "CWB_FLOODPLAINS_BC_AREA_SP",
-				  layer_id      = "floodplains_bc_area_id, floodplain_name, designation_date",
-				  geometry_name = "geometry",
-				  geometry_type = "MultiPolygon",
-				  grouping_name = NULL,
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_BASEMAPPING",
+				  src_layer      = "CWB_FLOODPLAINS_BC_AREA_SP",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "CWB_FLOODPLAINS_BC_AREA_SP",
+				  fields_to_keep = "floodplains_bc_area_id, floodplain_name, designation_date",
+				  geometry_name  = "geometry",
+				  geometry_type  = "MultiPolygon",
+				  grouping_name  = NULL,
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Needed to do region specific stream order classification
 ## WHSE_ADMIN_BOUNDARIES.ADM_NR_AREAS_SP
-import_bcgw_to_pg(src_schema    = "WHSE_ADMIN_BOUNDARIES",
-				  src_layer     = "ADM_NR_AREAS_SP",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "ADM_NR_AREAS_SP",
-				  layer_id      = "area_number, area_name, org_unit, org_unit_name, feature_code, feature_name",
-				  geometry_name = "shape",
-				  geometry_type = "MultiPolygon",
-				  grouping_name = NULL,
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_ADMIN_BOUNDARIES",
+				  src_layer      = "ADM_NR_AREAS_SP",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "ADM_NR_AREAS_SP",
+				  fields_to_keep = "area_number, area_name, org_unit, org_unit_name, feature_code, feature_name",
+				  geometry_name  = "shape",
+				  geometry_type  = "MultiPolygon",
+				  grouping_name  = NULL,
+				  pg_conn_list   = conn_list)
 
 
 ## Rationale: channel width needed to calculate riparian buffers

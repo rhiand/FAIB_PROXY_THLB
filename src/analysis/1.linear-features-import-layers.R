@@ -9,81 +9,81 @@ conn_list <- dadmtools::get_pg_conn_list()
 
 ## Import 50k grid
 ## WHSE_BASEMAPPING.BCGS_20K_GRID
-import_bcgw_to_pg(src_schema    = "WHSE_BASEMAPPING",
-				  src_layer     = "NTS_50K_GRID",
-				  fdw_schema    = "load",
-				  dst_schema    = "whse_sp",
-				  dst_layer     = "NTS_50K_GRID",
-				  layer_id      = "map_tile",
-				  geometry_name = "geometry",
-				  geometry_type = "MultiPolygon",
-				  grouping_name = "map tile",
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_BASEMAPPING",
+				  src_layer      = "NTS_50K_GRID",
+				  fdw_schema     = "load",
+				  dst_schema     = "whse_sp",
+				  dst_layer      = "NTS_50K_GRID",
+				  fields_to_keep = "map_tile",
+				  geometry_name  = "geometry",
+				  geometry_type  = "MultiPolygon",
+				  grouping_name  = "map tile",
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Kootenay Lake data package for roads, rails, trail, tranmission lines etc
 ## WHSE_BASEMAPPING.GBA_RAILWAY_TRACKS_SP
-import_bcgw_to_pg(src_schema    = "WHSE_BASEMAPPING",
-				  src_layer     = "GBA_RAILWAY_TRACKS_SP",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "GBA_RAILWAY_TRACKS_SP",
-				  layer_id      = "railway_track_id",
-				  geometry_name = "shape",
-				  geometry_type = "MultiLineString",
-				  grouping_name = "railway",
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_BASEMAPPING",
+				  src_layer      = "GBA_RAILWAY_TRACKS_SP",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "GBA_RAILWAY_TRACKS_SP",
+				  fields_to_keep = "railway_track_id",
+				  geometry_name  = "shape",
+				  geometry_type  = "MultiLineString",
+				  grouping_name  = "railway",
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Kootenay Lake data package for roads, rails, trail, tranmission lines etc
 ## WHSE_BASEMAPPING.GBA_TRANSMISSION_LINES_SP
-import_bcgw_to_pg(src_schema    = "WHSE_BASEMAPPING",
-				  src_layer     = "GBA_TRANSMISSION_LINES_SP",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "GBA_TRANSMISSION_LINES_SP",
-				  layer_id      = "transmission_line_id",
-				  geometry_name = "shape",
-				  geometry_type = "MultiLineString",
-				  grouping_name = "hydro line",
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_BASEMAPPING",
+				  src_layer      = "GBA_TRANSMISSION_LINES_SP",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "GBA_TRANSMISSION_LINES_SP",
+				  fields_to_keep = "transmission_line_id",
+				  geometry_name  = "shape",
+				  geometry_type  = "MultiLineString",
+				  grouping_name  = "hydro line",
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Kootenay Lake data package for roads, rails, trail, tranmission lines etc
 ## WHSE_IMAGERY_AND_BASE_MAPS.DRP_OIL_GAS_PIPELINES_BC_SP
-import_bcgw_to_pg(src_schema    = "WHSE_IMAGERY_AND_BASE_MAPS",
-				  src_layer     = "DRP_OIL_GAS_PIPELINES_BC_SP",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "DRP_OIL_GAS_PIPELINES_BC_SP",
-				  layer_id      = "oil_gas_pipeline_bc_id",
-				  geometry_name = "geometry",
-				  geometry_type = "MultiLineString",
-				  grouping_name = "pipeline",
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_IMAGERY_AND_BASE_MAPS",
+				  src_layer      = "DRP_OIL_GAS_PIPELINES_BC_SP",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "DRP_OIL_GAS_PIPELINES_BC_SP",
+				  fields_to_keep = "oil_gas_pipeline_bc_id",
+				  geometry_name  = "geometry",
+				  geometry_type  = "MultiLineString",
+				  grouping_name  = "pipeline",
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Kootenay Lake data package for roads, rails, trail, tranmission lines etc
 ## WHSE_MINERAL_TENURE.OG_PIPELINE_AREA_PERMIT_SP
-import_bcgw_to_pg(src_schema    = "WHSE_MINERAL_TENURE",
-				  src_layer     = "OG_PIPELINE_AREA_PERMIT_SP",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "OG_PIPELINE_AREA_PERMIT_SP",
-				  layer_id      = "og_pipeline_area_permit_id",
-				  geometry_name = "shape",
-				  geometry_type = "MultiPolygon",
-				  grouping_name = "pipeline",
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_MINERAL_TENURE",
+				  src_layer      = "OG_PIPELINE_AREA_PERMIT_SP",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "OG_PIPELINE_AREA_PERMIT_SP",
+				  fields_to_keep = "og_pipeline_area_permit_id",
+				  geometry_name  = "shape",
+				  geometry_type  = "MultiPolygon",
+				  grouping_name  = "pipeline",
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Sunshine Coast data package for roads, rails, trail, tranmission lines etc
 ## WHSE_TANTALIS.TA_CROWN_RIGHTS_OF_WAY_SVW
-import_bcgw_to_pg(src_schema    = "WHSE_TANTALIS",
-				  src_layer     = "TA_CROWN_RIGHTS_OF_WAY_SVW",
-				  fdw_schema    = "load",
-				  dst_schema    = "thlb_proxy",
-				  dst_layer     = "TA_CROWN_RIGHTS_OF_WAY_SVW",
-				  layer_id      = "intrid_sid",
-				  geometry_name = "shape",
-				  geometry_type = "MultiPolygon",
-				  grouping_name = "right-of-way",
-				  pg_conn_list  = conn_list)
+import_bcgw_to_pg(src_schema     = "WHSE_TANTALIS",
+				  src_layer      = "TA_CROWN_RIGHTS_OF_WAY_SVW",
+				  fdw_schema     = "load",
+				  dst_schema     = "thlb_proxy",
+				  dst_layer      = "TA_CROWN_RIGHTS_OF_WAY_SVW",
+				  fields_to_keep = "intrid_sid",
+				  geometry_name  = "shape",
+				  geometry_type  = "MultiPolygon",
+				  grouping_name  = "right-of-way",
+				  pg_conn_list   = conn_list)
 
 ## Rationale: Kootenay Lake data package for roads, rails, trail, tranmission lines etc
 ## FGDB import

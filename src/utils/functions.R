@@ -154,15 +154,16 @@ linear_weight <- function(
 
 
 import_bcgw_to_pg <- function(
-                               src_schema    = "WHSE_BASEMAPPING",
-                               src_layer     = "GBA_RAILWAY_TRACKS_SP",
-							   fdw_schema    = "load",
-							   dst_schema    = "whse_sp",
-							   dst_layer     = "GBA_RAILWAY_TRACKS_SP",
-                               layer_id      = "railway_track_id",
-							   geometry_name = "shape",
-							   geometry_type = "MultiLineString",
-							   grouping_name = "railway",
+                               src_schema     = "WHSE_BASEMAPPING",
+                               src_layer      = "GBA_RAILWAY_TRACKS_SP",
+							   fdw_schema     = "load",
+							   dst_schema     = "whse_sp",
+							   dst_layer      = "GBA_RAILWAY_TRACKS_SP",
+                               fields_to_keep = "railway_track_id",
+							   geometry_name  = "shape",
+							   geometry_type  = "MultiLineString",
+							   grouping_name  = NULL,
+							   where_clause   = NULL,
 							   pg_conn_list
 
 ) {
@@ -172,24 +173,77 @@ import_bcgw_to_pg <- function(
 	run_sql_r(query, pg_conn_list)
 	query <- glue('DROP TABLE IF EXISTS {dst_schema}.{dst_layer};')
 	run_sql_r(query, pg_conn_list)
+	if(where_clause == '' || is.null(where_clause) || is.na(where_clause)) {
+    	query_escaped <- ''
+		where_clause <- ''
+  	} else {
+	    query_escaped <- gsub("\'","\'\'", where_clause)
+		where_clause <- glue('WHERE {where_clause}')
+  	}
 	if (is.null(grouping_name)){
-	query <- glue("CREATE TABLE {dst_schema}.{dst_layer} as
-	SELECT
-		{layer_id},
-		ST_Force2d({geometry_name})::geometry({geometry_type}, 3005) as geom
-	FROM
-		{fdw_schema}.{src_layer};")
+		query <- glue("CREATE TABLE {dst_schema}.{dst_layer} as
+		SELECT
+			{fields_to_keep},
+			ST_Force2d({geometry_name})::geometry({geometry_type}, 3005) as geom
+		FROM
+			{fdw_schema}.{src_layer}
+		{where_clause};")
 	} else {
-	query <- glue("CREATE TABLE {dst_schema}.{dst_layer} as
-	SELECT
-		{layer_id},
-		'{grouping_name}'::text as grouping_name,
-		ST_Force2d({geometry_name})::geometry({geometry_type}, 3005) as geom
-	FROM
-		{fdw_schema}.{src_layer};")
+		query <- glue("CREATE TABLE {dst_schema}.{dst_layer} as
+		SELECT
+			{fields_to_keep},
+			'{grouping_name}' as grouping_name,
+			ST_Force2d({geometry_name})::geometry({geometry_type}, 3005) as geom
+		FROM
+			{fdw_schema}.{src_layer}
+		{where_clause};")
 	}
-	run_sql_r(query, pg_conn_list)
+
+	tryCatch({
+    	run_sql_r(query, pg_conn_list)
+	}, error = function(e) {
+		if (grepl("SRID", e$message)) {
+		# Remove the SRID cast and create the table without it
+		create_table_query_no_srid <- if (is.null(grouping_name)) {
+			glue("CREATE TABLE {dst_schema}.{dst_layer} AS
+				SELECT
+					{fields_to_keep},
+					ST_Force2d({geometry_name}) AS geom
+				FROM
+					{fdw_schema}.{src_layer}
+				{where_clause}")
+		} else {
+			glue("CREATE TABLE {dst_schema}.{dst_layer} AS
+				SELECT
+					{fields_to_keep},
+					{grouping_name} AS grouping_name,
+					ST_Force2d({geometry_name}) AS geom
+				FROM
+					{fdw_schema}.{src_layer}
+				{where_clause}")
+		}
+
+		# Run the query without SRID and set the SRID manually
+		run_sql_r(create_table_query_no_srid, pg_conn_list)
+		srid_query <- glue('ALTER TABLE {dst_schema}.{dst_layer} ALTER COLUMN geom TYPE geometry({geometry_type}, 3005) USING ST_SetSRID(geom, 3005)')
+		run_sql_r(srid_query, pg_conn_list)
+		} else {
+		stop(e)
+		}
+	})
+
 	query <- glue('CREATE INDEX {dst_layer}_geom_idx on {dst_schema}.{dst_layer} USING gist(geom);')
+	run_sql_r(query, pg_conn_list)
+	query <- glue('ANALYZE {dst_schema}.{dst_layer};')
+	run_sql_r(query, pg_conn_list)
+	todays_date <- format(Sys.time(), "%Y-%m-%d %I:%M:%S %p")
+	query <- glue("COMMENT ON TABLE {dst_schema}.{dst_layer} IS 'Table created by the import_bcgw_to_pg R function at {todays_date}.
+	Data source details:
+	Source type: oracle
+	South path: bcgw
+	Source layer: {src_schema}.{src_layer}
+	Source where query: {query_escaped}
+	Source fields kept: {fields_to_keep}'")
 	run_sql_r(query, pg_conn_list)
 }
 
