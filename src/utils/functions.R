@@ -410,7 +410,7 @@ create_sampler <- function(db, q){
   # sampler: the spatial vector of blks 
   # unit: The spatial vector of the boundary of interest (e.g., unit<-create_unit(bnd_path))
 
-elev_inop <- function(elevation, sampler, unit, tsa_number, conn_list){
+elev_inop <- function(elevation, sampler, unit, mgmt_unit, conn_list){
 	message("Executing elev_inop function to sample elevation by cutblocks to determine 99 percent cutoff")
 	blk_elev <- terra::extract(elevation, sampler) # extract the elevation within the boundary of 'sampler' in this case cutblocks.
 	blkelev99 <- quantile(blk_elev$bc_elevation_25m_bcalb, probs = 0.99, na.rm = TRUE) # determine 99th percentile
@@ -425,14 +425,14 @@ elev_inop <- function(elevation, sampler, unit, tsa_number, conn_list){
 	elev_cutoff <- c(-Inf, blkelev99, 0, blkelev99, unitelev100, 1, unitelev100, Inf, 0)
 	elev_matrix <- matrix(elev_cutoff, ncol = 3, byrow = TRUE)
 	### reclassify elevation raster based on cutoffs
-	df <- data.frame(cutblock_percentile_99 = blkelev99, unit_max = unitelev100, tsa = tsa_number, grid = 'elevation')
+	df <- data.frame(cutblock_percentile_99 = blkelev99, unit_max = unitelev100, mgmt_unit = mgmt_unit, grid = 'elevation')
 	df_to_pg(Id(schema = 'thlb_proxy', table = glue('inoperable_thresholds')), df, conn_list, overwrite=FALSE, append=TRUE)
 	return(terra::classify(elevation, elev_matrix))
 }
 
 
 # determine the 99th percentile of slope within block boundaries.
-slp_inop <- function(slope, sampler, unit, tsa_number, conn_list){
+slp_inop <- function(slope, sampler, unit, mgmt_unit, conn_list){
 	message("Executing slp_inop function to sample slope by cut block to determine 99 percent cutoff")
 	blk_slp <- terra::extract(slope,sampler)
 	blk_slp99 <- quantile(blk_slp$slope, probs = 0.99, na.rm = TRUE)
@@ -446,7 +446,7 @@ slp_inop <- function(slope, sampler, unit, tsa_number, conn_list){
 
 	slp_cutoff <- c(-Inf, blk_slp99, 0, blk_slp99, unit_slp100, 1, unit_slp100, Inf, 0)
 	slp_matrix <- matrix(slp_cutoff, ncol = 3, byrow = TRUE)
-	df <- data.frame(cutblock_percentile_99 = blk_slp99, unit_max = unit_slp100, tsa = tsa_number, grid = 'slope')
+	df <- data.frame(cutblock_percentile_99 = blk_slp99, unit_max = unit_slp100, mgmt_unit = mgmt_unit, grid = 'slope')
 	df_to_pg(Id(schema = 'thlb_proxy', table = glue('inoperable_thresholds')), df, conn_list, overwrite=FALSE, append=TRUE)
 
 	#### reclassify elevation slope based on cutoff

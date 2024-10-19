@@ -14,94 +14,266 @@ db <- DBI::dbConnect(conn_list["driver"][[1]],
 				port = conn_list["port"][[1]])
 start_time <- Sys.time()
 print(glue("Script started at {format(start_time, '%Y-%m-%d %I:%M:%S %p')}"))
-
-# query <- "DROP TABLE IF EXISTS thlb_proxy.inoperable_gr_skey"
-# run_sql_r(query, conn_list)
-# query <- "DROP TABLE IF EXISTS thlb_proxy.inoperable_thresholds"
-# run_sql_r(query, conn_list)
-
-ecas_interior_path_2016 <- "data\\input\\InteriorStoneQuery2016.csv"
-ecas_interior_path_2023 <- "data\\input\\InteriorStoneQuery2023.csv"
-ecas_coast_path_2016 <- "data\\input\\CoastStoneQuery2016.csv"
-ecas_coast_path_2023 <- "data\\input\\CoastStoneQuery2023.csv"
-
-mhv <- get_ecas(ecas_interior_path_2023, ecas_interior_path_2016)
-mhv01 <- mhv[[1]]
-ecas_df <- as.data.frame(mhv[['tcas_df']])
-## stalled out there as dont have vdyp table.
-mhv_df<-get_mhv_df(db,vdyp_query,spc1_query,mhv01)
-
-
-
-
-
-## as TSA 04 is too large, a new set of boundaries were created
-query <- "DROP TABLE IF EXISTS thlb_proxy.tsa_boundaries_2020_inoperable"
+dst_schema <- "thlb_proxy"
+## Goal is to filter out all vri polygons that have a site index less than 5th percentile within area based used
+## that is "merchantability"
+## the thresholds would be a good input to have available for everyone next week
+query <- glue("DROP TABLE IF EXISTS {dst_schema}.tsa_5p_site_index_cc")
 run_sql_r(query, conn_list)
-query <- "CREATE TABLE thlb_proxy.tsa_boundaries_2020_inoperable AS 
-SELECT tsa_number, geom FROM thlb_proxy.tsa_boundaries_2020 WHERE tsa_number != '04'
-UNION ALL
-(WITH pts AS (
+
+query <- glue("CREATE TABLE {dst_schema}.tsa_5p_site_index_cc AS
+WITH tsa_cc AS (
 	SELECT
-		(ST_Dump(ST_GeneratePoints(geom, 2000))).geom AS geom
-	from
-		thlb_proxy.tsa_boundaries_2020
-	where 
-		tsa_number = '04'
-), pts_clustered AS (
-	select
-		geom, ST_ClusterKMeans(geom, 3) over () AS cluster
-	from
-		pts
-), centers AS (
-  SELECT
-	cluster, ST_Centroid(ST_collect(geom)) AS geom
-  FROM 
-		pts_clustered
+		mu_look.man_unit as man_unit
+		, cc.opening_id
+	FROM 
+	whse.tsa_boundaries_gr_skey tsa_key
+	LEFT JOIN whse.tsa_boundaries tsa ON tsa.pgid = tsa_key.pgid 
+	LEFT JOIN whse.mu_lookup_table_im mu_look ON tsa.tsa = mu_look.tsa_number
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp_gr_skey cc_key ON cc_key.gr_skey = tsa_key.gr_skey
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp cc ON cc.pgid = cc_key.pgid
+	WHERE 
+		harvest_year >= 2017 -- 2007 is the first year where we have 30 cutblocks in each TSA
 	GROUP BY 
-		cluster
-), veronoi_polys AS (
+		mu_look.man_unit
+		,cc.opening_id
+), tsa_cc_30 AS (
+	SELECT
+		man_unit
+		, count(*) AS cc_count
+	FROM
+		tsa_cc
+	GROUP BY 
+		man_unit
+	HAVING 
+		count(*) >= 30
+), ge30 AS (
 SELECT
-	(ST_Dump(ST_VoronoiPolygons(ST_collect(geom)))).geom AS geom
-FROM
-	centers
+	mu_look.man_unit,
+	percentile_disc(0.05) WITHIN GROUP (ORDER BY CASE WHEN vri.bclcs_level_1 = 'U' THEN vritfl.site_index ELSE vri.site_index END) AS tfl_integrated_p5,
+	cc_count.cc_count,
+	count(*) as ha
+FROM 
+	{dst_schema}.veg_comp_lyr_r1_poly_2016_gr_skey vri_key
+	LEFT JOIN {dst_schema}.veg_comp_lyr_r1_poly_2016 vri USING (pgid)
+	LEFT JOIN {dst_schema}.tfl_integrated2016_gr_skey vritfl_key ON vritfl_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN {dst_schema}.tfl_integrated2016 vritfl ON vritfl_key.pgid = vritfl.pgid
+	LEFT JOIN whse.tsa_boundaries_gr_skey tsa_key on tsa_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN whse.tsa_boundaries tsa on tsa.pgid = tsa_key.pgid -- length 34
+	LEFT JOIN whse.mu_lookup_table_im mu_look ON tsa.tsa = mu_look.tsa_number
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp_gr_skey cc_key ON cc_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp cc ON cc.pgid = cc_key.pgid
+	JOIN tsa_cc_30 cc_count on cc_count.man_unit = mu_look.man_unit
+WHERE 
+	harvest_year >= 2017
+GROUP BY
+	mu_look.man_unit, 
+	cc_count.cc_count
 )
 SELECT
-	'04-' || row_number() OVER() as tsa_number,
-	ST_Intersection(a.geom, b.geom) AS geom
+	*
 FROM
-	veronoi_polys b
-CROSS JOIN
-	(SELECT geom FROM thlb_proxy.tsa_boundaries_2020 WHERE tsa_number = '04') a
-)"
+	ge30
+UNION ALL
+SELECT
+	CASE 
+		WHEN man_unit = '40 - Fort St. John TSA' THEN '8 - Fort Nelson TSA'
+		WHEN man_unit = '43 - Nass TSA' THEN '4 - Cassiar TSA'
+	END as man_unit
+	, CASE 
+		WHEN man_unit = '40 - Fort St. John TSA' THEN tfl_integrated_p5
+		WHEN man_unit = '43 - Nass TSA' THEN tfl_integrated_p5
+	END as tfl_integrated_p5
+	, CASE 
+		WHEN man_unit = '40 - Fort St. John TSA' THEN cc_count
+		WHEN man_unit = '43 - Nass TSA' THEN cc_count
+	END as cc_count
+	, CASE 
+		WHEN man_unit = '40 - Fort St. John TSA' THEN ha
+		WHEN man_unit = '43 - Nass TSA' THEN ha
+	END as ha
+FROM
+	ge30
+WHERE
+	man_unit IN ('40 - Fort St. John TSA', '43 - Nass TSA')")
 run_sql_r(query, conn_list)
 
-## Loop over the TSA numbers
-query <- "SELECT tsa_number FROM thlb_proxy.tsa_boundaries_2020_inoperable WHERE tsa_number ilike '04%' GROUP BY tsa_number"
-tsa_numbers <- sql_to_df(query, conn_list)$tsa_number
+query <- glue("DROP TABLE IF EXISTS {dst_schema}.tsa_tfl_abt_5p_site_index_cc")
+run_sql_r(query, conn_list)
+query <- glue("CREATE TABLE {dst_schema}.tsa_tfl_abt_5p_site_index_cc AS
+WITH g30_tfl_abt AS (
+(with tfl_cc as (
+	SELECT
+		mu_look.man_unit as man_unit
+		, cc.opening_id
+	FROM 
+	whse.fadm_tfl_all_sp_gr_skey tfl_key
+	LEFT JOIN whse.fadm_tfl_all_sp tfl ON tfl.pgid = tfl_key.pgid 
+	LEFT JOIN whse.mu_lookup_table_im mu_look ON tfl.forest_file_id = mu_look.forest_file_id
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp_gr_skey cc_key ON cc_key.gr_skey = tfl_key.gr_skey
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp cc ON cc.pgid = cc_key.pgid
+	WHERE 
+		harvest_year >= 2017 -- 2007 is the first year where we have 30 cutblocks in each TSA
+	GROUP BY 
+		mu_look.man_unit
+		,cc.opening_id
+), tsa_cc_30 AS (
+	SELECT
+		man_unit
+		, count(*) AS cc_count
+	FROM
+		tfl_cc
+	GROUP BY 
+		man_unit
+	HAVING 
+		count(*) >= 30
+)
+SELECT
+	mu_look.man_unit,
+	percentile_disc(0.05) WITHIN GROUP (ORDER BY CASE WHEN vri.bclcs_level_1 = 'U' THEN vritfl.site_index ELSE vri.site_index END) AS tfl_integrated_p5,
+	cc_count.cc_count,
+	count(*) as ha
+FROM 
+	{dst_schema}.veg_comp_lyr_r1_poly_2016_gr_skey vri_key
+	LEFT JOIN {dst_schema}.veg_comp_lyr_r1_poly_2016 vri USING (pgid)
+	LEFT JOIN {dst_schema}.tfl_integrated2016_gr_skey vritfl_key ON vritfl_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN {dst_schema}.tfl_integrated2016 vritfl ON vritfl_key.pgid = vritfl.pgid
+	LEFT JOIN whse.fadm_tfl_all_sp_gr_skey tfl_key on tfl_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN whse.fadm_tfl_all_sp tfl on tfl.pgid = tfl_key.pgid -- length 34
+	LEFT JOIN whse.mu_lookup_table_im mu_look ON tfl.forest_file_id = mu_look.forest_file_id
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp_gr_skey cc_key ON cc_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp cc ON cc.pgid = cc_key.pgid
+	JOIN tsa_cc_30 cc_count on cc_count.man_unit = mu_look.man_unit
+WHERE 
+	harvest_year >= 2017
+GROUP BY
+	mu_look.man_unit, 
+	cc_count.cc_count
+)
+UNION ALL
+-- area based tenures
+(WITH abt_cc as (
+	SELECT
+		mu_look.man_unit as man_unit
+		, cc.opening_id
+	FROM 
+	whse.ften_managed_licence_poly_svw_gr_skey tfl_key
+	LEFT JOIN whse.ften_managed_licence_poly_svw tfl ON tfl.pgid = tfl_key.pgid 
+	LEFT JOIN whse.mu_lookup_table_im mu_look ON tfl.forest_file_id = mu_look.forest_file_id
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp_gr_skey cc_key ON cc_key.gr_skey = tfl_key.gr_skey
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp cc ON cc.pgid = cc_key.pgid
+	WHERE 
+		harvest_year >= 2017 -- 2007 is the first year where we have 30 cutblocks in each TSA
+	GROUP BY 
+		mu_look.man_unit
+		,cc.opening_id
+), abt_cc_30 AS (
+	SELECT
+		man_unit
+		, count(*) AS cc_count
+	FROM
+		abt_cc
+	GROUP BY 
+		man_unit
+	HAVING 
+		count(*) >= 30
+)
+SELECT
+	mu_look.man_unit,
+	percentile_disc(0.05) WITHIN GROUP (ORDER BY CASE WHEN vri.bclcs_level_1 = 'U' THEN vritfl.site_index ELSE vri.site_index END) AS tfl_integrated_p5,
+	cc_count.cc_count,
+	count(*) as ha
+FROM 
+	{dst_schema}.veg_comp_lyr_r1_poly_2016_gr_skey vri_key
+	LEFT JOIN {dst_schema}.veg_comp_lyr_r1_poly_2016 vri USING (pgid)
+	LEFT JOIN {dst_schema}.tfl_integrated2016_gr_skey vritfl_key ON vritfl_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN {dst_schema}.tfl_integrated2016 vritfl ON vritfl_key.pgid = vritfl.pgid
+	LEFT JOIN whse.ften_managed_licence_poly_svw_gr_skey tfl_key on tfl_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN whse.ften_managed_licence_poly_svw tfl on tfl.pgid = tfl_key.pgid -- length 34
+	LEFT JOIN whse.mu_lookup_table_im mu_look ON tfl.forest_file_id = mu_look.forest_file_id
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp_gr_skey cc_key ON cc_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp cc ON cc.pgid = cc_key.pgid
+	JOIN abt_cc_30 cc_count on cc_count.man_unit = mu_look.man_unit
+WHERE 
+	harvest_year >= 2017
+GROUP BY
+	mu_look.man_unit, 
+	cc_count.cc_count
+)
+), missing_tfl_abt AS (
+SELECT
+	man_unit,
+	tsa,
+	tfl_integrated_p5,
+	cc_count,
+	ha
+FROM
+	{dst_schema}.tsa_link_tfl_manlic
+LEFT JOIN g30_tfl_abt using (man_unit)
+	)
+SELECT 
+	a.man_unit,
+	a.tsa,
+	CASE WHEN a.tfl_integrated_p5 IS NULL THEN tsa_5p.tfl_integrated_p5 ELSE a.tfl_integrated_p5 END as tfl_integrated_p5,
+	a.cc_count,
+	a.ha
+FROM
+missing_tfl_abt a
+JOIN
+{dst_schema}.tsa_5p_site_index_cc tsa_5p ON tsa_5p.man_unit = a.tsa
+UNION ALL
+SELECT
+	man_unit,
+	man_unit,
+	tfl_integrated_p5,
+	cc_count,
+	ha
+FROM
+	{dst_schema}.tsa_5p_site_index_cc")
+run_sql_r(query, conn_list)
+query <- glue("DROP TABLE IF EXISTS {dst_schema}.tsa_5p_site_index_cc")
+run_sql_r(query, conn_list)
 
-for (tsa_number in tsa_numbers) {
-	start_time <- Sys.time()
-	print(glue("TSA #: {tsa_number}, started at: {format(start_time, '%Y-%m-%d %I:%M:%S %p')}"))
-	## define data driven queries for cutblocks, tsa's, stability
 
-	mgmt_unit_query <- glue("SELECT 
-							ST_Union(geom) as geom
-						FROM 
-							thlb_proxy.tsa_boundaries_2020_inoperable 
-						WHERE 
-							tsa_number = '{tsa_number}'")
-	
-	message('Convert queries to SpatVector')
-	mgmt_unit_vect <- create_sampler(db, mgmt_unit_query)
+## first go at merchantable query
+query <- "SELECT
+CASE 
+	WHEN si_manlic.man_unit IS NOT null THEN si_manlic.man_unit
+	WHEN si_tfl.man_unit IS NOT NULL THEN si_tfl.man_unit
+	WHEN si_tsa.man_unit IS NOT NULL THEN si_tsa.man_unit
+END,
+CASE 
+	WHEN si_manlic.man_unit IS NOT null THEN 
+		CASE WHEN vri.bclcs_level_1 = 'U' THEN vritfl.site_index ELSE vri.site_index END >= si_manlic.tfl_integreated_p5 THEN 1 ELSE 0 END
+	WHEN si_tfl.man_unit IS NOT NULL THEN si_tfl.man_unit
+	WHEN si_tsa.man_unit IS NOT NULL THEN si_tsa.man_unit
+END,
+count(*)
 
-	# writeRaster(stability_clipped, "data\\analysis\\stability_clipped.tif", overwrite=TRUE)
-	message('Aggregating slope, stability and elev')
-	df_to_pg(Id(schema = 'thlb_proxy', table = glue('inoperable_gr_skey')), phy_ops_df, conn_list, overwrite=FALSE, append=TRUE)
-	end_time <- Sys.time()
-	duration <- difftime(end_time, start_time, units = "mins")
-	print(glue("TSA #: {tsa_number}, took: {duration} minutes\n"))
-}
+FROM
+thlb_proxy.veg_comp_lyr_r1_poly_2016_gr_skey vri_key
+LEFT JOIN thlb_proxy.veg_comp_lyr_r1_poly_2016 vri USING (pgid)
+LEFT JOIN thlb_proxy.tfl_integrated2016_gr_skey vritfl_key ON vritfl_key.gr_skey = vri_key.gr_skey
+LEFT JOIN thlb_proxy.tfl_integrated2016 vritfl ON vritfl_key.pgid = vritfl.pgid
+LEFT JOIN whse.tsa_boundaries_gr_skey tsa_key on tsa_key.gr_skey = vri_key.gr_skey
+LEFT JOIN whse.tsa_boundaries tsa on tsa.pgid = tsa_key.pgid -- length 34
+LEFT JOIN whse.mu_lookup_table_im mu_tsa ON tsa.tsa = mu_tsa.tsa_number
+LEFT JOIN thlb_proxy.tsa_tfl_abt_5p_site_index_cc si_tsa ON mu_tsa.man_unit = si_tsa.man_unit
+LEFT JOIN whse.fadm_tfl_all_sp_gr_skey tfl_key ON tfl_key.gr_skey = vri_key.gr_skey
+LEFT JOIN whse.fadm_tfl_all_sp tfl ON tfl.pgid = tfl_key.pgid 
+LEFT JOIN whse.mu_lookup_table_im mu_tfl ON tfl.forest_file_id = mu_tfl.forest_file_id
+LEFT JOIN thlb_proxy.tsa_tfl_abt_5p_site_index_cc si_tfl ON mu_tfl.man_unit = si_tfl.man_unit
+LEFT JOIN whse.ften_managed_licence_poly_svw_gr_skey manlic_key ON manlic_key.gr_skey = vri_key.gr_skey
+LEFT JOIN whse.ften_managed_licence_poly_svw manlic ON manlic.pgid = manlic_key.pgid 
+LEFT JOIN whse.mu_lookup_table_im mu_manlic ON manlic.forest_file_id = mu_manlic.forest_file_id
+LEFT JOIN thlb_proxy.tsa_tfl_abt_5p_site_index_cc si_manlic ON mu_manlic.man_unit = si_manlic.man_unit
+GROUP BY
+CASE 
+	WHEN si_manlic.man_unit IS NOT null THEN si_manlic.man_unit
+	WHEN si_tfl.man_unit IS NOT NULL THEN si_tfl.man_unit
+	WHEN si_tsa.man_unit IS NOT NULL THEN si_tsa.man_unit
+END
 
-
-
+-- select * from thlb_proxy.tsa_tfl_abt_5p_site_index_cc -- man_unit W0326 - Woodlot
+-- select * from whse.ften_managed_licence_poly_svw -- forest_file_id W0025
+-- select * from whse.mu_lookup_table_im -- forest_file_id W0025 || man_unit W0326 - Woodlot"
