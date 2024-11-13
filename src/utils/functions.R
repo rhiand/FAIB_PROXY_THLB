@@ -366,15 +366,15 @@ get_dem <- function(clip) {
 ## The get_slope() function converts a unit's dem to percent slope
   # one function argument of dem: the dem raster (e.g., 'elevation' in operability script.)
 
-get_slope<- function(clip){
-	#   message("executing get_slope function to convert unit dem to percent slope")
-	#   slp_degrees <- terra::terrain(dem, "slope") # use terra::terrain function to convert dem to degrees slope
-	#   slp_percent<- tan(pi / 180 * slp_degrees) * 100 # convert degrees to percent
+get_slope<- function(dem, clip){
+	message("executing get_slope function to convert unit dem to percent slope")
+	slp_degrees <- terra::terrain(dem, "slope") # use terra::terrain function to convert dem to degrees slope
+	bc_slope<- tan(pi / 180 * slp_degrees) * 100 # convert degrees to percent
 	##  HDE: no longer calculating slope on the fly as it takes too long to run the province
 	##  instead, slope has been written to: S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_slope_25m_bcalb.tif
 	##  leaving above code to see how it was originally calculated
-	slope_path <- "S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_slope_25m_bcalb.tif"
-	bc_slope <- rast(slope_path)  #get provincial slope and convert to terra::SpatRaster
+	# slope_path <- "S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_slope_25m_bcalb.tif"
+	# bc_slope <- rast(slope_path)  #get provincial slope and convert to terra::SpatRaster
 	unit_slope <- terra::crop(bc_slope, clip)  #clip provincial raster to unit bounding box
 	rm(bc_slope) # remove the provincial slope
 	return(mask(unit_slope, clip)) # clip slope raster from bounding box down to the unit boundary
@@ -404,35 +404,43 @@ create_sampler <- function(db, q){
   blks <- st_read(db, query = q) 
   return(vect(blks))
 }
+
+get_raster_99th_perc <- function(in_raster, sampler) {
+	blk_elev <- terra::extract(in_raster, sampler) # extract the in_raster within the boundary of 'sampler' in this case cutblocks.
+	blkelev99 <- quantile(blk_elev[,2], probs = 0.99, na.rm = TRUE) # determine 99th percentile
+	message("Cut block 99 percentile is ", blkelev99)
+	rm(blk_elev)
+	return(blkelev99)
+}
+
 # The elev_inop() function determines the 99 percentile of elevation within blocks ('sampler' output)
 # function arguments:
   # elevation: the 25m elevation raster
   # sampler: the spatial vector of blks 
   # unit: The spatial vector of the boundary of interest (e.g., unit<-create_unit(bnd_path))
 
-elev_inop <- function(elevation, sampler, unit, mgmt_unit, conn_list){
-	message("Executing elev_inop function to sample elevation by cutblocks to determine 99 percent cutoff")
-	blk_elev <- terra::extract(elevation, sampler) # extract the elevation within the boundary of 'sampler' in this case cutblocks.
-	blkelev99 <- quantile(blk_elev$bc_elevation_25m_bcalb, probs = 0.99, na.rm = TRUE) # determine 99th percentile
-	message("Cut block dem 99 percentile is ", blkelev99)
-	rm(blk_elev)
+calc_inop <- function(in_raster, unit, mgmt_unit, clip_99th, threshold_type, conn_list){
 
-	unit_elev2 <- terra::extract(elevation, unit) # extract elevation for the unit
-	unitelev100 <- quantile(unit_elev2$bc_elevation_25m_bcalb, probs = 1, na.rm = TRUE) # determine maximum elevation within the unit.
-	message("The unit maximum is ", unitelev100)
+	unit_elev2 <- terra::extract(in_raster, unit) # extract in_raster for the unit
+	unit100th <- quantile(unit_elev2[,2], probs = 1, na.rm = TRUE) # determine maximum elevation within the unit.
+	message("The unit maximum is ", unit100th)
 	rm(unit_elev2)
 
-	elev_cutoff <- c(-Inf, blkelev99, 0, blkelev99, unitelev100, 1, unitelev100, Inf, 0)
-	elev_matrix <- matrix(elev_cutoff, ncol = 3, byrow = TRUE)
+	if (unit100th < clip_99th) {
+		clip_99th <- unit100th
+	}
+
+	rast_cutoff <- c(-Inf, clip_99th, 0, clip_99th, unit100th, 1, unit100th, Inf, 0)
+	rast_matrix <- matrix(rast_cutoff, ncol = 3, byrow = TRUE)
 	### reclassify elevation raster based on cutoffs
-	df <- data.frame(cutblock_percentile_99 = blkelev99, unit_max = unitelev100, mgmt_unit = mgmt_unit, grid = 'elevation')
+	df <- data.frame(cutblock_percentile_99 = clip_99th, unit_max = unit100th, man_unit = mgmt_unit, grid = threshold_type)
 	df_to_pg(Id(schema = 'thlb_proxy', table = glue('inoperable_thresholds')), df, conn_list, overwrite=FALSE, append=TRUE)
-	return(terra::classify(elevation, elev_matrix))
+	return(terra::classify(in_raster, rast_matrix))
 }
 
 
 # determine the 99th percentile of slope within block boundaries.
-slp_inop <- function(slope, sampler, unit, mgmt_unit, conn_list){
+slp_inop <- function(slope, sampler, unit, mgmt_unit, clip_99th, conn_list){
 	message("Executing slp_inop function to sample slope by cut block to determine 99 percent cutoff")
 	blk_slp <- terra::extract(slope,sampler)
 	blk_slp99 <- quantile(blk_slp$slope, probs = 0.99, na.rm = TRUE)
@@ -464,7 +472,7 @@ aggregate <- function(stability, inoperable_elevation, inoperable_slope, out_ras
 	message("Executing aggregation function to calculate proportion inoperable")
 	# combine stability, slope and elevation rasters to get overall inoperable raster. values range from 0 (operable) to 3 (all three variables inoperable)
 	# message("Performing raster math")
-	res25m <- stability + inoperable_elevation + inoperable_slope
+	res25m <- stability + inoperable_slope + inoperable_elevation
 	# writeRaster(res25m, "data\\analysis\\res25m.tif", overwrite=TRUE)
 
 	### reclassify the raster values: 
@@ -485,12 +493,14 @@ aggregate <- function(stability, inoperable_elevation, inoperable_slope, out_ras
 	# message("Aggregating from 25m to 100m raster")
 
 	res_agg <- terra::aggregate(res_reclass, fact = 4, fun = "sum", na.rm = TRUE)
-	# writeRaster(res_agg, "data\\analysis\\res_reclass.tif", overwrite=TRUE)
+	# writeRaster(res_agg, "data\\analysis\\res_agg.tif", overwrite=TRUE)
 
 
 	# plot(res_agg)
 	## calculate the proportion of cell that is inoperable - scale by 1000.
 	resultant <- round(res_agg * 1000 / 16)
+	# writeRaster(resultant, "data\\analysis\\resultant.tif", overwrite=TRUE)
+
 	# plot(resultant)
 
 	# set the extent of the result to match the 100m raster template

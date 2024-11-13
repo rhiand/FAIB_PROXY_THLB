@@ -1419,16 +1419,26 @@ Buffer: riparian_buffer_width_m'"
 linear_weight(template_tif           = "data\\input\\bc_01ha_gr_skey.tif",  ## "S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_01ha_gr_skey.tif"
 			mask_tif                 = "data\\input\\BC_Boundary_Terrestrial.tif", ## 'S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\BC_Boundary_Terrestrial.tif',
 			crop_extent              = c(273287.5,1870587.5,367787.5,1735787.5),
-			grid_tbl                 = "whse_sp.nts_50k_grid",
+			grid_tbl                 = "thlb_proxy.nts_50k_grid",
 			grid_loop_fld            = "map_tile",
 			grid_geom_fld            = "geom",
 			dst_schema               = "whse",
 			dst_tbl                  = "bc_riparian_buffers",
-			pg_conn_param            = pg_conn_param,
+			pg_conn_param            = conn_list,
 			create_vector_lyr        = TRUE,
 			spatial_query            = spatial_query,
 			spatial_query_when_error = spatial_query_when_error,
 			tbl_comment              = tbl_comment)
+
+## Check output
+query <- "select * from thlb_proxy.bc_riparian_buffers where fact > 1"
+review_rip <- sql_to_df(query, conn_list)
+## at time of processing, there were 475 cells where fact > 1 and the largest was 1.01963
+## That level of error is acceptable - adjust down to 1
+if (max(review_rip$fact) < 1.01964 && nrow(review_rip) == 475) {
+	query <- "UPDATE thlb_proxy.bc_riparian_buffers SET fact = 1 WHERE fact > 1"
+	run_sql_r(query, conn_list)
+}
 
 
 ## rivers
