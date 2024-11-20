@@ -5,7 +5,8 @@ date: "Last run on `r format(Sys.time(), '%B %d, %Y')`"
 output: 
   html_document:
     code_folding: hide
-    highlight: monochrome
+    # highlight: monochrome
+    highlight: tango
     keep_md: yes
     theme: flatly
     toc: yes
@@ -31,15 +32,16 @@ This report is prepared using [RStudio](https://www.rstudio.com) and `r r_versio
 library(knitr)
 library(kableExtra)
 library(tidyverse)
-# library(ggnewscale)
-# library(tidyterra)
-# library(tmap)
-# library(ggspatial)
-# library(scales)
-# library(cowplot)
-# library(mapview)
-# library(tidytext)
-# library(janitor)
+library(sf)
+library(ggnewscale)
+library(tidyterra)
+library(tmap)
+library(ggspatial)
+library(scales)
+library(cowplot)
+library(mapview)
+library(tidytext)
+library(janitor)
 
 rm(list = ls())
 
@@ -49,7 +51,7 @@ start<-Sys.time()
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 knitr::opts_chunk$set(connection = "db")
 knitr::opts_knit$set(sql.max.print = NA)
-knitr::opts_chunk$set(fig.width = 8.5,fig.height = 7,collapse = TRUE)
+knitr::opts_chunk$set(fig.width = 8.5, fig.height = 7, collapse = TRUE)
 
 ```
 
@@ -62,13 +64,13 @@ The netdown process is a progressive exclusion algorithm where the TSA land base
 To delineate the 4 land base categories, several deductions occur, each of which is described in detail in this document. For each deduction, two steps are followed:
 
 1.  Categorize the area deduction in a *netdown dataframe:*
-    -   The netdown dataframe includes a record for each hectare within the TSA (identified by `ogc_fid`) and multiple fields used to determine area deductions. For example:
+    -   The netdown dataframe includes a record for each hectare within the Province and multiple fields used to determine area deductions. For example:
 
         <!-- ![](images/clipboard-2788201750.png){width="554"} -->
 
     -   As area deductions occur, new variables are created that describe area being removed.
 
-    -   The AFLB, gTHLB and THLB variables are updated with each area deduction. Initially, the AFLB, gTHLB, and THLB all have a value of one. The value gets updated with each area deduction. For [[example:\\\\](example:){.uri}](%5Bexample:%5D(example:)%7B.uri%7D){.uri} ![](images/clipboard-1542567498.png){width="557"}
+    -   The AFLB, gTHLB and THLB variables are updated with each area deduction. Initially, the AFLB, gTHLB, and THLB all have a value of one. The value gets updated with each area deduction. 
 2.  Summarize the area deductions in a netdown summary table - the table summarizes area information for each area deduction:
     -   The **total** area is the gross area for the area deduction category/landclass,
     -   The **percent** is the percent of total TSA area,
@@ -77,8 +79,6 @@ To delineate the 4 land base categories, several deductions occur, each of which
     -   The **netdown** is the remaining area after excluded area is removed. The final value (bottom row) is the THLB.
 
 For example:
-
-<!-- ![](images/clipboard-38702545.png){width="694"} -->
 
 ### Categorical vs. numerical area deduction variables
 
@@ -90,14 +90,16 @@ Once the netdown process is complete, the netdown table and thlb summary table a
 
 ## Data assembly
 
-Prior to completing the netdown process that creates the netdown dataframe and thlb summary, exploratory data analysis is necessary for assembling and pre-processing data. FAIB's analysis-ready dataset is a primary source of data; however, additional data is also used and is described in each netdown area deduction factor. Unless indicated, data is sourced from the [BC Geographic Warehouse (BCGW)](https://catalogue.data.gov.bc.ca/). The 2022 analysis-ready dataset is used for the Boundary TSA (ar2022).
+Prior to completing the netdown process that creates the netdown dataframe and thlb summary, exploratory data analysis is necessary for assembling and pre-processing data. FAIB's analysis-ready dataset is a primary source of data; however, additional data is also used and is described in each netdown area deduction factor.
 
 ### Netdown dataframe
 
 Area deduction variables that are required to classify the land base are loaded into the netdown dataframe through a postgres query. AFLB, gTHLB, and THLB variables are added to the dataframe with default values of 1. As the netdown process continues, new variables are added corresponding to each area deduction factor and the AFLB, gTHLB, and THLB values are updated accordingly.
 
-```{r data}
+```{r data, eval= FALSE}
 library(dadmtools)
+library(dplyr)
+
 conn_list <- dadmtools::get_pg_conn_list()
 
 setup_tracking_variable<-function(netdown_tab){
@@ -110,56 +112,22 @@ setup_tracking_variable<-function(netdown_tab){
   netdown<-unit - running_total
   
   netdown_summary <- data.frame(landclass, total, percent, excluded, running_total,netdown)
-  
 }
 
 query <- "SELECT
-	bc_gr_skey.gr_skey,
-	1::int as bc_land,
-	fown.own_sched || ' - ' || fown.ownership_description as n01_ownership,
-	CASE
-		-- ALPINE
-		WHEN vri.bclcs_level_1 = 'N' AND vri.bclcs_level_3 = 'A' THEN 'non_vegetated_alpine_lcs' -- Alpine Rock and Ice
-		WHEN vri.bclcs_level_2 = 'N' AND vri.bclcs_level_3 = 'A' THEN 'non_treed_alpine_lcs' -- Shrub/Lichen
-		WHEN bec.bgc_label IN ('BAFAun', 'IMA') THEN 'alpine_bec' -- # BEC sourced Alpine,
-		-- RIPARIAN
-		WHEN vri.bclcs_level_1 = 'N' AND vri.bclcs_level_5 = 'LA' THEN 'lake_lcs' -- lakes
-		WHEN vri.bclcs_level_1 = 'N' AND vri.bclcs_level_5 = 'RE' THEN 'reservoir_lcs' -- reservoir
-		WHEN vri.bclcs_level_1 = 'N' AND vri.bclcs_level_5 = 'RI' THEN 'riparian_lcs' -- riparian
-		WHEN vri.bclcs_level_2 = 'T' AND vri.bclcs_level_3 = 'W' THEN 'treed_wetland_lcs' -- treed wetland
-		WHEN vri.bclcs_level_2 = 'N' AND vri.bclcs_level_3 = 'W' THEN 'non_treed_wetland_lcs'
-		WHEN vri.bclcs_level_3 = 'W' THEN 'wetlands_lcs' -- nontreed wetland
-		WHEN wet.waterbody_type = 'W' THEN 'wetland_fwa' -- FWA classification
-		--  NonVegetated/low productivity
-		WHEN vri.bclcs_level_1 = 'N' AND cc.harvest_year is null THEN 'non_vegetated_lcs' -- nonvegetated and not an opening
-		WHEN vri.bclcs_level_2 = 'N' AND vri.bclcs_level_4 NOT IN ('ST', 'SL') AND cc.harvest_year is null THEN 'non_treed_herb_lcs' -- nontreed but not in a cutblock
-		WHEN vri.bclcs_level_4 IN ('ST', 'SL') AND cc.harvest_year is null THEN 'non_treed_shrub_lcs'
-		WHEN vri.site_index < 5 AND cc.harvest_year is null THEN 'non_productive_si_vri' -- low productivity stands
-		WHEN vri.non_productive_descriptor_cd is not null AND cc.harvest_year is null THEN 'FC1_' || vri.non_productive_descriptor_cd -- stand classified in the FC1 as nonproductive
-		WHEN vri.bclcs_level_1 || vri.bclcs_level_2 = 'VT' AND vri.species_cd_1 is null THEN 'no_species_cd_1' -- species label
-		WHEN vri.bclcs_level_1 = 'U' OR vri.bclcs_level_1 is null THEN 'unclassified'
-		ELSE NULL
-	END as n02_nonfor,
-	lin.fact as p03_linear_features,
-	rip.fact as p04_riparian
-FROM
-whse.all_bc_gr_skey bc_gr_skey
-LEFT JOIN whse.f_own_gr_skey fown_key ON bc_gr_skey.gr_skey = fown_key.gr_skey
-LEFT JOIN (SELECT own || schedule as own_sched, own, schedule, ownership_description, pgid FROM whse.f_own WHERE own||schedule in ('40N', '41N', '52N', '54N', '80N')) fown USING (pgid)
-LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023_gr_skey vri_key on vri_key.gr_skey = bc_gr_skey.gr_skey 
-LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023 vri on vri.pgid = vri_key.pgid
-LEFT JOIN whse.veg_consolidated_cut_blocks_sp_gr_skey ccg on ccg.gr_skey = bc_gr_skey.gr_skey 
-LEFT JOIN whse.veg_consolidated_cut_blocks_sp cc on cc.pgid = ccg.pgid 
-LEFT JOIN whse.bec_biogeoclimatic_poly_gr_skey bec_key on bec_key.gr_skey = bc_gr_skey.gr_skey
-LEFT JOIN whse.bec_biogeoclimatic_poly bec ON bec.pgid = bec_key.pgid
-LEFT JOIN whse.fwa_wetlands_gr_skey wet_key ON wet_key.gr_skey = bc_gr_skey.gr_skey
-LEFT JOIN whse.fwa_wetlands wet ON wet.pgid = wet_key.pgid
-LEFT JOIN thlb_proxy.bc_linear_features lin ON lin.gr_skey = bc_gr_skey.gr_skey
-LEFT JOIN thlb_proxy.bc_riparian_buffers rip ON rip.gr_skey = bc_gr_skey.gr_skey"
+  gr_skey,
+  bc_land,
+  n01_ownership,
+  n02_nonfor,
+  p03_linear_features,
+  p04_riparian,
+  p05_phys_inop,
+  n06_merchantability
+FROM  
+thlb_proxy.prov_netdown"
 netdown_tab <- sql_to_df(query, conn_list)
 # identify the unit for future labeling
 # Query postgres for necessary data (when new data is required it is first processed and loaded to postgres):
-
 
 
 #a.arch_grid,
@@ -200,8 +168,7 @@ netdown_tab <- netdown_tab %>%
 The netdown summary table is initially created with the Provincial Boundary. As the netdown process progresses, each area deduction is appended as a new row.
 
 
-
-```{r netsummarysetup}
+```{r eval= FALSE}
 
 ## set up the TSA defaults for the TSA as a whole
 
@@ -219,699 +186,84 @@ pretty_table(x = netdown_summary)
 
 Each netdown step (area deduction) is described in the following sub-sections.
 
-## Delineating the AFLB
-
-The following area deductions are removed from the TSA area to classify the AFLB
-
-### n01_ownership
-
-Some areas within the TSA boundary do not contribute to timber supply for the purpose of this timber supply review.  These areas include privately held lands, lands under federal jurisdiction, municipal parcels, and area‑based forest tenures. In BC, area-based forest tenures give the exclusive right to the tenure holder to harvest timber and construct roads within the defined tenure area and include tree farm licences (TFL), community forest agreements (CFA), First Nation Woodlands Licences (FNWL) and woodlots.  As area‑based tenures have separate timber supply review determinations; therefore, the area associated with these tenures is excluded from the Boundary TSA TSR.
-
-The n01_ownership field is added to the netdown dataframe and includes the description of the tenure/ownership category that is being excluded from land base.
-
-**Data source**: WHSE_FOREST_VEGETATION.F_OWN (ar2022)
-<!-- 
-```{r ownership}
-
-# create a variable (n01_ownership) that classifies the landbase depending on whether the 'own' column has specific codes. Otherwise, the value will be NA where the ownership code doesn't match any of the options identified in the case_when statement.
-netdown_tab <- netdown_tab %>%
-  mutate(
-    n01_ownership = case_when(
-      own == "40N" ~ description, # private lands
-      own == "80N" ~ description, # Municipal Parcels
-      own == "52N" ~ description, # Indian Reserve (there are none in Boundary)
-      own == "54N" ~ description, # Federal Parcels
-      own == "77A" ~ description, # Crown Tenure - Woodlot Licence, Schedule A: Private
-      own == "79B" ~ description, # Crown Tenure - Community Forest Agreement, Schedule B: Public
-      own == "77B" ~ description, # Crown Tenure - Woodlot Licence, Schedule B 
-      own == "78B" ~ description, # Crown Tenure -  FNWL, Schedule B: Public
-      own == "72B" ~ description #Crown Tenure - Tree Farm Licence, Schedule B
-    )
-  )
-
-```
-
-#### Ownership summary
-
-The AFLB, gTHLB and THLB variables are updated in the netdown dataframe and the netdown summary is updated to show the areas excluded from the TSA for the purpose of AAC determinations.
-
-```{r ownsummary}
-
-#lclass<-"Areas_Excluded_from_Analysis_Forest"
-#n_step<-"n01_ownership"
-
-netdown_summary <- netdown100pct(netdown_tab = netdown_tab,
-                                 net_summary = netdown_summary,
-                                 running_total = running_total,
-                                 lclass = "Areas excluded from TSA TSR",
-                                 n_step = "n01_ownership")
-
-#View(netdown_summary)
-
-# use the update_areas1 function to update the aflb, thlb_net, and gthlb_net fields. (when n01_ownership is Na, don't remove any area (i.e. keep values as 1); where n01_ownership contains a value, update aflb, thlb_net, gthlb_net to 0 -- the area contains some other classification, for example TFL, CFA, woodlot and should be exlcuded fromt the analysis forest and thlb)
-netdown_tab<-update_areas1(netdown_tab = netdown_tab, var_name = "n01_ownership")
-
-# get a new running total for future netdown steps.
-running_total <- get_running_total(netdown_summary = netdown_summary,lc = "Areas excluded from TSA TSR")
-
-# display netdown summary in formatted table:
-pretty_table(netdown_summary)
-
-```
-
-### n02_skiresorts
-
-Controlled Recreation Areas in the Boundary TSA refers to large tenured recreation facilities like Mount Baldy, Big White and Phoenix Mountain where industrial harvesting is precluded.
-
-Three ski resorts overlap or partially overlap the boundary TSA.The resort areas are designated by regulation under Section 4 of the *Resort Timber Administration Act* and is administered under that Act. This Act allows Mountain Resort Branch statutory decision making authority over timber harvesting, and consequently, the total area will be excluded from the land base. Currently removed from AFLB and THLB (as has been done in Kootenay Lake, Revelstoke, and previous Boundary TSRs).
-
-Within the Boundary TSA, there are three alpine ski areas: Big White Ski Resort, Mount Baldy Ski Area, and Phoenix Mountain Ski Resort. The resort areas are designated by regulation under Section 4 of the Resort Timber Administration Act and administered under the land act. Harvest is also precluded in Crown Recreation Areas and Local Regional Parks and are therefore excluded from the THLB.
-
-**Data source:** REG_LEGAL_AND_ADMIN_BOUNDARIES.REC_TENURE_ALPINE_SKI_AREAS_SP
-
-```{r n02_skiresorts}
-
-# create ownership variable for ski resort areas:
-netdown_tab <- netdown_tab %>%
-  mutate(
-    n02_skiresort = case_when(
-      ski_resort %in% c("Big White Ski Resort", "Phoenix Mountain Ski Resort", "Mount Baldy Ski Area")  ~ ski_resort) # controlled recreation areas (ski resorts)
-    )
-
-```
-
-#### Ski resort summary
-
-```{r skiressummary}
-
-lclass<-"Controlled Recreation Areas (Ski Resorts)"
-n_step<-"n02_skiresort"
-
-netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-
-#View(netdown_summary)
-
-netdown_tab<-update_areas1(netdown_tab,n_step)
-
-running_total<-get_running_total(netdown_summary,lclass)
-pretty_table(netdown_summary)
-
-
-```
-
-### n03_nonfor
-
-Some areas within the Boundary TSA are not forested or are unable to support a productive forest and include water and non vegetated land such as rock, ice and bare land. These land cover types are not expected to contribute to either timber supply or non-timber management objectives that are based on forested conditions. Attributes that identify non-vegetated and various classes of vegetated areas are classified based on the BC land classification system (BCLCS), the Freshwater Atlas and the Biogeoclimatic Ecosystem Classification (BEC). Areas within historic cutblocks are considered forested and contribute to the THLB except where noted below.
-
-Identifying non-forest/non-productive is done using a long 'case when' statement. In the netdown table each non-productive class is assigned it’s own descriptive label under the variable n03_nonfor.
-
-**Data sources:** WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_BASEMAPPING.FWA_WETLANDS_POLY
-
-```{r nonndefinedfor}
-
-`%notin%` <- Negate(`%in%`) # create a 'not in' list function
-netdown_tab <- netdown_tab %>%
-  mutate(
-    n03_nonfor = case_when(
-      # Alpine
-      bclcs_lv_1 == "N" & bclcs_lv_3 == "A" ~ "non_vegetated_alpine_lcs", # Alpine Rock and Ice
-      bclcs_lv_2 == "N" & bclcs_lv_3 == "A" ~ "non_treed_alpine_lcs", # Shrub/Lichen
-      bgc_label %in% c("BAFAun", "IMA") ~ "alpine_bec", # BEC sourced Alpine,
-      # Riparian
-      bclcs_lv_1 == "N" & bclcs_lv_5 == "LA" ~ "lake_lcs", # lakes
-      bclcs_lv_1 == "N" & bclcs_lv_5 == "RE" ~ "reservoir_lcs", # reservoir
-      bclcs_lv_1 == "N" & bclcs_lv_5 == "RI" ~ "riparian_lcs", # riparian
-      bclcs_lv_2 == "T" & bclcs_lv_3 == "W" ~ "treed_wetland_lcs", # treed wetland
-      bclcs_lv_2 == "N" & bclcs_lv_3 == "W" ~ "non_treed_wetland_lcs",
-      bclcs_lv_3 == "W" ~ "wetlands_lcs", # nontreed wetland
-      wetland_type == "W" ~ "wetland_fwa", # FWA classification
-      # NonVegetated/low productivity
-      bclcs_lv_1 == "N" & is.na(cc_harvest_year) ~ "non_vegetated_lcs", # nonvegetated and not an opening
-      bclcs_lv_2 == "N" & bclcs_lv_4 %notin% c("ST", "SL") &
-        is.na(cc_harvest_year) ~ "non_treed_herb_lcs", # nontreed but not in a cutblock
-      bclcs_lv_4 %in% c("ST", "SL") & is.na(cc_harvest_year) ~ "non_treed_shrub_lcs",
-      site_index < 5 & is.na(cc_harvest_year) ~ "non_productive_si_vri", # low productivity stands
-      !is.na(np_desc) & is.na(cc_harvest_year) ~ paste0("FC1_", np_desc), # stand classified in the FC1 as nonproductive
-      paste(bclcs_lv_1, bclcs_lv_2, sep = "") == "VT" & is.na(spec_cd_1) ~ "no_spec_cd_1", # species label
-      bclcs_lv_1 == "U" | is.na(bclcs_lv_1) ~ "unclassified"
-    )
-  )
-
-```
-
-#### Non-Forest / Non-Productive Forest Summary
-
-```{r nonforsummary}
-
-lclass<-"Non Forest and Non-Productive Forest"
-n_step<-"n03_nonfor"
-
-netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-
-#View(netdown_summary)
-
-netdown_tab<-update_areas1(netdown_tab,n_step)
-
-running_total<-get_running_total(netdown_summary,lclass)
-pretty_table(netdown_summary)
-```
-
-### p04_lineal_features
-
-Productive forest land is lost due to permanent roads, trails, pipelines, transmission lines and other lineal features (something relating to or consisting of lines (buffered)). Existing estimates of the area occupied by lineal features is determined by applying average feature width buffers to the identified features.
-
-For the netdown process a vector overlay of buffered lineal features was created and rasterized as the proportion of each hectare occupied by a lineal feature. Initially, lineal features were rasterized at 5 meter resolution. The 5 meter rasters were then aggregated to 100 meter resolution for use in the netdown process:
-
-![](images/clipboard-3100856425.png){width="638"}
-
-For lineal features, the AFLB, gTHLB, and THLB are multiplied by one minus the proportion lineal features:
-
--   *AFLB = AFLB \* (1- proportion lineal features),*
--   gTHLB = gTHLB \* *(1- proportion lineal features),* and
--   *THLB = THLB \* (1-proportion lineal features)*
-
-In the example above, no previous area removals have occurred and the proportion road (i.e., lineal feature) is 0.11; therefore, after accounting for lineal features, the AFLB, gTHLB, and THLB for this cell become 1\*(1-.11) = 0.89.
-
-The lineal features table was created in May 2024 and reflects the 2021 CE Integrated roads dataset that includes roads and other linear features (railways, power lines, etc.). Pre-processing is described in the TSA02_roads.html document.
-
-**Data source:** BC cumulative effects framework 2021 integrated roads dataset.
-
-```{r lineal}
-
-netdown_tab <- netdown_tab %>%
-  mutate(
-    p04_lineal_features = road_pct / 1000) # road_pct is scaled by 1000 for use in STSM.
-
-```
-
-#### Lineal features summary
-
-```{r lineal_summary}
-
-lclass<-"Linear_Features"
-n_step<-"p04_lineal_features"
-
-netdown_summary<-netdown_prop(netdown_tab,netdown_summary,running_total,lclass,n_step)
-
-
-#View(netdown_summary)
-
-netdown_tab <- netdown_tab %>%
-mutate( aflb = aflb * (1-p04_lineal_features),
-thlb_net = thlb_net * (1-p04_lineal_features),
-gthlb_net = gthlb_net *(1-p04_lineal_features)
+## Delineating the FMLB - Forest Management Land Base
+
+The FMLB primarily uses the VRI field: `for_mgmt_land_base_ind` as its base with some updates. Note the `for_mgmt_land_base_ind` field is a text field which contains either 'Y' or 'N'.
+
+The following logic is used to derive the `for_mgmt_land_base_ind` field:
+
+```{sql eval= FALSE}
+WITH initial_for_mgmt_land_base_ind AS (
+SELECT
+  CASE
+      -- when harvest exist
+      WHEN (nullif(v.opening_id::text,'0') IS NULL AND nullif(v.opening_number::text,'0') IS NULL AND v.harvest_date IS NULL)
+      
+      AND
+      -- inventory code = Forest Inventory Planning (FIP);
+      -- AND is non productive or unreported
+      -- OR
+        (
+        (
+          v.inventory_standard_cd = 'F' 
+          AND
+          (
+          (v.non_productive_cd IS NOT NULL AND v.non_productive_cd <> '00') 
+          OR
+            (v.non_productive_descriptor_cd IS NOT NULL AND v.non_productive_descriptor_cd <> '00') 
+          OR
+            v.bclcs_level_1 = 'U'
+          )
+        )
+      -- inventory code != Forest Inventory Planning (FIP);
+      -- AND land cover classification either non-vegetated or unreported
+      -- OR
+      OR
+        (
+          v.inventory_standard_cd IN ('V', 'I', 'L') 
+          AND 
+          (
+            v.bclcs_level_1 In ('N', 'U')
+            OR
+            v.bclcs_level_3 = 'A'
+          )
+        )
+      OR
+      -- site_index < 5
+        (
+          COALESCE(COALESCE(v.site_index, v.est_site_index),0) < 5
+        )
+        )
+      then
+        'N'
+      else
+        'Y'
+    END fmlb_initial,
+    inventory_standard_cd,
+    earliest_nonlogging_dist_type,
+    crown_closure,
+    site_index,
+    bclcs_level_1,
+    bclcs_level_2,
+    bclcs_level_3,
+    project
+FROM
+  whse.veg_comp_lyr_r1_poly_internal_2023 v
 )
-
-running_total<-get_running_total(netdown_summary,lclass)
-
-netdown<-get_netdown(netdown_summary,lclass)
-
-pretty_table(netdown_summary)
+SELECT
+-- Some Fire Update polygons are flipped back from N to Y if they fall into the following pattern:
+	CASE WHEN project ilike 'FIRE_UPDATE%' 
+		AND inventory_standard_cd = 'V' 
+		AND earliest_nonlogging_dist_type like 'B%' 
+		AND crown_closure < 5
+		AND site_index >= 5
+		AND bclcs_level_1 = 'N'
+		AND bclcs_level_2 = 'L'
+		AND bclcs_level_3 = 'U'
+		AND fmlb_initial = 'N'
+	THEN 'Y' 
+	ELSE fmlb_initial
+	END AS fmlb_recreate
+FROM
+initial_for_mgmt_land_base_ind;
 ```
-
-**Note**: because lineal features is the first of the proportional numeric netdown variables, the initial values for AFLB, gTHLB, and THLB will either be 1 (no previous area removal) or 0 (area already excluded in previous netdown step). Subsequent proportional area deductions will factor in previous proportional deductions as follows:
-
-![](images/clipboard-2514177871.png){width="597"}
-
-Consider sequential partial netdowns with the logic: “*of the remaining THLB what proportion is excluded?*”
-
-### AFLB Summary
-
-```{r aflb_numbers}
-
-# create variables for adding to text of document - pulling out excluded area and remaining area at this stage in netdown process. Remaining area is AFLB.
-aflb_excluded <- netdown_summary%>%
-    filter(landclass == lclass)%>%
-    select(running_total)%>%
-    # pull out the running total 
-    pull()
-
-aflb_area <- netdown_summary %>% 
-  filter(landclass == lclass) %>% 
-  select(netdown) %>% 
-  pull()
-
-```
-
-The total area excluded up to this point in the netdown process is `r format(round(aflb_excluded,0), big.mark = ",")` hectares. The remaining land base is the AFLB and is `r format(round(aflb_area, 0), big.mark = ",")` hectares.
-
-```{r aflbsummary}
-
-lclass<-"Analysis Forest Landbase"
-
-netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown)
-
-#View(netdown_summary)
-
-pretty_table(netdown_summary)
-
-```
-
-## Delineating the gTHLB
-
-The next phase of the netdown process delineates the gTHLB from the AFLB. The gTHLB is the portion of the AFLB where timber harvesting is permitted, subject to forest management objectives outlined in current legislation. The following sub-sections describe areas that are part of the AFLB and contribute to non-timber forest management objectives but are excluded from the gTHLB and are therefore unavailable to harvest in the timber supply model.
-
-### n05_park
-
-BC has a protected areas strategy that was developed to protect natural, cultural and recreational values. Protection is granted under several Acts including the *Ecological Reserves Act*, *Park Act*, *Protected Areas Act* and the *Environment and Land Use Act.* In the Boundary TSA, there are 10 provincial parks and several small local and regional parks. Timber harvesting is prohibited in protected areas such as provincial, regional and local parks; however, protected areas remain in the AFLB and contribute to meeting landscape‑level objectives such as old growth requirements. No ecological reserves or conservancy areas were identified within the Boundary TSA.
-
-```{r park}
-netdown_tab <- netdown_tab %>%
-  mutate(n05_park = case_when(
-    # 60N is sourced from WHSE_TANTALIS.TA_PARK_ECORES_PA_SVW and includes parks, protected areas and conservancy areas - ownership data is not capturing provincial parks accurately.
-  #own  == '60N' ~ 'Conservancy_Ecological_Reserve_Protected_Area_Provincial_Park',
-  own == '81U' ~ 'Local_Region_Park',
-  # add provincial parks sourced from BCGW - see park_and_rec.Rmd
-  !is.na(park_name) ~ park_name))
-
-
-```
-
-#### Parks and Protected areas summary
-
-```{r parksummary}
-
-lclass<-"Parks and Protected Areas"
-n_step<-"n05_park"
-
-netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-
-#View(netdown_summary)
-
-netdown_tab<-update_areas2(netdown_tab,n_step)
-
-running_total<-get_running_total(netdown_summary,lclass)
-pretty_table(netdown_summary)
-
-```
-
-### n06_wha
-
-In British Columbia, wildlife habitat requirements are managed through several tools, including wildlife habitat areas (WHAs). WHAs are mapped areas that are necessary to meet the habitat requirements of an Identified Wildlife element. WHAs designate critical habitats in which activities are managed to limit their impact on the Identified Wildlife element for which the area was established. The purpose of WHAs is to conserve those habitats considered most limiting to a given Identified Wildlife element. In the Boundary TSA several orders establishing WHAs prohibit timber harvesting; these areas are excluded from the gTHLB.
-
-Areas that exclude harvest are maintained in the AFLB but are removed from the gTHLB and THLB.
-
-```{r wha}
-netdown_tab <- netdown_tab %>%
-  mutate(n06_wha = case_when(!is.na(wha_label) ~ wha_label))
-  #wha_harv_code == 'NO HARVEST ZONE' ~  'WildLife_Habitat_Area'))
-```
-
-#### Wildlife Habitat Area Summary
-
-```{r whasummary}
-lclass<-"Wildlife_Habitat_Areas"
-n_step<-"n06_wha"
-
-netdown_summary <- netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-
-#View(netdown_summary)
-
-netdown_tab <- update_areas2(netdown_tab,n_step)
-
-running_total <- get_running_total(netdown_summary,lclass)
-
-pretty_table(netdown_summary)
-
-```
-
-### n07_recreation
-
-Recreation sites and trails may be legally established and/or designated under the Land Act or the Forest and Range Practices Act (FRPA). Although the legal designation of a recreation site or trail may not preclude industrial activity or harvesting, a Land Act authorization must be sought from the District Recreation Officer. Such authorizations typically specify restrictions or conditions to harvest that act to reduce THLB availability.
-
-A Recreation Site is legally established under Section 56 of FRPA and requires authorization under Section 16 of Forest Recreation Regulation for industrial use purposes. A Recreation Reserve is a non-legal spatial entity indicating the presence of recreational opportunities or potential. Industrial developments proposed within their boundaries trigger a referral to the District Recreation Officer. These areas are managed in an integrated fashion that may permit a certain level of harvest.
-
-Initially, all recreation sites and reserves remain in the THLB with the following exceptions:
-
--   The Kettle River Recreation Area is protected and excluded from the THLB,
-
--   The Dewdney Trail is protected under the *Heritage Conservation Act*. The trail is buffered by 100 meters on either side and the total area excluded from the THLB. **AREA TBD - confirm trail location.**
-
-**The status of Forest_Recreation_Reserves need to be confirmed with the regional recreation officer before inclusion in the THLB**
-
-```{r recreation}
-netdown_tab <- netdown_tab %>%
-  mutate(n07_rec = case_when(
-    #own == '68U'  ~'Forest_Recreation_Reserves',
-    #adj_code_schd == '100_N' ~'Controlled_Recreation_Area', # moved to n02 step
-    adj_code_schd == '66_N' ~'Crown_Recreation_Area'
-    # 81U excluded in Park step.
-    #adj_code_schd == '81_U' ~'Crown_Local_Regional_Park' 
-    ))
-
-```
-
-#### Recreation Features Summary
-
-```{r recsummary}
-lclass<-"Recreation_Features"
-n_step<-"n07_rec"
-
-netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-
-#View(netdown_summary)
-
-netdown_tab<-update_areas2(netdown_tab,n_step)
-
-running_total<-get_running_total(netdown_summary,lclass)
-
-pretty_table(netdown_summary)
-```
-
-### n08_misc
-
-Miscellaneous tenures include the following:
-
--   Conservation lands (WHSE_LEGAL_ADMIN_BOUNDARIES.WCL_CONSERVATION_LANDS_SP)
-
--   Permanent Sample Plot area (WHSE_FOREST_VEGETATION.ISMC_PSP_ACTIVE_SITES_SP)
-
--   Government research installations (WHSE_FOREST_VEGETATION.RESPROJ_RSRCH_INSTN_GVT_SVW)
-
--   Snow pillow sites (WHSE_WATER_MANAGEMENT.SSL_SNOW_ASWS_STNS_SP)
-
-    -   Snow pillow site has been buffered by 50 meter radius.
-
--   Crown - miscellaneous lease areas (generalized forest ownership 99N)
-
--   Crown - miscellaneous reserve areas (generalized forest ownership 69U)
-
-    -   This area is excluded last in the miscellaneous tenure step. *The area should be reviewed.*
-
-```{r misc}
-netdown_tab <- netdown_tab %>%
-    mutate(n08_misc = case_when(
-      !is.na(consland_type) ~ consland_type,
-      !is.na(psp_site) ~ "psp_site",
-      !is.na(rsrch_site) ~ "research_site",
-      !is.na(snowpillow_site) ~ "snow_pillow_site",
-      adj_desc == '99_N_CrownLease_Misc_lease' ~ 'Crown_Misc_Lease',
-      adj_desc == '69_U_Crown_Misc_Reserves' ~ 'Crown_Misc_Reserves'
-      ))
-
-```
-
-#### Miscellaneous Tenures Summary
-
-```{r miscsummary}
-
-lclass<-"Misc_Tenures"
-n_step<-"n08_misc"
-
-netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-
-#View(netdown_summary)
-
-# prior to updated the gTHLB_net and thlb_net , run a summary of excluded area by miscellaneous reserve type - this will be used for the data package:
-misc_tenures_details <- netdown_tab %>% filter(!is.na(n08_misc)) %>% group_by(n08_misc) %>% summarize(area = n(), aflb = sum(aflb), excluded = sum(thlb_net))
-pretty_table(misc_tenures_details %>% adorn_totals())
-
-netdown_tab<-update_areas2(netdown_tab,n_step)
-
-running_total<-get_running_total(netdown_summary,lclass)
-
-pretty_table(netdown_summary)
-
-```
-
-### n09_cultural_heritage
-
-A cultural heritage resource is defined in the Forest Act as, “an object, site, or location of a traditional societal practice that is of historical, cultural or archaeological significance to the province, a community, or an aboriginal people”. Cultural heritage resources include archaeological sites structural features, heritage landscape features, and traditional use sites.
-
-The Heritage Conservation Act provides for the protection of British Columbia’s archaeological sites predating 1846. In accordance with the Act (Section 13(2)), archaeological sites may not be damaged, excavated or altered without a permit issued by the Minister or designate.The BC Provincial Heritage Register database is the basis for records on archaeological sites and provides a polygon layer. For this timber supply review, all identified buffered archaeological sites within the provincial application Remote Access to Archaeological Data (RAAD) are excluded from the timber harvesting land base.
-
-```{r cultural}
-netdown_tab <- netdown_tab %>%
-  mutate(n09_cultural_heritage = case_when(
-    arch_grid > 0 ~ 'Arch_Site'))
-
-```
-
-#### Cultural Heritage Summary
-
-```{r cultsummary}
-lclass<-"Cultural_Heritage_Features"
-n_step<-"n09_cultural_heritage"
-
-netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-
-#View(netdown_summary)
-
-netdown_tab<-update_areas2(netdown_tab,n_step)
-
-running_total<-get_running_total(netdown_summary,lclass)
-
-netdown<-get_netdown(netdown_summary,lclass)
-
-pretty_table(netdown_summary)
-```
-
-### gTHLB Summary
-
-With the exclusion of cultural heritage feature the ‘legally loggable landbase’ or gTHLB has now been defined and its area can be summarized.
-
-```{r gthlb}
-lclass<-"Gross Timber Harvesting Landbase"
-
-netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown)
-
-#View(netdown_summary)
-pretty_table(netdown_summary)
-```
-
-## Delineating the THLB
-
-The third and final phase of the netdown process excludes area based on practice-driven components with the exclusion of areas that are inoperable, non-merchantable, isolated or fragmented and retained as stand-level retention.
-
-### p10_phys_inop
-
-Areas are considered inoperable where there are physical barriers or limitations to harvesting, where appropriate logging methods (e.g., cable) are not available or are deemed to be too costly, where stands are not merchantable due to low volumes, are low value species, or have a high harvest cost (primarily due to excessive haul distance). Steep slopes and unstable ground are examples of limited physical operability while low volumes and low value species are examples of limited economic operability. Changing technology and economic conditions can affect both physical and economic operability.
-
-In this analysis the limits of historical harvest activity were used as indicators of physical and economic operability. Specifically, five attributes have been assessed to determine the upper and lower bounds for physical and economic operability: slope, elevation, terrain stability, low productivity stands and Non-commercial species.
-
-Physical operability is defined based on historic practice in the unit. For TSR the term “practice” refers to behaviour that is consistent with the legislative framework and/or is verifiable through legal commitment and is demonstrable over a sufficient period of time to be reflected as a trend in relevant data.
-
-To determine physically inoperable areas, elevation, slope and terrain stability mapping were assessed related to historic practice. Elevation was not found to limit harvest practice; however, steep sloped terrain and unstable and potentially unstable terrain were found to have limited historic practice.
-
-Binary rasters at 25-meter resolution were created to identify areas with slopes exceeding the 99.5th percentile within historically harvested cutblocks and areas with unstable or potentially unstable slopes. These rasters were then combined to produce a single "physically inoperable" variable. Finally, the data was aggregated to a 1-hectare resolution to form a proportional inoperable variable.
-
-Areas with previous harvest history are not considered inoperable.
-
-```{r physinop}
-## Remove Physically inoperable
-#the operability definition applies to the AFLB, Stands with INOP < 25% are considered operable
-
-netdown_tab <- netdown_tab %>%
-  mutate(p10_phys_inop = case_when(
-    blk_grid > 0 ~ 0, # if area harvested once, assume it could be harvested again. blk_grid is 1 where harvested (cc_harvest_year isn't NA).
-    phys_inop > 0 ~ phys_inop/1000, # Removed assumption that a given hectare with <25% inoperable is operable. used to be phys_inop_pct >250.
-    TRUE ~ 0))
-```
-
-#### Physical Inoperable Summary
-
-```{r inopsummary}
-lclass<-"Physically_Inoperable"
-n_step<-"p10_phys_inop"
-
-netdown_summary<-netdown_prop(netdown_tab,netdown_summary,running_total,lclass,n_step)
-
-#View(netdown_summary)
-
-netdown_tab <- netdown_tab %>%
-  mutate(thlb_net = thlb_net * (1-p10_phys_inop)
-  )
-
-running_total<-get_running_total(netdown_summary,lclass)
-
-pretty_table(netdown_summary)
-
-```
-
-### n11_nonmerchantable
-
-Stands are considered not merchantable if their characteristics (low volumes, low value or high cost of harvest [primarily excessive haul distance]) deviate significantly from the characteristics that have defined historic harvest preference and practice.
-
-In order to define the lower bounds of merchantability, statistical analysis of appraisal data collected from cutting permits issued over the last 30 years was used to determine the minimum volumes per hectare (MVH) a stand must achieve in order to be considered merchantable. Since some existing stands have yield projections that never achieve the threshold and would never be eligible for harvest in the timber supply projection, they are excluded from the THLB in the base case. For the Boundary TSA the 1 percentile of all permitted total volumes per ha equal 146 m^3^/ha (ground-based conventional harvest system).
-
-In addition stand types dominated (leading) by species with no harvest history are considered non commercial and are excluded from the THLB during the netdown process. For the Boundary TSR all deciduous leanding stands (\> 50 % deciduous as identified in the PFI) have been excluded from the THLB.
-
-```{r nonmerch}
-
-#blk_grid == 0 means no harvest history.
-
-netdown_tab <- netdown_tab %>%
-  mutate(n11_nonmerchantable = case_when(
-    vol_below_146 > 0 & blk_grid == 0 ~ 'NonMerchantable', 
-    decid_leading > 0 & blk_grid == 0 ~  'Problem_Timber_Type'))
-```
-
-#### Non-Merchantable Summary
-
-```{r nonmerchsummary}
-lclass<-"Non_Merchantable"
-n_step<-"n11_nonmerchantable"
-
-netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-
-#View(netdown_summary)
-
-netdown_tab<-update_areas3(netdown_tab,n_step)
-
-running_total<-get_running_total(netdown_summary,lclass)
-
-pretty_table(netdown_summary)
-```
-
-### n12_isolated
-
-Operability is not only a function of the physical and spatial condition of a given stand but also that of its immediate neighbourhood and the greater collection of stands or “patch” that it forms a part of.
-
-The final operability criterion is stand accessibility and is a measure the probability of development given the degree of stand isolation relative to neighbouring patches of THLB. Stand isolation can be a by product of the netdown process which fragments the productive forest into smaller “economic” patches which vary in size and distance from its nearest neighbouring patch.
-
-Fragments that are considered too small to be developed (smaller than a minimum patch size criteria) are removed from the THLB. Stands that can also be classified as isolated and removed from the THLB where they are deemed too costly to develop, based on historical development patterns, local knowledge and expert opinion
-
-Identifying isolated THLB is a recursive process that requires a “pre”-THLB (using this netdown script without an initial isolated variable) to be created first. Once in place the pre-THLB is rasterised then run through a patch identification process. Patch identification utilizes the landscapemetrics package which provides a suite of functions for evaluate landscape metrics at the landscape, class and patch level. For our purposes we are interested in understanding the size and distance drivers of isolation and therefore need the patch identification (patch_id), the patch size in hectares (area) and the distance to nearest neighbor in meters(enn: euclidean nearest-neighbor). Each patch is assessed for minimum size relative to cycletime (for Boundary \<= 3 heactare \> 3 hours ctime), minimum size relative to nearest neighbor (for Boundary \<= 5 heactare \> 500 metres) and minimum size relative to a distance index which combines distance to milling complex ,distance to current road network and cycle time. (for Boundary \<= 25 heactare \> than the 90 percentile of the distance index).
-
-For the first iterative run of the netdown script the isolated code and summary can be commented out to produce the “pre-thlb”. A placeholder pre-thlb was pre-processed from the previous tsr landbase and is used as a placeholder for the operability table production (the isolation code can remain un-commented during the first iteration but resulting isolated,retention and THLB metrics will be meaningless). Once the actual pre-thlb is produced and has overwritten the place holder pre-thlb the operability script is rerun then the isolated code is uncommented and the final netdown is run. For our purposes we’ll assume the pre-thlb is in place (we’re in the second run)
-
-```{r isolated}
-netdown_tab <- netdown_tab %>%
-  mutate(n12_isolation = case_when(
-    isolation > 0 & blk_grid == 0 ~ "isolated_thlb"))
-
-# keep previously harvested areas in. limit isolated to blk_grid == 0
-```
-
-#### Isolated Summary
-
-```{r isosummary}
-lclass<-"Isolated_THLB"
-n_step<-"n12_isolation"
-
-netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-
-#View(netdown_summary)
-
-netdown_tab<-update_areas3(netdown_tab,n_step)
-
-running_total<-get_running_total(netdown_summary,lclass)
-
-pretty_table(netdown_summary)
-
-
-```
-
-### p13_retention
-
-Stand level retention refers to unharvested areas associated with individual cutblocks. An analysis of retention practices derived from the Forest and Range Evaluation Program (FREP) for Stand-level Biodiversity Assessment and RESULTS spatial data collected from 2011 to 2023 were utilized to estimate total stand level retention for the Boundary TSA.
-
-The retention estimate includes areas occupied by riparian retention, wildlife tree retention (grouped retention), as well as retention for the protection of forest values including archaeological features, site specific habitat features, and/or blue listed species or ecosystems. Stand level retention in the netdown process is modeled as a non-spatial adjustment factor and applied to each hectare in the THLB, based on the geometric mean stand level retention for the TSA.
-
-This approach recognizes that although retention is not dispersed evenly across the land base the spatial variation in retention levels can be generalized across the land base without undue risk to yield estimation and forms a reasonable approximation for modelling timber supply in a TSA.
-
-The weighted mean of the sampled RESULTS dataset is 9.5%. Weighted means are often more meaningful measures of central tendency than arithmetic means, particularly when distributions are right skewed and approximate a log normal condition (such as the FREP and RESULTS datasets).
-
-The second phase of the process is to adjust the stand level retention reduction to THLB to account for land classes that have already been excluded from the THLB to avoid double counting. The sampled RESULTS retention dataset was examined through the netdown process to assess the amount of non-productive, inoperable or non merchantable forest that was generally retained within openings. A THLB adjustment factor of 0.60 was derived yielding a final retention proportion value of 0.0576. This proportion was deducted from the THLB inclusion factor to account for in-block retention.
-
-```{r retention}
-# area weighted average proportion from RESULTs 0.952
-# THLB adjustment factor 0.6046
-#final retention proportion value: 0.0576
-# 
-
-ret_prop<-0.0576 ## adjusted to account for proportion of retention in THLB
-
-netdown_tab<-netdown_tab%>%
-  mutate(p13_retention  = case_when(
-    thlb_net > 0 ~ ret_prop,
-    TRUE ~ 0))
-```
-
-#### Retention Summary
-
-```{r retentionsummary}
-lclass<-"Retention"
-n_step<-"p13_retention"
-
-netdown_summary<-netdown_prop(netdown_tab,netdown_summary,running_total,lclass,n_step,ret_prop)
-
-#View(netdown_summary)
-
-netdown_tab <- netdown_tab %>%
-  mutate(thlb_net = thlb_net * (1-p13_retention)
-  )
-
-running_total<-get_running_total(netdown_summary,lclass)
-
-netdown<-get_netdown(netdown_summary,lclass)
-
-
-pretty_table(netdown_summary)
-```
-
-### THLB Summary
-
-With the aspatial retention factor the THLB has now been defined and its area can be summarized completing the THLB definition process. The AFLB, gTHLB and THLB variables in the netdown table can now be rasterized for the timber supply model.
-
-If we in the first iteration the pre-thlb function is run to generate a pre-thlb table in postgres.
-
-```{r thlbsummary}
-
-netdown_tab<-netdown_tab%>%
-  mutate(thlb_bi = case_when(
-    thlb_net > 0 ~ 1 ,
-    TRUE ~ 0))
-
-lclass<-"Timber Harvesting Landbase"
-
-netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown)
-pretty_table(netdown_summary)
-
-
-
-```
-
-## Save tables to postgres
-
-```{r save_postgres}
- #only do when necessary (i.e., after changes made to netdown)
-# if (dbExistsTable(db, "tsa02_netdown2024_oct30")) {
-#    dbRemoveTable(db, "tsa02_netdown2024_oct30")
-#  }
-#dbWriteTable(db,"tsa02_netdown2024_oct30", netdown_tab , row.names = FALSE)
-
-# if (dbExistsTable(db, "tsa02_thlbsummary2024_oct30")) {
-#    dbRemoveTable(db, "tsa02_thlbsummary2024_oct30")
-#  }
-#dbWriteTable(db,"tsa02_thlbsummary2024_oct30", netdown_summary , row.names = FALSE)
-
-# write csv of retention netdown summary (or other value being examined)
-#write.csv(netdown_summary, "C:/Data/TSA02/R_analysis/TSA02_Netdown/retention/retention_netdown.csv", row.names = FALSE)
-
-# create thlb table
-tsa02_thlb <- netdown_tab %>% 
-  select(ogc_fid, included, aflb, gthlb_net, thlb_net, thlb_bi)
-
-
-dbDisconnect(db)
-```
-
-Save pre-thlb for use in determining isolated areas
-
-```{r pre_thlb, eval = FALSE}
-# prior to the final netdown, isolated patches need to be determined. 
-
-# run netdown without isolated areas and save the resulting thlb information to postgres as tsa02_pre_thlb.
-
-pre_thlb <- tsa02_thlb %>% 
-  left_join(tsa02_skey, by = "ogc_fid") %>% 
-  select(ogc_fid, gr_skey, thlb_net, thlb_bi, wkb_geometry)
-
-
-#if (dbExistsTable(db, "tsa02_pre_thlb")) {
-#    dbRemoveTable(db, "tsa02_pre_thlb")
-#  }
-#dbWriteTable(db,"tsa02_pre_thlb", pre_thlb , row.names = FALSE)
-
-``` -->

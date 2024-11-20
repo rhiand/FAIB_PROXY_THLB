@@ -7,12 +7,13 @@ source('src/utils/functions.R')
 ## relies on install_github("bcgov/FAIB_DATA_MANAGEMENT") being installed at some point
 conn_list <- dadmtools::get_pg_conn_list()
 
-query <- "DROP TABLE IF EXISTS thlb_proxy.prov_netdown;"
+query <- "DROP TABLE IF EXISTS thlb_proxy.prov_netdown_cc_2024;"
 run_sql_r(query, conn_list)
 
-query <- "CREATE TABLE thlb_proxy.prov_netdown AS
+query <- "CREATE TABLE thlb_proxy.prov_netdown_cc_2024 AS
 SELECT
 	bc_gr_skey.gr_skey,
+	bc_gr_skey.geom,
 	1::int as bc_land,
 	fown.own_sched || ' - ' || fown.ownership_description as n01_ownership,
 	CASE
@@ -29,11 +30,11 @@ SELECT
 		WHEN vri.bclcs_level_3 = 'W' THEN 'wetlands_lcs' -- nontreed wetland
 		WHEN wet.waterbody_type = 'W' THEN 'wetland_fwa' -- FWA classification
 		--  NonVegetated/low productivity
-		WHEN vri.bclcs_level_1 = 'N' AND cc.harvest_year is null THEN 'non_vegetated_lcs' -- nonvegetated and not an opening
-		WHEN vri.bclcs_level_2 = 'N' AND vri.bclcs_level_4 NOT IN ('ST', 'SL') AND cc.harvest_year is null THEN 'non_treed_herb_lcs' -- nontreed but not in a cutblock
-		WHEN vri.bclcs_level_4 IN ('ST', 'SL') AND cc.harvest_year is null THEN 'non_treed_shrub_lcs'
-		WHEN vri.site_index < 5 AND cc.harvest_year is null THEN 'non_productive_si_vri' -- low productivity stands
-		WHEN vri.non_productive_descriptor_cd is not null AND cc.harvest_year is null THEN 'FC1_' || vri.non_productive_descriptor_cd -- stand classified in the FC1 as nonproductive
+		WHEN vri.bclcs_level_1 = 'N' AND cc.harvest_mid_year_calendar is null THEN 'non_vegetated_lcs' -- nonvegetated and not an opening
+		WHEN vri.bclcs_level_2 = 'N' AND vri.bclcs_level_4 NOT IN ('ST', 'SL') AND cc.harvest_mid_year_calendar is null THEN 'non_treed_herb_lcs' -- nontreed but not in a cutblock
+		WHEN vri.bclcs_level_4 IN ('ST', 'SL') AND cc.harvest_mid_year_calendar is null THEN 'non_treed_shrub_lcs'
+		WHEN vri.site_index < 5 AND cc.harvest_mid_year_calendar is null THEN 'non_productive_si_vri' -- low productivity stands
+		WHEN vri.non_productive_descriptor_cd is not null AND cc.harvest_mid_year_calendar is null THEN 'FC1_' || vri.non_productive_descriptor_cd -- stand classified in the FC1 as nonproductive
 		WHEN vri.bclcs_level_1 || vri.bclcs_level_2 = 'VT' AND vri.species_cd_1 is null THEN 'no_species_cd_1' -- species label
 		WHEN vri.bclcs_level_1 = 'U' OR vri.bclcs_level_1 is null THEN 'unclassified'
 		ELSE NULL
@@ -48,8 +49,10 @@ LEFT JOIN whse.f_own_gr_skey fown_key ON bc_gr_skey.gr_skey = fown_key.gr_skey
 LEFT JOIN (SELECT own || schedule as own_sched, own, schedule, ownership_description, pgid FROM whse.f_own WHERE own||schedule in ('40N', '41N', '52N', '54N', '80N')) fown USING (pgid)
 LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023_gr_skey vri_key on vri_key.gr_skey = bc_gr_skey.gr_skey 
 LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023 vri on vri.pgid = vri_key.pgid
-LEFT JOIN whse.veg_consolidated_cut_blocks_sp_gr_skey ccg on ccg.gr_skey = bc_gr_skey.gr_skey 
-LEFT JOIN whse.veg_consolidated_cut_blocks_sp cc on cc.pgid = ccg.pgid 
+-- LEFT JOIN whse.veg_consolidated_cut_blocks_sp_gr_skey ccg on ccg.gr_skey = bc_gr_skey.gr_skey 
+-- LEFT JOIN whse.veg_consolidated_cut_blocks_sp cc on cc.pgid = ccg.pgid 
+LEFT JOIN whse.veg_consolidated_cut_blocks_sp_2024_gr_skey ccg on ccg.gr_skey = bc_gr_skey.gr_skey 
+LEFT JOIN whse.veg_consolidated_cut_blocks_sp_2024 cc on cc.pgid = ccg.pgid 
 LEFT JOIN whse.bec_biogeoclimatic_poly_gr_skey bec_key on bec_key.gr_skey = bc_gr_skey.gr_skey
 LEFT JOIN whse.bec_biogeoclimatic_poly bec ON bec.pgid = bec_key.pgid
 LEFT JOIN whse.fwa_wetlands_gr_skey wet_key ON wet_key.gr_skey = bc_gr_skey.gr_skey
@@ -58,6 +61,14 @@ LEFT JOIN thlb_proxy.bc_linear_features lin ON lin.gr_skey = bc_gr_skey.gr_skey
 LEFT JOIN thlb_proxy.bc_riparian_buffers rip ON rip.gr_skey = bc_gr_skey.gr_skey
 LEFT JOIN thlb_proxy.bc_inoperable_gr_skey inop ON inop.gr_skey = bc_gr_skey.gr_skey
 LEFT JOIN thlb_proxy.bc_merchantability_gr_skey merch ON merch.gr_skey = bc_gr_skey.gr_skey"
+run_sql_r(query, conn_list)
+
+query <- 'ALTER TABLE thlb_proxy.prov_netdown ADD PRIMARY KEY (gr_skey);'
+run_sql_r(query, conn_list)
+query <- "create index prov_netdown_geom_idx on thlb_proxy.prov_netdown using gist(geom);"
+run_sql_r(query, conn_list)
+
+query <- "analyze thlb_proxy.prov_netdown;"
 run_sql_r(query, conn_list)
 
 # query <- "WITH a AS (
