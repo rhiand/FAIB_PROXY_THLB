@@ -16,7 +16,7 @@ output:
 
 ## Background
 
-This report describes the data and methodology used to classify the Provincial THLB Proxy land base into four nested categories: Total TSA area, analysis forested land base (AFLB), gross timber harvesting land base (gTHLB) and timber harvesting land base (THLB).
+This report describes the data and methodology used to classify the Provincial THLB Proxy land base into four nested categories: Forest Management Land Base (FMLB), Forest Assessment Land Base (FALB), Analysis Forested Land Base (AFLB) and Timber Harvesting Land Base (THLB).
 
 ### Document setup
 
@@ -57,23 +57,18 @@ knitr::opts_chunk$set(fig.width = 8.5, fig.height = 7, collapse = TRUE)
 
 ### Netdown process overview
 
-The netdown process is a progressive exclusion algorithm where the TSA land base is classified into four nested categories: Total land base, AFLB, gTHLB, and THLB:
-
-<!-- ![](images/clipboard-1181740388.png){width="656"} -->
+The netdown process is a progressive exclusion algorithm where the BC land base is classified into four nested categories: FMLB, FALB, AFLB, and THLB:
 
 To delineate the 4 land base categories, several deductions occur, each of which is described in detail in this document. For each deduction, two steps are followed:
 
 1.  Categorize the area deduction in a *netdown dataframe:*
     -   The netdown dataframe includes a record for each hectare within the Province and multiple fields used to determine area deductions. For example:
 
-        <!-- ![](images/clipboard-2788201750.png){width="554"} -->
+    -   The FMLB, FALB, AFLB and THLB variables are updated with each area deduction. Initially, the FMLB, FALB, AFLB and THLB all have a value of one. The value gets updated with each area deduction. 
 
-    -   As area deductions occur, new variables are created that describe area being removed.
-
-    -   The AFLB, gTHLB and THLB variables are updated with each area deduction. Initially, the AFLB, gTHLB, and THLB all have a value of one. The value gets updated with each area deduction. 
 2.  Summarize the area deductions in a netdown summary table - the table summarizes area information for each area deduction:
     -   The **total** area is the gross area for the area deduction category/landclass,
-    -   The **percent** is the percent of total TSA area,
+    -   The **percent** is the percent of total landbase,
     -   The **excluded** value is the area that is excluded from the final THLB - the areas are excluded in the order they appear in the netdown summary table and account for areas excluded in previous deductions.
     -   The **running total** value is the combined total of excluded area for the landclass and each previous landclass identified in the table,
     -   The **netdown** is the remaining area after excluded area is removed. The final value (bottom row) is the THLB.
@@ -82,123 +77,87 @@ For example:
 
 ### Categorical vs. numerical area deduction variables
 
-**Categorical** variables are nominal variables that describe the type of area being excluded - there is no intrinsic ordering or ranking within each categorical netdown variable. For example, the ownership description variable classifies each hectare by the excluded ownership type (e.g., private land, Tree Farm Licence, etc.). In the netdown dataframe, categorical variables are prefixed with "n" followed by the order in which they occur in the netdown process (e.g., n01_ownership occurs first)
+**Categorical** variables are nominal variables that describe the type of area being excluded - there is no intrinsic ordering or ranking within each categorical netdown variable. For example, the ownership description variable classifies each hectare by the excluded ownership type (e.g., private land, federal land, etc.). In the netdown dataframe, categorical variables are prefixed with "n" followed by the order in which they occur in the netdown process (e.g., n01_fmlb occurs first)
 
-**Numerical** variables capture finer resolution (i.e. less than 100-meter resolution) area deductions and contain numeric values that define the proportion of a given hectare that will be excluded from the AFLB, gTHLB, and THLB (e.g., 10% of a 1-hectare grid cell may be occupied by road). In this analysis, there are 3 numeric area deduction variables (lineal features, inoperable area, and stand-level retention), each of which are described in more detail in this document. Numeric variable names are prefixed with "p" followed by the order in which they occur (e.g., p04_lineal_features occurs 4th in the netdown process).
+**Numerical** variables capture finer resolution (i.e. less than 100-meter resolution) area deductions and contain numeric values that define the proportion of a given hectare that will be excluded from the AFLB and THLB (e.g., 10% of a 1-hectare grid cell may be occupied by road). Numeric variable names are prefixed with "p" followed by the order in which they occur (e.g., p04_lineal_features occurs 4th in the netdown process).
 
-Once the netdown process is complete, the netdown table and thlb summary table are exported to postgres.
 
 ## Data assembly
 
-Prior to completing the netdown process that creates the netdown dataframe and thlb summary, exploratory data analysis is necessary for assembling and pre-processing data. FAIB's analysis-ready dataset is a primary source of data; however, additional data is also used and is described in each netdown area deduction factor.
+Prior to completing the netdown process that creates the netdown dataframe and thlb summary, pre-processing was performed to create tables that contribute to the creation of the netdown table.
 
 ### Netdown dataframe
 
-Area deduction variables that are required to classify the land base are loaded into the netdown dataframe through a postgres query. AFLB, gTHLB, and THLB variables are added to the dataframe with default values of 1. As the netdown process continues, new variables are added corresponding to each area deduction factor and the AFLB, gTHLB, and THLB values are updated accordingly.
-
-```{r data, eval= FALSE}
-library(dadmtools)
-library(dplyr)
-
-conn_list <- dadmtools::get_pg_conn_list()
-
-setup_tracking_variable<-function(netdown_tab){
-  landclass <- "Provincial Boundary"
-  total <- nrow(netdown_tab)
-  unit <- nrow(netdown_tab)
-  percent <- 100
-  excluded <- 0
-  running_total <- 0
-  netdown<-unit - running_total
-  
-  netdown_summary <- data.frame(landclass, total, percent, excluded, running_total,netdown)
-}
-
-query <- "SELECT
-  gr_skey,
-  bc_land,
-  n01_ownership,
-  n02_nonfor,
-  p03_linear_features,
-  p04_riparian,
-  p05_phys_inop,
-  n06_merchantability
-FROM  
-thlb_proxy.prov_netdown"
-netdown_tab <- sql_to_df(query, conn_list)
-# identify the unit for future labeling
-# Query postgres for necessary data (when new data is required it is first processed and loaded to postgres):
-
-
-#a.arch_grid,
-#  a.retention_grid,
-#  d.isolated, ## add back in after doing patch analysis
-
-## setup for looking at a different initial land category (e.g., retention area) to determine how much of the area is netted out and how much is in the THLB.
-
-#netdown_tab <- netdown_tab %>% 
-  # kelly's retention:
-#  filter(retention_grid > 0)
-  # elaine's retention:
-#  filter(!is.na(retention))
-  
-
-## updates since receiving from Kelly:
-# all markdowns for individual factors are stored in sub-folders in the TSA02_Netdown r project: C:\Data\TSA02\R_analysis\TSA02_Netdown
-  # SKi resorts excluded from AFLB
-  # Lineal features updated to 2021 Integrated roads dataset and clipped to TSA. see tsa02_roads.Rmd 
-  # Riparian aspatial reduction updated to reflect overlaps with other excluded areas. See tsa02_retention_analysis.Rmd 
-  # Provincial parks rasterized based on bcgw data rather than ownership as boundaries not accurately captured in ownership data. Parks_and_Rec.Rmd 
-  # WHAs did not capture overlapping WHAs. new wha table created: tsa02_wildlife_WHAs.Rmd (a.wha_harv_code excluded)
-  # added conservation lands to miscellaneous reserves netdown step
-  # switched from tsa02_tmp_res to tsa02_ar2022 as the feature_ids are consistent with the pfi and msyt.
-
-# Add AFLB, gTHLB, THLB to netdown table. initially all with value of 1 - updated with each netdown step.
-netdown_tab <- netdown_tab %>%
-  # add new variables (aflb, thlbe_net, and gthlb_net) to the netdown table. Initially, these are all set to a value of 1. Through the netdown process, they will be updated.
-  mutate(
-    aflb = 1,
-    thlb_net = 1,
-    gthlb_net = 1
-  )
-```
+Area deduction variables that are required to classify the land base are loaded into the netdown dataframe through a postgres query. FMLB, FALB, AFLB, and THLB variables are added to the dataframe with default values of 1. As the netdown process continues, new variables are added corresponding to each area deduction factor and the FMLB, FALB, AFLB, and THLB values are updated accordingly.
 
 ### Netdown summary table
 
 The netdown summary table is initially created with the Provincial Boundary. As the netdown process progresses, each area deduction is appended as a new row.
 
+**Data source:** S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\BC_Boundary_Terrestrial.tif
 
-```{r eval= FALSE}
+```{r netdown_import, eval=TRUE}
+library(dadmtools)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(tidyverse)
+source('../utils/functions.R')
 
-## set up the TSA defaults for the TSA as a whole
-
-netdown_summary <- setup_tracking_variable(netdown_tab = netdown_tab)
-#View(netdown_summary)
-
-# identify the initially running total for netted out area (used in subsequent netdown step)
+conn_list <- dadmtools::get_pg_conn_list()
+query <- "	SELECT 
+	n01_fmlb,
+	n02_ownership,
+	n03_ownership,
+	n04_nonfor,
+	p05_linear_features,
+	p06_riparian,
+	p07_phys_inop,
+	n08_merchantability
+FROM thlb_proxy.prov_netdown net
+JOIN
+	whse.man_unit_gr_skey man_unit on man_unit.gr_skey = net.gr_skey
+where man_unit = 'Boundary TSA'"
+netdown_tab <- sql_to_df(query, conn_list)
+netdown_summary <- setup_tracking_variable(netdown_tab)
 running_total <- 0
-
-pretty_table(x = netdown_summary)
-
+pretty_table(netdown_summary)
 ```
+
 
 ## Netdown steps
 
 Each netdown step (area deduction) is described in the following sub-sections.
 
-## Delineating the FMLB - Forest Management Land Base
+## Delineating the FMLB
 
-The FMLB primarily uses the VRI field: `for_mgmt_land_base_ind` as its base with some updates. Note the `for_mgmt_land_base_ind` field is a text field which contains either 'Y' or 'N'.
+The following area deductions are removed from the Provincial Boundary area to classify the FMLB. FMLB Logic:
 
-The following logic is used to derive the `for_mgmt_land_base_ind` field:
+Legend:  
+
+- 'N': non forested 
+- 'Y': forested 
+
+Description:
+
++ 'N' if BEC.natural_disturbance = 'NDT5'
++ 'Y' if harvest IS TRUE, (harvest is defined as: harvest is TRUE if vri.harvest_date is not null OR consolidated cutblocks exist OR vri.opening_id or vri.opening_number IS NOT NULL or '0' otherwise 'N')
++ 'Y' if (vri.bclcs_level_1 IN ('U', '') AND btm.present_land_use_label in ('Old Forest', 'Recently Logged', 'Selectively Logged', 'Young Forest'))
++ 'N' if bclcs_level_1 = 'V' AND bclcs_level_2 <> 'T' and vri.project NOT LIKE 'FIRE_UPDATE%'
++ 'N' if URBAN is true AND vri.for_mgmt_land_base_ind = 'Y', (URBAN defined as: URBAN IS TRUE if vri.non_productive_descriptor_cd = 'U' OR vri.bclcs_level_5 = 'UR' OR vri.land_cover_class_cd_1 = 'UR' OR vri.land_cover_class_cd_2 = 'UR' vri.OR land_cover_class_cd_3 = 'UR')
++ OTHERWISE vri.for_mgmt_land_base_ind
+
+Code:
+The following logic is used to derive the `for_mgmt_land_base_ind` field.
+
 
 ```{sql eval= FALSE}
-WITH initial_for_mgmt_land_base_ind AS (
+WITH recreate_for_mgmt_land_base_ind AS (
 SELECT
   CASE
-      -- when harvest exist
+      -- when harvest does not exist
       WHEN (nullif(v.opening_id::text,'0') IS NULL AND nullif(v.opening_number::text,'0') IS NULL AND v.harvest_date IS NULL)
-      
+      -- AND
       AND
       -- inventory code = Forest Inventory Planning (FIP);
       -- AND is non productive or unreported
@@ -265,5 +224,226 @@ SELECT
 	ELSE fmlb_initial
 	END AS fmlb_recreate
 FROM
-initial_for_mgmt_land_base_ind;
+recreate_for_mgmt_land_base_ind;
+```
+
+**Data sources:** WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_BASEMAPPING.BTM_PRESENT_LAND_USE_V1_SVW, WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY
+
+
+```{r fmlb, eval= TRUE}
+netdown_tab <- netdown_tab %>%
+  mutate(
+    fmlb = 1,
+    falb = 1,
+    aflb = 1,
+    thlb_net = 1
+  )
+
+lclass<-"FMLB"
+n_step<-"n01_fmlb"
+
+netdown_summary <- netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+netdown_tab <- update_areas1(netdown_tab,n_step)
+running_total <- get_running_total(netdown_summary,lclass)
+netdown <- get_netdown(netdown_summary,lclass)
+
+pretty_table(netdown_summary)
+``` 
+
+
+## Delineating the FALB
+
+The following area deductions are removed from the FMLB to classify the FALB
+
+## n02_ownership
+
+The next phase of the netdown process delineates the FALB from the FMLB. The FALB excludes private, municipal and first nation reserve lands. Below is a specific list of ownership classes excluded:
+
++ 40N, Private, - Parcel has a title registered to a First Nations group
++ 41N, Private - Land Claim Settlement Area
++ 52N, Federal - Indian Reserve
++ 80N, Crown Municipal Parcels
+
+
+```{r falb, eval= TRUE}
+
+lclass<-"Ownership_Areas_Excluded_from_FALB"
+n_step<-"n02_ownership"
+
+netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+netdown_tab<-update_areas1(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown <- get_netdown(netdown_summary,lclass)
+
+pretty_table(netdown_summary)
+```
+
+### FALB Summary
+
+```{r falb_landbase, eval= TRUE}
+lclass<-"Forest Assessment Land Base (FALB)"
+
+netdown_summary <- landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=falb)
+
+pretty_table(netdown_summary)
+```
+
+## Delineating the AFLB
+
+The following area deductions are removed from the FALB to classify the AFLB
+
+### n03_ownership
+
+The next phase of the netdown process delineates the AFLB from the FALB. 
+The FALB excludes the remaining federal lands. Below is a specific list of ownership classes excluded:
+
++ 50N, Federal - Federal Reserve
++ 51N, Federal - National Park
++ 53N, Federal - Military Reserve
++ 54N, Federal - Dominion government Block/Federal Parcels
+
+
+```{r aflb_own, eval= TRUE}
+
+lclass<-"Ownership_Areas_Excluded_from_AFLB"
+n_step<-"n03_ownership"
+
+netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+netdown_tab<-update_areas1(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown <- get_netdown(netdown_summary,lclass)
+
+pretty_table(netdown_summary)
+```
+
+### n04_nonfor
+
+The FALB land base is further excluded to create a 'not forested or non productive forest'.  These land cover types are not expected to contribute to either timber supply or non-timber management objectives that are based on forested conditions. Attributes that identify non-vegetated and various classes of vegetated areas are classified based on the BC land classification system (BCLCS), the Freshwater Atlas and the Biogeoclimatic Ecosystem Classification (BEC). Areas within historic cutblocks are considered forested and contribute to the THLB except where noted below.
+
+Identifying non-forest/non-productive is done using a long 'case when' statement in a previous postgres table creation. In the netdown table each non-productive class is assigned it’s own descriptive label under the variable n04_nonfor.
+
+**Data sources:** WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_BASEMAPPING.FWA_WETLANDS_POLY
+
+```{r aflb_nonfor, eval= TRUE}
+lclass<-"Non_Forest_and_Non_Productive_Forest"
+n_step<-"n04_nonfor"
+
+netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+
+netdown_tab<-update_areas1(netdown_tab,n_step)
+
+running_total<-get_running_total(netdown_summary,lclass)
+
+pretty_table(netdown_summary)
+```
+
+### p05_linear_features
+
+Productive forest land is lost due to permanent roads, trails, pipelines, transmission lines and other linear features (something relating to or consisting of lines (buffered)). Existing estimates of the area occupied by linear features is determined by applying average feature width buffers to the identified features.
+
+The linear features table was created in July 2024 and reflects the 2021 CE Integrated roads dataset that includes roads and other linear features (railways, power lines, etc.). 
+
+**Data source:** BC cumulative effects framework 2021 integrated roads dataset, WHSE_TANTALIS.TA_CROWN_RIGHTS_OF_WAY_SVW, WHSE_MINERAL_TENURE.OG_PIPELINE_AREA_PERMIT_SP, WHSE_IMAGERY_AND_BASE_MAPS.DRP_OIL_GAS_PIPELINES_BC_SP, WHSE_BASEMAPPING.GBA_TRANSMISSION_LINES_SP, WHSE_BASEMAPPING.GBA_RAILWAY_TRACKS_SP
+
+
+```{r aflb_lin, eval= TRUE}
+lclass<-"Linear_Features"
+n_step<-"p05_linear_features"
+
+netdown_summary<-netdown_prop(netdown_tab,netdown_summary,running_total,lclass,n_step)
+
+
+netdown_tab <- netdown_tab %>%
+mutate( aflb = aflb * (1-p05_linear_features),
+thlb_net = thlb_net * (1-p05_linear_features)
+)
+
+
+netdown_tab<-update_areas1(netdown_tab,n_step)
+
+running_total<-get_running_total(netdown_summary,lclass)
+
+netdown<-get_netdown(netdown_summary,lclass)
+
+pretty_table(netdown_summary)
+```
+
+### AFLB Summary
+
+```{r aflb_landbase, eval= TRUE}
+lclass<-"Analysis Forest Landbase (AFLB)"
+
+netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=aflb)
+
+pretty_table(netdown_summary)
+```
+
+## Delineating the THLB
+
+The next phase of the netdown process delineates the THLB from the AFLB. 
+
+### p06_riparian
+
+```{r thlb_rip, eval= TRUE}
+lclass<-"Riparian_Buffers"
+n_step<-"p06_riparian"
+
+netdown_summary<-netdown_prop(netdown_tab,netdown_summary,running_total,lclass,n_step)
+
+netdown_tab <- netdown_tab %>%
+  mutate(thlb_net = thlb_net * (1-p06_riparian)
+  )
+
+
+netdown_tab<-update_areas1(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
+pretty_table(netdown_summary)
+```
+
+### p07_phys_inop
+To determine physically inoperable areas, elevation, slope and terrain stability mapping were assessed related to historic practice since 2014. 
+
+For each TSA and TFL, binary rasters at 25-meter resolution were created to identify areas with slopes exceeding the 99th percentile within harvested cutblocks since 2014, areas with elevations exceeding 99th percentile within harvested cutblocks since 2014 and areas with unstable or potentially unstable slopes. These rasters were then combined to produce a single "physically inoperable" variable. Finally, the data was aggregated to a 1-hectare resolution to form a proportional inoperable variable.
+
+Please note that when creating the 99th percentile threshold, it was required to have a minumum of 30 cutblocks within the TFL/TSA. If the unit did not have > 30 cutblocks, a TFL would using the threshold of the TSA the TFL overlaps with the most. Only TFL 43 had < 30 cutblocks, and instead, the thresolds from 39 - Sunshine Coast TSA were used for TFL 43.
+
+```{r thlb_phys_inop, eval= TRUE}
+lclass<-"Physical_Inoperable"
+n_step<-"p07_phys_inop"
+
+netdown_summary<-netdown_prop(netdown_tab,netdown_summary,running_total,lclass,n_step)
+
+netdown_tab <- netdown_tab %>%
+  mutate(thlb_net = thlb_net * (1-p07_phys_inop)
+  )
+
+netdown_tab<-update_areas1(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
+pretty_table(netdown_summary)
+```
+
+### n08_merchantability
+
+```{r thlb_merch, eval= TRUE}
+lclass<-"Merchantability"
+n_step<-"n08_merchantability"
+
+netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+netdown_tab<-update_areas1(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
+pretty_table(netdown_summary)
+```
+
+
+### THLB Summary
+
+```{r thlb_landbase, eval= TRUE}
+lclass<-"Timber Harvest Landbase (THLB)"
+
+netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=thlb_net)
+
+pretty_table(netdown_summary)
 ```

@@ -7,7 +7,7 @@ source('src/utils/functions.R')
 ## relies on install_github("bcgov/FAIB_DATA_MANAGEMENT") being installed at some point
 conn_list <- dadmtools::get_pg_conn_list()
 
-query <- "DROP TABLE IF EXISTS thlb_proxy.seral_2023_tap_method_cc_2024;"
+query <- "DROP TABLE IF EXISTS thlb_proxy.seral_2023_tap_method;"
 run_sql_r(query, conn_list)
 
 
@@ -29,7 +29,7 @@ run_sql_r(query, conn_list)
 #####  + 'N' if URBAN is true AND vri.for_mgmt_land_base_ind = 'Y', (URBAN defined as: URBAN IS TRUE if vri.non_productive_descriptor_cd = 'U' OR vri.bclcs_level_5 = 'UR' OR vri.land_cover_class_cd_1 = 'UR' OR vri.land_cover_class_cd_2 = 'UR' vri.OR land_cover_class_cd_3 = 'UR')
 #####  OTHERWISE vri.for_mgmt_land_base_ind
 
-query <- "CREATE TABLE thlb_proxy.seral_2023_tap_method_cc_2024 AS
+query <- "CREATE TABLE thlb_proxy.seral_2023_tap_method AS
 WITH r1 AS (
 SELECT
 	g.gr_skey, 
@@ -82,23 +82,20 @@ SELECT
 	coalesce(burn.burn_severity_rating, fire.burn_severity) AS burn_severity_rating,
 	--------------------------------------------------------
 	----  HARVEST boolean field description: harvest is TRUE if vri.harvest_date is not null OR consolidated cutblocks exist OR vri.opening_id or vri.opening_number IS NOT NULL or '0' otherwise FALSE
-	(nullif(v.opening_id::text,'0') is not null or nullif(v.opening_number::text,'0') is not null or v.harvest_date is not null or ccg.gr_skey is not null) AS harvest, 
+	(nullif(v.opening_id::text,'0') is not null or nullif(v.opening_number::text,'0') is not null or cc.harvest_start_year_calendar is not null or ccg.gr_skey is not null) AS harvest, 
 	CASE 
 		WHEN nullif(v.opening_id::text,'0') is not null THEN 'harvest: vri opening_id present'
 		WHEN nullif(v.opening_number::text,'0') is not null THEN 'harvest: vri opening_number present'
-		WHEN v.harvest_date is not null THEN 'harvest: vri harvest date present'
+		WHEN cc.harvest_start_year_calendar is not null THEN 'harvest: vri harvest date present'
 		WHEN ccg.gr_skey is not null THEN 'harvest: cutblock present'
 	END AS harvest_desc, 
-	cc.harvest_mid_year_calendar as harvest_year
+	cc.harvest_start_year_calendar as harvest_year
 FROM 
--- whse.all_bc_gr_skey g 
-ogsr.all_bc_gr_skey g
+whse.all_bc_gr_skey g 
 LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023_gr_skey vg on vg.gr_skey = g.gr_skey 
 LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023 v on v.pgid = vg.pgid
 LEFT JOIN thlb_proxy.btm_present_land_use_v1_svw_gr_skey btmg on btmg.gr_skey = g.gr_skey 
 LEFT JOIN thlb_proxy.btm_present_land_use_v1_svw btm on btm.pgid = btmg.pgid
--- LEFT JOIN whse.veg_consolidated_cut_blocks_sp_gr_skey ccg on ccg.gr_skey = g.gr_skey 
--- LEFT JOIN whse.veg_consolidated_cut_blocks_sp cc on cc.pgid = ccg.pgid 
 LEFT JOIN whse.veg_consolidated_cut_blocks_sp_2024_gr_skey ccg on ccg.gr_skey = g.gr_skey 
 LEFT JOIN whse.veg_consolidated_cut_blocks_sp_2024 cc on cc.pgid = ccg.pgid 
 LEFT JOIN whse.bec_biogeoclimatic_poly_gr_skey bec_key on bec_key.gr_skey = g.gr_skey
@@ -127,8 +124,7 @@ LEFT JOIN
 		--coalesce(by.burn_severity_rating, b.burn_severity_rating) AS burn_severity_rating,
 		--coalesce(by.fire_year, b.fire_year) AS fire_year
 		FROM 
-		--whse.all_bc_gr_skey g
-		ogsr.all_bc_gr_skey g
+		whse.all_bc_gr_skey g
 		LEFT JOIN thlb_proxy.veg_burn_severity_sp_gr_skey bg on bg.gr_skey = g.gr_skey
 		LEFT JOIN thlb_proxy.veg_burn_severity_sp b on b.pgid = bg.pgid 
 		LEFT JOIN thlb_proxy.veg_burn_severity_same_yr_sp_gr_skey byg on byg.gr_skey = g.gr_skey 

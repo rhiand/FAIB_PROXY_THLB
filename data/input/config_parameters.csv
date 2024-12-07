@@ -16,4 +16,7 @@ oracle,bcgw,WHSE_BASEMAPPING.BTM_PRESENT_LAND_USE_V1_SVW,,thlb_proxy,btm_present
 oracle,bcgw,whse_forest_vegetation.veg_burn_severity_sp,,thlb_proxy,veg_burn_severity_sp,,0,0,,
 gpkg,W:\FOR\VIC\HTS\DAM\Projects\THLB_Proxy\data\input\FIRE_SEVERITY_COMPILE_2007_2023.gpkg,fire_severity_compile,,thlb_proxy,fire_severity_compilation,,0,0,,Manual compilation by Mike Fowler of all the Fire Severity Mapping data located here: \\spatialfiles2.bcgov\archive\FOR\VIC\HTS\FAIB_DATA_FOR_DISTRIBUTION\Fire_severity_mapping_for_vri_update
 oracle,bcgw,WHSE_FOREST_VEGETATION.VEG_BURN_SEVERITY_SAME_YR_SP,,thlb_proxy,VEG_BURN_SEVERITY_SAME_YR_SP,,0,0,,
-gdb,C:\projects\THLB_Proxy\data\input\Consolidated_Cut_Block\Consolidated_Cut_Block.gdb,Cut_Block_all_BC,,whse,veg_consolidated_cut_blocks_sp_2024,,1,0,,
+gdb,C:\projects\THLB_Proxy\data\input\Consolidated_Cut_Block\Consolidated_Cut_Block.gdb,Cut_Block_all_BC,,whse,veg_consolidated_cut_blocks_sp_2024,,0,0,,
+gdb,W:\FOR\VIC\HTS\DAM\WorkArea\Mcdougall\Data\prov_THLB_tsas.gdb,prov_THLB_tsas,,whse,prov_THLB_tsas,,1,0,,
+,,,,,,,,,,
+,,,,,,,,,,
