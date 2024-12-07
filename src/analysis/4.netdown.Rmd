@@ -115,9 +115,7 @@ query <- "	SELECT
 	p07_phys_inop,
 	n08_merchantability
 FROM thlb_proxy.prov_netdown net
-JOIN
-	whse.man_unit_gr_skey man_unit on man_unit.gr_skey = net.gr_skey
-where man_unit = 'Boundary TSA'"
+where tsa_rank1 = 'Boundary TSA'"
 netdown_tab <- sql_to_df(query, conn_list)
 netdown_summary <- setup_tracking_variable(netdown_tab)
 running_total <- 0
