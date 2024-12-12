@@ -1890,7 +1890,7 @@ border-radius: 0px;
 
 <h1 class="title toc-ignore">Provincial Netdown</h1>
 <h4 class="author">Hailey Eckstrand</h4>
-<h4 class="date">Last run on December 05, 2024</h4>
+<h4 class="date">Last run on December 10, 2024</h4>
 
 </div>
 
@@ -2020,22 +2020,21 @@ S:\FOR\VIC\HTS\ANA\workarea\PROVINCIAL\BC_Boundary_Terrestrial.tif</p>
 <span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a></span>
 <span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>conn_list <span class="ot">&lt;-</span> dadmtools<span class="sc">::</span><span class="fu">get_pg_conn_list</span>()</span>
 <span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>query <span class="ot">&lt;-</span> <span class="st">&quot;  SELECT </span></span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="st">    n01_fmlb,</span></span>
-<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="st">    n02_ownership,</span></span>
-<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="st">    n03_ownership,</span></span>
-<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="st">    n04_nonfor,</span></span>
-<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="st">    p05_linear_features,</span></span>
-<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="st">    p06_riparian,</span></span>
-<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="st">    p07_phys_inop,</span></span>
-<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="st">    n08_merchantability</span></span>
-<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="st">FROM thlb_proxy.prov_netdown net</span></span>
-<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="st">JOIN</span></span>
-<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a><span class="st">    whse.man_unit_gr_skey man_unit on man_unit.gr_skey = net.gr_skey</span></span>
-<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a><span class="st">where man_unit = &#39;Boundary TSA&#39;&quot;</span></span>
-<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> <span class="fu">sql_to_df</span>(query, conn_list)</span>
-<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>netdown_summary <span class="ot">&lt;-</span> <span class="fu">setup_tracking_variable</span>(netdown_tab)</span>
-<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a>running_total <span class="ot">&lt;-</span> <span class="dv">0</span></span>
-<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="st">  gr_skey,</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="st">  own,</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="st">    n01_fmlb,</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="st">    n02_ownership,</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="st">    n03_ownership,</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="st">    n04_nonfor,</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="st">    p05_linear_features,</span></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="st">    p06_riparian,</span></span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="st">    p07_phys_inop,</span></span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="st">    n08_merchantability</span></span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a><span class="st">FROM thlb_proxy.prov_netdown net&quot;</span></span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> <span class="fu">sql_to_df</span>(query, conn_list)</span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a>netdown_summary <span class="ot">&lt;-</span> <span class="fu">setup_tracking_variable</span>(netdown_tab)</span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>running_total <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 Netdown Summary Table
@@ -2068,7 +2067,7 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-514,435
+94,806,032
 </td>
 <td style="text-align:right;">
 100
@@ -2080,7 +2079,7 @@ Provincial_Boundary
 0
 </td>
 <td style="text-align:right;">
-514,435
+94,806,032
 </td>
 </tr>
 </tbody>
@@ -2212,7 +2211,7 @@ WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY</p>
 <span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;n01_fmlb&quot;</span></span>
 <span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a></span>
 <span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>netdown_summary <span class="ot">&lt;-</span> <span class="fu">netdown100pct</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
-<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> <span class="fu">update_areas1</span>(netdown_tab,n_step)</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> <span class="fu">update_areas_fmlb</span>(netdown_tab,n_step)</span>
 <span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>running_total <span class="ot">&lt;-</span> <span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
 <span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>netdown <span class="ot">&lt;-</span> <span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
 <span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a></span>
@@ -2249,7 +2248,7 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-514,435
+94,806,032
 </td>
 <td style="text-align:right;">
 100.00000
@@ -2261,7 +2260,7 @@ Provincial_Boundary
 0
 </td>
 <td style="text-align:right;">
-514,435
+94,806,032
 </td>
 </tr>
 <tr>
@@ -2269,23 +2268,120 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-116,256
+36,592,541
 </td>
 <td style="text-align:right;">
-22.59877
+38.59727
 </td>
 <td style="text-align:right;">
-116,256
+36,592,541
 </td>
 <td style="text-align:right;">
-116,256
+36,592,541
 </td>
 <td style="text-align:right;">
-398,179
+58,213,491
 </td>
 </tr>
 </tbody>
 </table>
+<div id="fmlb-summary" class="section level3">
+<h3>FMLB Summary</h3>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;LANDBASE SUMMARY - FMLB&quot;</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>netdown_summary <span class="ot">&lt;-</span> <span class="fu">landbase_sum</span>(netdown_tab,netdown_summary,running_total,lclass,netdown,<span class="at">which_landbase=</span>fmlb)</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
+<caption style="font-size: initial !important;">
+Netdown Summary Table
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+landclass
+</th>
+<th style="text-align:right;">
+total
+</th>
+<th style="text-align:right;">
+percent
+</th>
+<th style="text-align:right;">
+excluded
+</th>
+<th style="text-align:right;">
+running_total
+</th>
+<th style="text-align:right;">
+netdown
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Provincial_Boundary
+</td>
+<td style="text-align:right;">
+94,806,032
+</td>
+<td style="text-align:right;">
+100.00000
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+94,806,032
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+FMLB
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+38.59727
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LANDBASE SUMMARY - FMLB
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+<td style="text-align:right;">
+61.40273
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 <div id="delineating-the-falb" class="section level2">
 <h2>Delineating the FALB</h2>
@@ -2304,16 +2400,15 @@ group</li>
 <li>52N, Federal - Indian Reserve</li>
 <li>80N, Crown Municipal Parcels</li>
 </ul>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a></span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Ownership_Areas_Excluded_from_FALB&quot;</span></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;n02_ownership&quot;</span></span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown100pct</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>netdown_tab<span class="ot">&lt;-</span><span class="fu">update_areas1</span>(netdown_tab,n_step)</span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>netdown <span class="ot">&lt;-</span> <span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a></span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Ownership_Areas_Excluded_from_FALB&quot;</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;n02_ownership&quot;</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown100pct</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>netdown_tab<span class="ot">&lt;-</span><span class="fu">update_areas_falb</span>(netdown_tab,n_step)</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>netdown <span class="ot">&lt;-</span> <span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 Netdown Summary Table
@@ -2346,19 +2441,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-514,435
+94,806,032
 </td>
 <td style="text-align:right;">
-100.00000
-</td>
-<td style="text-align:right;">
-0
+100.000000
 </td>
 <td style="text-align:right;">
 0
 </td>
 <td style="text-align:right;">
-514,435
+0
+</td>
+<td style="text-align:right;">
+94,806,032
 </td>
 </tr>
 <tr>
@@ -2366,19 +2461,39 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-116,256
+36,592,541
 </td>
 <td style="text-align:right;">
-22.59877
+38.597271
 </td>
 <td style="text-align:right;">
-116,256
+36,592,541
 </td>
 <td style="text-align:right;">
-116,256
+36,592,541
 </td>
 <td style="text-align:right;">
-398,179
+58,213,491
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LANDBASE SUMMARY - FMLB
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+<td style="text-align:right;">
+61.402729
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
 </td>
 </tr>
 <tr>
@@ -2386,30 +2501,31 @@ FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-58,960
+4,887,226
 </td>
 <td style="text-align:right;">
-11.46112
+5.154974
 </td>
 <td style="text-align:right;">
-22,795
+2,749,448
 </td>
 <td style="text-align:right;">
-139,051
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384
+55,464,043
 </td>
 </tr>
 </tbody>
 </table>
 <div id="falb-summary" class="section level3">
 <h3>FALB Summary</h3>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Forest Assessment Land Base (FALB)&quot;</span></span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a></span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>netdown_summary <span class="ot">&lt;-</span> <span class="fu">landbase_sum</span>(netdown_tab,netdown_summary,running_total,lclass,netdown,<span class="at">which_landbase=</span>falb)</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a></span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;LANDBASE SUMMARY - FALB&quot;</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>netdown_summary <span class="ot">&lt;-</span> <span class="fu">landbase_sum</span>(netdown_tab,netdown_summary,running_total,lclass,netdown,<span class="at">which_landbase=</span>falb)</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 Netdown Summary Table
@@ -2442,19 +2558,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-514,435
+94,806,032
 </td>
 <td style="text-align:right;">
-100.00000
-</td>
-<td style="text-align:right;">
-0
+100.000000
 </td>
 <td style="text-align:right;">
 0
 </td>
 <td style="text-align:right;">
-514,435
+0
+</td>
+<td style="text-align:right;">
+94,806,032
 </td>
 </tr>
 <tr>
@@ -2462,19 +2578,39 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-116,256
+36,592,541
 </td>
 <td style="text-align:right;">
-22.59877
+38.597271
 </td>
 <td style="text-align:right;">
-116,256
+36,592,541
 </td>
 <td style="text-align:right;">
-116,256
+36,592,541
 </td>
 <td style="text-align:right;">
-398,179
+58,213,491
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LANDBASE SUMMARY - FMLB
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+<td style="text-align:right;">
+61.402729
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
 </td>
 </tr>
 <tr>
@@ -2482,39 +2618,39 @@ FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-58,960
+4,887,226
 </td>
 <td style="text-align:right;">
-11.46112
+5.154974
 </td>
 <td style="text-align:right;">
-22,795
+2,749,448
 </td>
 <td style="text-align:right;">
-139,051
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384
+55,464,043
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Forest Assessment Land Base (FALB)
+LANDBASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-375,384
+55,464,043
 </td>
 <td style="text-align:right;">
-72.97015
+58.502652
 </td>
 <td style="text-align:right;">
-139,051
+39,341,989
 </td>
 <td style="text-align:right;">
-139,051
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384
+55,464,043
 </td>
 </tr>
 </tbody>
@@ -2536,173 +2672,14 @@ list of ownership classes excluded:</p>
 <li>53N, Federal - Military Reserve</li>
 <li>54N, Federal - Dominion government Block/Federal Parcels</li>
 </ul>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a></span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Ownership_Areas_Excluded_from_AFLB&quot;</span></span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;n03_ownership&quot;</span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown100pct</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>netdown_tab<span class="ot">&lt;-</span><span class="fu">update_areas1</span>(netdown_tab,n_step)</span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>netdown <span class="ot">&lt;-</span> <span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a></span>
-<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
-<table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
-<caption style="font-size: initial !important;">
-Netdown Summary Table
-</caption>
-<thead>
-<tr>
-<th style="text-align:left;">
-landclass
-</th>
-<th style="text-align:right;">
-total
-</th>
-<th style="text-align:right;">
-percent
-</th>
-<th style="text-align:right;">
-excluded
-</th>
-<th style="text-align:right;">
-running_total
-</th>
-<th style="text-align:right;">
-netdown
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:left;">
-Provincial_Boundary
-</td>
-<td style="text-align:right;">
-514,435
-</td>
-<td style="text-align:right;">
-100.0000000
-</td>
-<td style="text-align:right;">
-0
-</td>
-<td style="text-align:right;">
-0
-</td>
-<td style="text-align:right;">
-514,435
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-FMLB
-</td>
-<td style="text-align:right;">
-116,256
-</td>
-<td style="text-align:right;">
-22.5987734
-</td>
-<td style="text-align:right;">
-116,256
-</td>
-<td style="text-align:right;">
-116,256
-</td>
-<td style="text-align:right;">
-398,179
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-Ownership_Areas_Excluded_from_FALB
-</td>
-<td style="text-align:right;">
-58,960
-</td>
-<td style="text-align:right;">
-11.4611175
-</td>
-<td style="text-align:right;">
-22,795
-</td>
-<td style="text-align:right;">
-139,051
-</td>
-<td style="text-align:right;">
-375,384
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-Forest Assessment Land Base (FALB)
-</td>
-<td style="text-align:right;">
-375,384
-</td>
-<td style="text-align:right;">
-72.9701517
-</td>
-<td style="text-align:right;">
-139,051
-</td>
-<td style="text-align:right;">
-139,051
-</td>
-<td style="text-align:right;">
-375,384
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-Ownership_Areas_Excluded_from_AFLB
-</td>
-<td style="text-align:right;">
-3
-</td>
-<td style="text-align:right;">
-0.0005832
-</td>
-<td style="text-align:right;">
-0
-</td>
-<td style="text-align:right;">
-139,051
-</td>
-<td style="text-align:right;">
-375,384
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div id="n04_nonfor" class="section level3">
-<h3>n04_nonfor</h3>
-<p>The FALB land base is further excluded to create a ‘not forested or
-non productive forest’. These land cover types are not expected to
-contribute to either timber supply or non-timber management objectives
-that are based on forested conditions. Attributes that identify
-non-vegetated and various classes of vegetated areas are classified
-based on the BC land classification system (BCLCS), the Freshwater Atlas
-and the Biogeoclimatic Ecosystem Classification (BEC). Areas within
-historic cutblocks are considered forested and contribute to the THLB
-except where noted below.</p>
-<p>Identifying non-forest/non-productive is done using a long ‘case
-when’ statement in a previous postgres table creation. In the netdown
-table each non-productive class is assigned it’s own descriptive label
-under the variable n04_nonfor.</p>
-<p><strong>Data sources:</strong>
-WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY,
-WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP,
-WHSE_BASEMAPPING.FWA_WETLANDS_POLY</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Non_Forest_and_Non_Productive_Forest&quot;</span></span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;n04_nonfor&quot;</span></span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a></span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown100pct</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a></span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>netdown_tab<span class="ot">&lt;-</span><span class="fu">update_areas1</span>(netdown_tab,n_step)</span>
-<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a></span>
-<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Ownership_Areas_Excluded_from_AFLB&quot;</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;n03_ownership&quot;</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown100pct</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>netdown_tab<span class="ot">&lt;-</span><span class="fu">update_areas_aflb</span>(netdown_tab,n_step)</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>netdown <span class="ot">&lt;-</span> <span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
 <span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a></span>
 <span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
@@ -2737,19 +2714,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-514,435
+94,806,032
 </td>
 <td style="text-align:right;">
-100.0000000
-</td>
-<td style="text-align:right;">
-0
+100.000000
 </td>
 <td style="text-align:right;">
 0
 </td>
 <td style="text-align:right;">
-514,435
+0
+</td>
+<td style="text-align:right;">
+94,806,032
 </td>
 </tr>
 <tr>
@@ -2757,19 +2734,39 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-116,256
+36,592,541
 </td>
 <td style="text-align:right;">
-22.5987734
+38.597271
 </td>
 <td style="text-align:right;">
-116,256
+36,592,541
 </td>
 <td style="text-align:right;">
-116,256
+36,592,541
 </td>
 <td style="text-align:right;">
-398,179
+58,213,491
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LANDBASE SUMMARY - FMLB
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+<td style="text-align:right;">
+61.402729
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
 </td>
 </tr>
 <tr>
@@ -2777,39 +2774,39 @@ FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-58,960
+4,887,226
 </td>
 <td style="text-align:right;">
-11.4611175
+5.154974
 </td>
 <td style="text-align:right;">
-22,795
+2,749,448
 </td>
 <td style="text-align:right;">
-139,051
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384
+55,464,043
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Forest Assessment Land Base (FALB)
+LANDBASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-375,384
+55,464,043
 </td>
 <td style="text-align:right;">
-72.9701517
+58.502652
 </td>
 <td style="text-align:right;">
-139,051
+39,341,989
 </td>
 <td style="text-align:right;">
-139,051
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384
+55,464,043
 </td>
 </tr>
 <tr>
@@ -2817,19 +2814,198 @@ Forest Assessment Land Base (FALB)
 Ownership_Areas_Excluded_from_AFLB
 </td>
 <td style="text-align:right;">
-3
+668,209
 </td>
 <td style="text-align:right;">
-0.0005832
+0.704817
+</td>
+<td style="text-align:right;">
+403,404
+</td>
+<td style="text-align:right;">
+39,745,393
+</td>
+<td style="text-align:right;">
+55,060,639
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="n04_nonfor" class="section level3">
+<h3>n04_nonfor</h3>
+<p>The FALB land base is further excluded to create a ‘not forested or
+non productive forest’. These land cover types are not expected to
+contribute to either timber supply or non-timber management objectives
+that are based on forested conditions. Attributes that identify
+non-vegetated and various classes of vegetated areas are classified
+based on the BC land classification system (BCLCS), the Freshwater Atlas
+and the Biogeoclimatic Ecosystem Classification (BEC). Areas within
+historic cutblocks are considered forested and contribute to the THLB
+except where noted below.</p>
+<p>Identifying non-forest/non-productive is done using a long ‘case
+when’ statement in a previous postgres table creation. In the netdown
+table each non-productive class is assigned it’s own descriptive label
+under the variable n04_nonfor.</p>
+<p><strong>Data sources:</strong>
+WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY,
+WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP,
+WHSE_BASEMAPPING.FWA_WETLANDS_POLY</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Non_Forest_and_Non_Productive_Forest&quot;</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;n04_nonfor&quot;</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown100pct</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>netdown_tab<span class="ot">&lt;-</span><span class="fu">update_areas_aflb</span>(netdown_tab,n_step)</span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a></span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
+<caption style="font-size: initial !important;">
+Netdown Summary Table
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+landclass
+</th>
+<th style="text-align:right;">
+total
+</th>
+<th style="text-align:right;">
+percent
+</th>
+<th style="text-align:right;">
+excluded
+</th>
+<th style="text-align:right;">
+running_total
+</th>
+<th style="text-align:right;">
+netdown
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Provincial_Boundary
+</td>
+<td style="text-align:right;">
+94,806,032
+</td>
+<td style="text-align:right;">
+100.000000
 </td>
 <td style="text-align:right;">
 0
 </td>
 <td style="text-align:right;">
-139,051
+0
 </td>
 <td style="text-align:right;">
-375,384
+94,806,032
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+FMLB
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+38.597271
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LANDBASE SUMMARY - FMLB
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+<td style="text-align:right;">
+61.402729
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Ownership_Areas_Excluded_from_FALB
+</td>
+<td style="text-align:right;">
+4,887,226
+</td>
+<td style="text-align:right;">
+5.154974
+</td>
+<td style="text-align:right;">
+2,749,448
+</td>
+<td style="text-align:right;">
+39,341,989
+</td>
+<td style="text-align:right;">
+55,464,043
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LANDBASE SUMMARY - FALB
+</td>
+<td style="text-align:right;">
+55,464,043
+</td>
+<td style="text-align:right;">
+58.502652
+</td>
+<td style="text-align:right;">
+39,341,989
+</td>
+<td style="text-align:right;">
+39,341,989
+</td>
+<td style="text-align:right;">
+55,464,043
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Ownership_Areas_Excluded_from_AFLB
+</td>
+<td style="text-align:right;">
+668,209
+</td>
+<td style="text-align:right;">
+0.704817
+</td>
+<td style="text-align:right;">
+403,404
+</td>
+<td style="text-align:right;">
+39,745,393
+</td>
+<td style="text-align:right;">
+55,060,639
 </td>
 </tr>
 <tr>
@@ -2837,19 +3013,19 @@ Ownership_Areas_Excluded_from_AFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-120,171
+40,054,531
 </td>
 <td style="text-align:right;">
-23.3598025
+42.248927
 </td>
 <td style="text-align:right;">
-3,612
+4,306,612
 </td>
 <td style="text-align:right;">
-142,663
+44,052,005
 </td>
 <td style="text-align:right;">
-371,772
+50,754,027
 </td>
 </tr>
 </tbody>
@@ -2871,25 +3047,21 @@ WHSE_MINERAL_TENURE.OG_PIPELINE_AREA_PERMIT_SP,
 WHSE_IMAGERY_AND_BASE_MAPS.DRP_OIL_GAS_PIPELINES_BC_SP,
 WHSE_BASEMAPPING.GBA_TRANSMISSION_LINES_SP,
 WHSE_BASEMAPPING.GBA_RAILWAY_TRACKS_SP</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Linear_Features&quot;</span></span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;p05_linear_features&quot;</span></span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a></span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown_prop</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a></span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a></span>
-<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> netdown_tab <span class="sc">%&gt;%</span></span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="fu">mutate</span>( <span class="at">aflb =</span> aflb <span class="sc">*</span> (<span class="dv">1</span><span class="sc">-</span>p05_linear_features),</span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="at">thlb_net =</span> thlb_net <span class="sc">*</span> (<span class="dv">1</span><span class="sc">-</span>p05_linear_features)</span>
-<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>)</span>
-<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a></span>
-<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a></span>
-<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>netdown_tab<span class="ot">&lt;-</span><span class="fu">update_areas1</span>(netdown_tab,n_step)</span>
-<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a></span>
-<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
-<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a></span>
-<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a>netdown<span class="ot">&lt;-</span><span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
-<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a></span>
-<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Linear_Features&quot;</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;p05_linear_features&quot;</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown_prop</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> netdown_tab <span class="sc">%&gt;%</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="fu">mutate</span>( <span class="at">aflb =</span> aflb <span class="sc">*</span> (<span class="dv">1</span><span class="sc">-</span>p05_linear_features),</span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="at">thlb_net =</span> thlb_net <span class="sc">*</span> (<span class="dv">1</span><span class="sc">-</span>p05_linear_features)</span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a>)</span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a></span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a></span>
+<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a>netdown<span class="ot">&lt;-</span><span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
+<span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 Netdown Summary Table
@@ -2922,19 +3094,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-514,435.00
+94,806,032
 </td>
 <td style="text-align:right;">
-100.0000000
+100.000000
 </td>
 <td style="text-align:right;">
-0.00
+0
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-514,435.0
+94,806,032
 </td>
 </tr>
 <tr>
@@ -2942,19 +3114,39 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-116,256.00
+36,592,541
 </td>
 <td style="text-align:right;">
-22.5987734
+38.597271
 </td>
 <td style="text-align:right;">
-116,256.00
+36,592,541
 </td>
 <td style="text-align:right;">
-116,256.0
+36,592,541
 </td>
 <td style="text-align:right;">
-398,179.0
+58,213,491
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LANDBASE SUMMARY - FMLB
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+<td style="text-align:right;">
+61.402729
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
 </td>
 </tr>
 <tr>
@@ -2962,39 +3154,39 @@ FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-58,960.00
+4,887,226
 </td>
 <td style="text-align:right;">
-11.4611175
+5.154974
 </td>
 <td style="text-align:right;">
-22,795.00
+2,749,448
 </td>
 <td style="text-align:right;">
-139,051.0
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384.0
+55,464,043
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Forest Assessment Land Base (FALB)
+LANDBASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-375,384.00
+55,464,043
 </td>
 <td style="text-align:right;">
-72.9701517
+58.502652
 </td>
 <td style="text-align:right;">
-139,051.00
+39,341,989
 </td>
 <td style="text-align:right;">
-139,051.0
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384.0
+55,464,043
 </td>
 </tr>
 <tr>
@@ -3002,19 +3194,19 @@ Forest Assessment Land Base (FALB)
 Ownership_Areas_Excluded_from_AFLB
 </td>
 <td style="text-align:right;">
-3.00
+668,209
 </td>
 <td style="text-align:right;">
-0.0005832
+0.704817
 </td>
 <td style="text-align:right;">
-0.00
+403,404
 </td>
 <td style="text-align:right;">
-139,051.0
+39,745,393
 </td>
 <td style="text-align:right;">
-375,384.0
+55,060,639
 </td>
 </tr>
 <tr>
@@ -3022,19 +3214,19 @@ Ownership_Areas_Excluded_from_AFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-120,171.00
+40,054,531
 </td>
 <td style="text-align:right;">
-23.3598025
+42.248927
 </td>
 <td style="text-align:right;">
-3,612.00
+4,306,612
 </td>
 <td style="text-align:right;">
-142,663.0
+44,052,005
 </td>
 <td style="text-align:right;">
-371,772.0
+50,754,027
 </td>
 </tr>
 <tr>
@@ -3042,19 +3234,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-20,214.24
+1,727,381
 </td>
 <td style="text-align:right;">
-3.9294060
+1.822016
 </td>
 <td style="text-align:right;">
-13,889.75
+1,119,885
 </td>
 <td style="text-align:right;">
-156,552.7
+45,171,890
 </td>
 <td style="text-align:right;">
-357,882.3
+49,634,142
 </td>
 </tr>
 </tbody>
@@ -3062,11 +3254,11 @@ Linear_Features
 </div>
 <div id="aflb-summary" class="section level3">
 <h3>AFLB Summary</h3>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Analysis Forest Landbase (AFLB)&quot;</span></span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a></span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">landbase_sum</span>(netdown_tab,netdown_summary,running_total,lclass,netdown,<span class="at">which_landbase=</span>aflb)</span>
-<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a></span>
-<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;LANDBASE SUMMARY - AFLB&quot;</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">landbase_sum</span>(netdown_tab,netdown_summary,running_total,lclass,netdown,<span class="at">which_landbase=</span>aflb)</span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 Netdown Summary Table
@@ -3099,19 +3291,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-514,435.00
+94,806,032
 </td>
 <td style="text-align:right;">
-100.0000000
+100.000000
 </td>
 <td style="text-align:right;">
-0.00
+0
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-514,435.0
+94,806,032
 </td>
 </tr>
 <tr>
@@ -3119,19 +3311,39 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-116,256.00
+36,592,541
 </td>
 <td style="text-align:right;">
-22.5987734
+38.597271
 </td>
 <td style="text-align:right;">
-116,256.00
+36,592,541
 </td>
 <td style="text-align:right;">
-116,256.0
+36,592,541
 </td>
 <td style="text-align:right;">
-398,179.0
+58,213,491
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LANDBASE SUMMARY - FMLB
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+<td style="text-align:right;">
+61.402729
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
 </td>
 </tr>
 <tr>
@@ -3139,39 +3351,39 @@ FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-58,960.00
+4,887,226
 </td>
 <td style="text-align:right;">
-11.4611175
+5.154974
 </td>
 <td style="text-align:right;">
-22,795.00
+2,749,448
 </td>
 <td style="text-align:right;">
-139,051.0
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384.0
+55,464,043
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Forest Assessment Land Base (FALB)
+LANDBASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-375,384.00
+55,464,043
 </td>
 <td style="text-align:right;">
-72.9701517
+58.502652
 </td>
 <td style="text-align:right;">
-139,051.00
+39,341,989
 </td>
 <td style="text-align:right;">
-139,051.0
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384.0
+55,464,043
 </td>
 </tr>
 <tr>
@@ -3179,19 +3391,19 @@ Forest Assessment Land Base (FALB)
 Ownership_Areas_Excluded_from_AFLB
 </td>
 <td style="text-align:right;">
-3.00
+668,209
 </td>
 <td style="text-align:right;">
-0.0005832
+0.704817
 </td>
 <td style="text-align:right;">
-0.00
+403,404
 </td>
 <td style="text-align:right;">
-139,051.0
+39,745,393
 </td>
 <td style="text-align:right;">
-375,384.0
+55,060,639
 </td>
 </tr>
 <tr>
@@ -3199,19 +3411,19 @@ Ownership_Areas_Excluded_from_AFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-120,171.00
+40,054,531
 </td>
 <td style="text-align:right;">
-23.3598025
+42.248927
 </td>
 <td style="text-align:right;">
-3,612.00
+4,306,612
 </td>
 <td style="text-align:right;">
-142,663.0
+44,052,005
 </td>
 <td style="text-align:right;">
-371,772.0
+50,754,027
 </td>
 </tr>
 <tr>
@@ -3219,44 +3431,49 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-20,214.24
+1,727,381
 </td>
 <td style="text-align:right;">
-3.9294060
+1.822016
 </td>
 <td style="text-align:right;">
-13,889.75
+1,119,885
 </td>
 <td style="text-align:right;">
-156,552.7
+45,171,890
 </td>
 <td style="text-align:right;">
-357,882.3
+49,634,142
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Analysis Forest Landbase (AFLB)
+LANDBASE SUMMARY - AFLB
 </td>
 <td style="text-align:right;">
-0.00
+49,634,142
 </td>
 <td style="text-align:right;">
-0.0000000
+52.353359
 </td>
 <td style="text-align:right;">
-156,552.75
+45,171,890
 </td>
 <td style="text-align:right;">
-156,552.7
+45,171,890
 </td>
 <td style="text-align:right;">
-357,882.3
+49,634,142
 </td>
 </tr>
 </tbody>
 </table>
 </div>
+</div>
+<div id="write-to-postgres" class="section level2">
+<h2>Write to Postgres</h2>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="fu">df_to_pg</span>(<span class="fu">Id</span>(<span class="at">schema =</span> <span class="st">&#39;thlb_proxy&#39;</span>, <span class="at">table =</span> <span class="st">&#39;netdown_fmlb_falb_aflb&#39;</span>), netdown_tab[,<span class="fu">c</span>(<span class="st">&#39;gr_skey&#39;</span>, <span class="st">&#39;fmlb&#39;</span>, <span class="st">&#39;falb&#39;</span>, <span class="st">&#39;aflb&#39;</span>)], conn_list, <span class="at">overwrite=</span><span class="cn">TRUE</span>)</span></code></pre></div>
 </div>
 <div id="delineating-the-thlb" class="section level2">
 <h2>Delineating the THLB</h2>
@@ -3264,20 +3481,18 @@ Analysis Forest Landbase (AFLB)
 AFLB.</p>
 <div id="p06_riparian" class="section level3">
 <h3>p06_riparian</h3>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Riparian_Buffers&quot;</span></span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;p06_riparian&quot;</span></span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a></span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown_prop</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
-<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a></span>
-<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> netdown_tab <span class="sc">%&gt;%</span></span>
-<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">thlb_net =</span> thlb_net <span class="sc">*</span> (<span class="dv">1</span><span class="sc">-</span>p06_riparian)</span>
-<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>  )</span>
-<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a></span>
-<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a></span>
-<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a>netdown_tab<span class="ot">&lt;-</span><span class="fu">update_areas1</span>(netdown_tab,n_step)</span>
-<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
-<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a>netdown<span class="ot">&lt;-</span><span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
-<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Riparian_Buffers&quot;</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;p06_riparian&quot;</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown_prop</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a></span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> netdown_tab <span class="sc">%&gt;%</span></span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">thlb_net =</span> thlb_net <span class="sc">*</span> (<span class="dv">1</span><span class="sc">-</span>p06_riparian)</span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a>  )</span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a></span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a>netdown<span class="ot">&lt;-</span><span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 Netdown Summary Table
@@ -3310,19 +3525,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-514,435.00
+94,806,032
 </td>
 <td style="text-align:right;">
-100.0000000
+100.000000
 </td>
 <td style="text-align:right;">
-0.00
+0
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-514,435.0
+94,806,032
 </td>
 </tr>
 <tr>
@@ -3330,19 +3545,39 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-116,256.00
+36,592,541
 </td>
 <td style="text-align:right;">
-22.5987734
+38.597271
 </td>
 <td style="text-align:right;">
-116,256.00
+36,592,541
 </td>
 <td style="text-align:right;">
-116,256.0
+36,592,541
 </td>
 <td style="text-align:right;">
-398,179.0
+58,213,491
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LANDBASE SUMMARY - FMLB
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+<td style="text-align:right;">
+61.402729
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
 </td>
 </tr>
 <tr>
@@ -3350,39 +3585,39 @@ FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-58,960.00
+4,887,226
 </td>
 <td style="text-align:right;">
-11.4611175
+5.154974
 </td>
 <td style="text-align:right;">
-22,795.00
+2,749,448
 </td>
 <td style="text-align:right;">
-139,051.0
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384.0
+55,464,043
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Forest Assessment Land Base (FALB)
+LANDBASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-375,384.00
+55,464,043
 </td>
 <td style="text-align:right;">
-72.9701517
+58.502652
 </td>
 <td style="text-align:right;">
-139,051.00
+39,341,989
 </td>
 <td style="text-align:right;">
-139,051.0
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384.0
+55,464,043
 </td>
 </tr>
 <tr>
@@ -3390,19 +3625,19 @@ Forest Assessment Land Base (FALB)
 Ownership_Areas_Excluded_from_AFLB
 </td>
 <td style="text-align:right;">
-3.00
+668,209
 </td>
 <td style="text-align:right;">
-0.0005832
+0.704817
 </td>
 <td style="text-align:right;">
-0.00
+403,404
 </td>
 <td style="text-align:right;">
-139,051.0
+39,745,393
 </td>
 <td style="text-align:right;">
-375,384.0
+55,060,639
 </td>
 </tr>
 <tr>
@@ -3410,19 +3645,19 @@ Ownership_Areas_Excluded_from_AFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-120,171.00
+40,054,531
 </td>
 <td style="text-align:right;">
-23.3598025
+42.248927
 </td>
 <td style="text-align:right;">
-3,612.00
+4,306,612
 </td>
 <td style="text-align:right;">
-142,663.0
+44,052,005
 </td>
 <td style="text-align:right;">
-371,772.0
+50,754,027
 </td>
 </tr>
 <tr>
@@ -3430,39 +3665,39 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-20,214.24
+1,727,381
 </td>
 <td style="text-align:right;">
-3.9294060
+1.822016
 </td>
 <td style="text-align:right;">
-13,889.75
+1,119,885
 </td>
 <td style="text-align:right;">
-156,552.7
+45,171,890
 </td>
 <td style="text-align:right;">
-357,882.3
+49,634,142
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Analysis Forest Landbase (AFLB)
+LANDBASE SUMMARY - AFLB
 </td>
 <td style="text-align:right;">
-0.00
+49,634,142
 </td>
 <td style="text-align:right;">
-0.0000000
+52.353359
 </td>
 <td style="text-align:right;">
-156,552.75
+45,171,890
 </td>
 <td style="text-align:right;">
-156,552.7
+45,171,890
 </td>
 <td style="text-align:right;">
-357,882.3
+49,634,142
 </td>
 </tr>
 <tr>
@@ -3470,19 +3705,19 @@ Analysis Forest Landbase (AFLB)
 Riparian_Buffers
 </td>
 <td style="text-align:right;">
-110,464.00
+28,298,289
 </td>
 <td style="text-align:right;">
-21.4728780
+29.848617
 </td>
 <td style="text-align:right;">
-0.00
+2,563,383
 </td>
 <td style="text-align:right;">
-156,552.7
+47,735,273
 </td>
 <td style="text-align:right;">
-357,882.3
+47,070,759
 </td>
 </tr>
 </tbody>
@@ -3507,19 +3742,17 @@ unit did not have &gt; 30 cutblocks, a TFL would using the threshold of
 the TSA the TFL overlaps with the most. Only TFL 43 had &lt; 30
 cutblocks, and instead, the thresolds from 39 - Sunshine Coast TSA were
 used for TFL 43.</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Physical_Inoperable&quot;</span></span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;p07_phys_inop&quot;</span></span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a></span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown_prop</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a></span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> netdown_tab <span class="sc">%&gt;%</span></span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">thlb_net =</span> thlb_net <span class="sc">*</span> (<span class="dv">1</span><span class="sc">-</span>p07_phys_inop)</span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>  )</span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a></span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>netdown_tab<span class="ot">&lt;-</span><span class="fu">update_areas1</span>(netdown_tab,n_step)</span>
-<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
-<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>netdown<span class="ot">&lt;-</span><span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
-<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Physical_Inoperable&quot;</span></span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;p07_phys_inop&quot;</span></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown_prop</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a></span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> netdown_tab <span class="sc">%&gt;%</span></span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">thlb_net =</span> thlb_net <span class="sc">*</span> (<span class="dv">1</span><span class="sc">-</span>p07_phys_inop)</span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>  )</span>
+<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a></span>
+<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
+<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 Netdown Summary Table
@@ -3552,19 +3785,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-514,435.00
+94,806,032
 </td>
 <td style="text-align:right;">
-100.0000000
+100.000000
 </td>
 <td style="text-align:right;">
-0.00
+0
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-514,435.0
+94,806,032
 </td>
 </tr>
 <tr>
@@ -3572,19 +3805,39 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-116,256.00
+36,592,541
 </td>
 <td style="text-align:right;">
-22.5987734
+38.597271
 </td>
 <td style="text-align:right;">
-116,256.00
+36,592,541
 </td>
 <td style="text-align:right;">
-116,256.0
+36,592,541
 </td>
 <td style="text-align:right;">
-398,179.0
+58,213,491
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LANDBASE SUMMARY - FMLB
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+<td style="text-align:right;">
+61.402729
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
 </td>
 </tr>
 <tr>
@@ -3592,39 +3845,39 @@ FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-58,960.00
+4,887,226
 </td>
 <td style="text-align:right;">
-11.4611175
+5.154974
 </td>
 <td style="text-align:right;">
-22,795.00
+2,749,448
 </td>
 <td style="text-align:right;">
-139,051.0
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384.0
+55,464,043
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Forest Assessment Land Base (FALB)
+LANDBASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-375,384.00
+55,464,043
 </td>
 <td style="text-align:right;">
-72.9701517
+58.502652
 </td>
 <td style="text-align:right;">
-139,051.00
+39,341,989
 </td>
 <td style="text-align:right;">
-139,051.0
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384.0
+55,464,043
 </td>
 </tr>
 <tr>
@@ -3632,19 +3885,19 @@ Forest Assessment Land Base (FALB)
 Ownership_Areas_Excluded_from_AFLB
 </td>
 <td style="text-align:right;">
-3.00
+668,209
 </td>
 <td style="text-align:right;">
-0.0005832
+0.704817
 </td>
 <td style="text-align:right;">
-0.00
+403,404
 </td>
 <td style="text-align:right;">
-139,051.0
+39,745,393
 </td>
 <td style="text-align:right;">
-375,384.0
+55,060,639
 </td>
 </tr>
 <tr>
@@ -3652,19 +3905,19 @@ Ownership_Areas_Excluded_from_AFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-120,171.00
+40,054,531
 </td>
 <td style="text-align:right;">
-23.3598025
+42.248927
 </td>
 <td style="text-align:right;">
-3,612.00
+4,306,612
 </td>
 <td style="text-align:right;">
-142,663.0
+44,052,005
 </td>
 <td style="text-align:right;">
-371,772.0
+50,754,027
 </td>
 </tr>
 <tr>
@@ -3672,39 +3925,39 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-20,214.24
+1,727,381
 </td>
 <td style="text-align:right;">
-3.9294060
+1.822016
 </td>
 <td style="text-align:right;">
-13,889.75
+1,119,885
 </td>
 <td style="text-align:right;">
-156,552.7
+45,171,890
 </td>
 <td style="text-align:right;">
-357,882.3
+49,634,142
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Analysis Forest Landbase (AFLB)
+LANDBASE SUMMARY - AFLB
 </td>
 <td style="text-align:right;">
-0.00
+49,634,142
 </td>
 <td style="text-align:right;">
-0.0000000
+52.353359
 </td>
 <td style="text-align:right;">
-156,552.75
+45,171,890
 </td>
 <td style="text-align:right;">
-156,552.7
+45,171,890
 </td>
 <td style="text-align:right;">
-357,882.3
+49,634,142
 </td>
 </tr>
 <tr>
@@ -3712,19 +3965,19 @@ Analysis Forest Landbase (AFLB)
 Riparian_Buffers
 </td>
 <td style="text-align:right;">
-110,464.00
+28,298,289
 </td>
 <td style="text-align:right;">
-21.4728780
+29.848617
 </td>
 <td style="text-align:right;">
-0.00
+2,563,383
 </td>
 <td style="text-align:right;">
-156,552.7
+47,735,273
 </td>
 <td style="text-align:right;">
-357,882.3
+47,070,759
 </td>
 </tr>
 <tr>
@@ -3732,19 +3985,19 @@ Riparian_Buffers
 Physical_Inoperable
 </td>
 <td style="text-align:right;">
-134,185.00
+29,871,235
 </td>
 <td style="text-align:right;">
-26.0839562
+31.507737
 </td>
 <td style="text-align:right;">
-0.00
+10,127,617
 </td>
 <td style="text-align:right;">
-156,552.7
+57,862,890
 </td>
 <td style="text-align:right;">
-357,882.3
+36,943,142
 </td>
 </tr>
 </tbody>
@@ -3752,14 +4005,14 @@ Physical_Inoperable
 </div>
 <div id="n08_merchantability" class="section level3">
 <h3>n08_merchantability</h3>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Merchantability&quot;</span></span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;n08_merchantability&quot;</span></span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a></span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown100pct</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>netdown_tab<span class="ot">&lt;-</span><span class="fu">update_areas1</span>(netdown_tab,n_step)</span>
-<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
-<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a>netdown<span class="ot">&lt;-</span><span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
-<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Merchantability&quot;</span></span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;n08_merchantability&quot;</span></span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown100pct</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>netdown_tab<span class="ot">&lt;-</span><span class="fu">update_areas_thlb</span>(netdown_tab,n_step)</span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a>netdown<span class="ot">&lt;-</span><span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 Netdown Summary Table
@@ -3792,19 +4045,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-514,435.00
+94,806,032
 </td>
 <td style="text-align:right;">
-100.0000000
+100.000000
 </td>
 <td style="text-align:right;">
-0.00
+0
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-514,435.0
+94,806,032
 </td>
 </tr>
 <tr>
@@ -3812,19 +4065,39 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-116,256.00
+36,592,541
 </td>
 <td style="text-align:right;">
-22.5987734
+38.597271
 </td>
 <td style="text-align:right;">
-116,256.00
+36,592,541
 </td>
 <td style="text-align:right;">
-116,256.0
+36,592,541
 </td>
 <td style="text-align:right;">
-398,179.0
+58,213,491
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LANDBASE SUMMARY - FMLB
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+<td style="text-align:right;">
+61.402729
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
 </td>
 </tr>
 <tr>
@@ -3832,39 +4105,39 @@ FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-58,960.00
+4,887,226
 </td>
 <td style="text-align:right;">
-11.4611175
+5.154974
 </td>
 <td style="text-align:right;">
-22,795.00
+2,749,448
 </td>
 <td style="text-align:right;">
-139,051.0
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384.0
+55,464,043
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Forest Assessment Land Base (FALB)
+LANDBASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-375,384.00
+55,464,043
 </td>
 <td style="text-align:right;">
-72.9701517
+58.502652
 </td>
 <td style="text-align:right;">
-139,051.00
+39,341,989
 </td>
 <td style="text-align:right;">
-139,051.0
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384.0
+55,464,043
 </td>
 </tr>
 <tr>
@@ -3872,19 +4145,19 @@ Forest Assessment Land Base (FALB)
 Ownership_Areas_Excluded_from_AFLB
 </td>
 <td style="text-align:right;">
-3.00
+668,209
 </td>
 <td style="text-align:right;">
-0.0005832
+0.704817
 </td>
 <td style="text-align:right;">
-0.00
+403,404
 </td>
 <td style="text-align:right;">
-139,051.0
+39,745,393
 </td>
 <td style="text-align:right;">
-375,384.0
+55,060,639
 </td>
 </tr>
 <tr>
@@ -3892,19 +4165,19 @@ Ownership_Areas_Excluded_from_AFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-120,171.00
+40,054,531
 </td>
 <td style="text-align:right;">
-23.3598025
+42.248927
 </td>
 <td style="text-align:right;">
-3,612.00
+4,306,612
 </td>
 <td style="text-align:right;">
-142,663.0
+44,052,005
 </td>
 <td style="text-align:right;">
-371,772.0
+50,754,027
 </td>
 </tr>
 <tr>
@@ -3912,39 +4185,39 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-20,214.24
+1,727,381
 </td>
 <td style="text-align:right;">
-3.9294060
+1.822016
 </td>
 <td style="text-align:right;">
-13,889.75
+1,119,885
 </td>
 <td style="text-align:right;">
-156,552.7
+45,171,890
 </td>
 <td style="text-align:right;">
-357,882.3
+49,634,142
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Analysis Forest Landbase (AFLB)
+LANDBASE SUMMARY - AFLB
 </td>
 <td style="text-align:right;">
-0.00
+49,634,142
 </td>
 <td style="text-align:right;">
-0.0000000
+52.353359
 </td>
 <td style="text-align:right;">
-156,552.75
+45,171,890
 </td>
 <td style="text-align:right;">
-156,552.7
+45,171,890
 </td>
 <td style="text-align:right;">
-357,882.3
+49,634,142
 </td>
 </tr>
 <tr>
@@ -3952,19 +4225,19 @@ Analysis Forest Landbase (AFLB)
 Riparian_Buffers
 </td>
 <td style="text-align:right;">
-110,464.00
+28,298,289
 </td>
 <td style="text-align:right;">
-21.4728780
+29.848617
 </td>
 <td style="text-align:right;">
-0.00
+2,563,383
 </td>
 <td style="text-align:right;">
-156,552.7
+47,735,273
 </td>
 <td style="text-align:right;">
-357,882.3
+47,070,759
 </td>
 </tr>
 <tr>
@@ -3972,19 +4245,19 @@ Riparian_Buffers
 Physical_Inoperable
 </td>
 <td style="text-align:right;">
-134,185.00
+29,871,235
 </td>
 <td style="text-align:right;">
-26.0839562
+31.507737
 </td>
 <td style="text-align:right;">
-0.00
+10,127,617
 </td>
 <td style="text-align:right;">
-156,552.7
+57,862,890
 </td>
 <td style="text-align:right;">
-357,882.3
+36,943,142
 </td>
 </tr>
 <tr>
@@ -3992,19 +4265,19 @@ Physical_Inoperable
 Merchantability
 </td>
 <td style="text-align:right;">
-58,979.00
+23,088,348
 </td>
 <td style="text-align:right;">
-11.4648109
+24.353248
 </td>
 <td style="text-align:right;">
-0.00
+6,267,020
 </td>
 <td style="text-align:right;">
-156,552.7
+64,129,911
 </td>
 <td style="text-align:right;">
-357,882.3
+30,676,121
 </td>
 </tr>
 </tbody>
@@ -4012,11 +4285,11 @@ Merchantability
 </div>
 <div id="thlb-summary" class="section level3">
 <h3>THLB Summary</h3>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Timber Harvest Landbase (THLB)&quot;</span></span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a></span>
-<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">landbase_sum</span>(netdown_tab,netdown_summary,running_total,lclass,netdown,<span class="at">which_landbase=</span>thlb_net)</span>
-<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a></span>
-<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;LANDBASE SUMMARY - THLB&quot;</span></span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">landbase_sum</span>(netdown_tab,netdown_summary,running_total,lclass,netdown,<span class="at">which_landbase=</span>thlb_net)</span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 Netdown Summary Table
@@ -4049,19 +4322,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-514,435.00
+94,806,032
 </td>
 <td style="text-align:right;">
-100.0000000
+100.000000
 </td>
 <td style="text-align:right;">
-0.00
+0
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-514,435.0
+94,806,032
 </td>
 </tr>
 <tr>
@@ -4069,19 +4342,39 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-116,256.00
+36,592,541
 </td>
 <td style="text-align:right;">
-22.5987734
+38.597271
 </td>
 <td style="text-align:right;">
-116,256.00
+36,592,541
 </td>
 <td style="text-align:right;">
-116,256.0
+36,592,541
 </td>
 <td style="text-align:right;">
-398,179.0
+58,213,491
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LANDBASE SUMMARY - FMLB
+</td>
+<td style="text-align:right;">
+58,213,491
+</td>
+<td style="text-align:right;">
+61.402729
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+36,592,541
+</td>
+<td style="text-align:right;">
+58,213,491
 </td>
 </tr>
 <tr>
@@ -4089,39 +4382,39 @@ FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-58,960.00
+4,887,226
 </td>
 <td style="text-align:right;">
-11.4611175
+5.154974
 </td>
 <td style="text-align:right;">
-22,795.00
+2,749,448
 </td>
 <td style="text-align:right;">
-139,051.0
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384.0
+55,464,043
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Forest Assessment Land Base (FALB)
+LANDBASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-375,384.00
+55,464,043
 </td>
 <td style="text-align:right;">
-72.9701517
+58.502652
 </td>
 <td style="text-align:right;">
-139,051.00
+39,341,989
 </td>
 <td style="text-align:right;">
-139,051.0
+39,341,989
 </td>
 <td style="text-align:right;">
-375,384.0
+55,464,043
 </td>
 </tr>
 <tr>
@@ -4129,19 +4422,19 @@ Forest Assessment Land Base (FALB)
 Ownership_Areas_Excluded_from_AFLB
 </td>
 <td style="text-align:right;">
-3.00
+668,209
 </td>
 <td style="text-align:right;">
-0.0005832
+0.704817
 </td>
 <td style="text-align:right;">
-0.00
+403,404
 </td>
 <td style="text-align:right;">
-139,051.0
+39,745,393
 </td>
 <td style="text-align:right;">
-375,384.0
+55,060,639
 </td>
 </tr>
 <tr>
@@ -4149,19 +4442,19 @@ Ownership_Areas_Excluded_from_AFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-120,171.00
+40,054,531
 </td>
 <td style="text-align:right;">
-23.3598025
+42.248927
 </td>
 <td style="text-align:right;">
-3,612.00
+4,306,612
 </td>
 <td style="text-align:right;">
-142,663.0
+44,052,005
 </td>
 <td style="text-align:right;">
-371,772.0
+50,754,027
 </td>
 </tr>
 <tr>
@@ -4169,39 +4462,39 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-20,214.24
+1,727,381
 </td>
 <td style="text-align:right;">
-3.9294060
+1.822016
 </td>
 <td style="text-align:right;">
-13,889.75
+1,119,885
 </td>
 <td style="text-align:right;">
-156,552.7
+45,171,890
 </td>
 <td style="text-align:right;">
-357,882.3
+49,634,142
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Analysis Forest Landbase (AFLB)
+LANDBASE SUMMARY - AFLB
 </td>
 <td style="text-align:right;">
-0.00
+49,634,142
 </td>
 <td style="text-align:right;">
-0.0000000
+52.353359
 </td>
 <td style="text-align:right;">
-156,552.75
+45,171,890
 </td>
 <td style="text-align:right;">
-156,552.7
+45,171,890
 </td>
 <td style="text-align:right;">
-357,882.3
+49,634,142
 </td>
 </tr>
 <tr>
@@ -4209,19 +4502,19 @@ Analysis Forest Landbase (AFLB)
 Riparian_Buffers
 </td>
 <td style="text-align:right;">
-110,464.00
+28,298,289
 </td>
 <td style="text-align:right;">
-21.4728780
+29.848617
 </td>
 <td style="text-align:right;">
-0.00
+2,563,383
 </td>
 <td style="text-align:right;">
-156,552.7
+47,735,273
 </td>
 <td style="text-align:right;">
-357,882.3
+47,070,759
 </td>
 </tr>
 <tr>
@@ -4229,19 +4522,19 @@ Riparian_Buffers
 Physical_Inoperable
 </td>
 <td style="text-align:right;">
-134,185.00
+29,871,235
 </td>
 <td style="text-align:right;">
-26.0839562
+31.507737
 </td>
 <td style="text-align:right;">
-0.00
+10,127,617
 </td>
 <td style="text-align:right;">
-156,552.7
+57,862,890
 </td>
 <td style="text-align:right;">
-357,882.3
+36,943,142
 </td>
 </tr>
 <tr>
@@ -4249,39 +4542,39 @@ Physical_Inoperable
 Merchantability
 </td>
 <td style="text-align:right;">
-58,979.00
+23,088,348
 </td>
 <td style="text-align:right;">
-11.4648109
+24.353248
 </td>
 <td style="text-align:right;">
-0.00
+6,267,020
 </td>
 <td style="text-align:right;">
-156,552.7
+64,129,911
 </td>
 <td style="text-align:right;">
-357,882.3
+30,676,121
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Timber Harvest Landbase (THLB)
+LANDBASE SUMMARY - THLB
 </td>
 <td style="text-align:right;">
-0.00
+30,676,121
 </td>
 <td style="text-align:right;">
-0.0000000
+32.356719
 </td>
 <td style="text-align:right;">
-156,552.75
+64,129,911
 </td>
 <td style="text-align:right;">
-156,552.7
+64,129,911
 </td>
 <td style="text-align:right;">
-357,882.3
+30,676,121
 </td>
 </tr>
 </tbody>

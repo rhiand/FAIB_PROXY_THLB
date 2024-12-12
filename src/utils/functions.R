@@ -173,14 +173,29 @@ import_bcgw_to_pg <- function(
 	run_sql_r(query, pg_conn_list)
 	query <- glue('DROP TABLE IF EXISTS {dst_schema}.{dst_layer};')
 	run_sql_r(query, pg_conn_list)
-	if(where_clause == '' || is.null(where_clause) || is.na(where_clause)) {
+	if (where_clause == '' || is.null(where_clause) || is.na(where_clause)) {
     	query_escaped <- ''
 		where_clause <- ''
   	} else {
 	    query_escaped <- gsub("\'","\'\'", where_clause)
 		where_clause <- glue('WHERE {where_clause}')
   	}
-	if (is.null(grouping_name)){
+	if (all(is.null(geometry_name), is.null(grouping_name))) {
+		query <- glue("CREATE TABLE {dst_schema}.{dst_layer} as
+		SELECT
+			{fields_to_keep}
+		FROM
+			{fdw_schema}.{src_layer}
+		{where_clause};")
+	} else if (is.null(geometry_name)) {
+		query <- glue("CREATE TABLE {dst_schema}.{dst_layer} as
+		SELECT
+			{fields_to_keep},
+			'{grouping_name}' as grouping_name
+		FROM
+			{fdw_schema}.{src_layer}
+		{where_clause};")
+	} else if (is.null(grouping_name)) {
 		query <- glue("CREATE TABLE {dst_schema}.{dst_layer} as
 		SELECT
 			{fields_to_keep},
@@ -231,11 +246,12 @@ import_bcgw_to_pg <- function(
 		stop(e)
 		}
 	})
-
-	query <- glue('CREATE INDEX {dst_layer}_geom_idx on {dst_schema}.{dst_layer} USING gist(geom);')
-	run_sql_r(query, pg_conn_list)
-	query <- glue('ANALYZE {dst_schema}.{dst_layer};')
-	run_sql_r(query, pg_conn_list)
+	if (!(is.null(geometry_name))) {
+		query <- glue('CREATE INDEX {dst_layer}_geom_idx on {dst_schema}.{dst_layer} USING gist(geom);')
+		run_sql_r(query, pg_conn_list)
+		query <- glue('ANALYZE {dst_schema}.{dst_layer};')
+		run_sql_r(query, pg_conn_list)
+	}
 	todays_date <- format(Sys.time(), "%Y-%m-%d %I:%M:%S %p")
 	query <- glue("COMMENT ON TABLE {dst_schema}.{dst_layer} IS 'Table created by the import_bcgw_to_pg R function at {todays_date}.
 	Data source details:
@@ -661,7 +677,7 @@ get_netdown<-function(netdown_summary,lc){
 # function to update the areas in the netdown table:
 # Function arguments: netdown table, variable name.
 # update areas 1 is used prior to defining AFLB. Once AFLB is defined, it will not be adjusted following future netdown steps. Move to update_areas2 for updates to thlb_net and gthlb_net variables.
-update_areas1 <- function(netdown_tab,var_name) {
+update_areas_fmlb <- function(netdown_tab,var_name) {
   netdown_tab%>%
     # update the aflb, thlb_net and gthlb_net variables. If the variable specified is NA, then leave aflb, thlb_net, and gthlb as is. If the variable is NA then update aflb, thlb_net and gthlb to 0.
     mutate(fmlb = if_else(is.na(get(var_name)), fmlb, 0),
@@ -671,38 +687,27 @@ update_areas1 <- function(netdown_tab,var_name) {
   
 }
 
+update_areas_falb <- function(netdown_tab,var_name) {
+  netdown_tab%>%
+    # update the aflb, thlb_net and gthlb_net variables. If the variable specified is NA, then leave aflb, thlb_net, and gthlb as is. If the variable is NA then update aflb, thlb_net and gthlb to 0.
+    mutate(falb = if_else(is.na(get(var_name)), falb, 0),
+		   aflb = if_else(is.na(get(var_name)), aflb, 0),
+           thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
+}
+
+update_areas_aflb <- function(netdown_tab,var_name) {
+  netdown_tab%>%
+    # update the aflb, thlb_net and gthlb_net variables. If the variable specified is NA, then leave aflb, thlb_net, and gthlb as is. If the variable is NA then update aflb, thlb_net and gthlb to 0.
+    mutate(aflb = if_else(is.na(get(var_name)), aflb, 0),
+           thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
+}
+
 # see comments for update_areas1
-update_areas2 <- function(netdown_tab,var_name) {
+update_areas_thlb <- function(netdown_tab,var_name) {
   netdown_tab%>%
     mutate(thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
   
 }
-
-# similar to update areas 2 - this update function is used to update the thlb after the gross thlb has been defined.
-update_areas3 <- function(netdown_tab,var_name) {
-  netdown_tab%>%
-    mutate(thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
-  
-}
-
-
-# A function to write the pre-thl to postgres. Pre-thlb is used to look at isolated areas before being refined to the final thlb.
-# function arguments: netdown table, tsa_lbl, pre_thlb.
-create_pre_thlb<-function(netdown_tab,tsa_lbl,pre_thlb){
-  # crease an sql statement to create a table (taking ogc_fid and geometry from the skey table and thlb_net, thlb_bi from the netdown table)
-  query<-paste0("create table ",
-                tsa_lbl,
-                "_pre_thlb as (select a.*, b.thlb_net,b.thlb_bi from ",
-                tsa_lbl,
-                "_skey a join ",
-                tsa_lbl,
-                "_netdown2023 b using (ogc_fid));")
-  # if the table already exists, remove it prior to saving the pre-thlb.
-  if(dbExistsTable(db,pre_thlb)) {dbRemoveTable(db,pre_thlb)}
-  dbSendQuery(db,query)
-  message("pre_thlb table created")
-}
-
 
 
 # this function is used when the feature being netted out of the land base is categorical or 100% removed.
@@ -737,7 +742,7 @@ netdown100pct<-function(netdown_tab, net_summary, running_total, lclass, n_step)
   running_total <- running_total+excluded
   
   # determine new netdown.
-  netdown<-unit - running_total
+  netdown <- unit - running_total
   
   # create a one-row data frame with each of the netdown summary variables determined for the netdown step.
   netdown_step <- data.frame(landclass, total, percent, excluded, running_total, netdown)
@@ -749,11 +754,11 @@ netdown100pct<-function(netdown_tab, net_summary, running_total, lclass, n_step)
 
 # function for determining the proportional netdown factors.
 # ONLY works if landclasses are named "Lineal_Features" or "Retention". 
-netdown_prop<-function(netdown_tab,netdown_summary,running_total,lclass,n_step,ret_prop){
+netdown_prop<-function(netdown_tab, netdown_summary, running_total, lclass, n_step, ret_prop){
   landclass <- lclass
   unit <- nrow(netdown_tab)
   # conditional statement - slightly different calculation depending on whether landclass is lineal features or retention.
-  ifelse(landclass == "Linear_Features",
+  ifelse(landclass %in% c("Linear_Features", "Physical_Inoperable"),
   total <- netdown_tab %>%
     summarise(x = sum(get(n_step), na.rm=T)) %>% 
     pull(),
@@ -783,7 +788,7 @@ netdown_prop<-function(netdown_tab,netdown_summary,running_total,lclass,n_step,r
   netdown<-unit - running_total
   
   # create data frame with netdown summary information for given landclass
-  netdown_prop<- data.frame(landclass, total, percent, excluded, running_total,netdown)
+  netdown_prop <- data.frame(landclass, total, percent, excluded, running_total,netdown)
   
   # add to netdown summary table:
   netdown_summary <- bind_rows(netdown_summary, netdown_prop)

@@ -106,6 +106,8 @@ source('../utils/functions.R')
 
 conn_list <- dadmtools::get_pg_conn_list()
 query <- "	SELECT 
+  gr_skey,
+  own,
 	n01_fmlb,
 	n02_ownership,
 	n03_ownership,
@@ -114,8 +116,7 @@ query <- "	SELECT
 	p06_riparian,
 	p07_phys_inop,
 	n08_merchantability
-FROM thlb_proxy.prov_netdown net
-where tsa_rank1 = 'Boundary TSA'"
+FROM thlb_proxy.prov_netdown net"
 netdown_tab <- sql_to_df(query, conn_list)
 netdown_summary <- setup_tracking_variable(netdown_tab)
 running_total <- 0
@@ -241,12 +242,23 @@ lclass<-"FMLB"
 n_step<-"n01_fmlb"
 
 netdown_summary <- netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-netdown_tab <- update_areas1(netdown_tab,n_step)
+netdown_tab <- update_areas_fmlb(netdown_tab,n_step)
 running_total <- get_running_total(netdown_summary,lclass)
 netdown <- get_netdown(netdown_summary,lclass)
 
 pretty_table(netdown_summary)
 ``` 
+
+
+### FMLB Summary
+
+```{r fmlb_landbase, eval= TRUE}
+lclass<-"LANDBASE SUMMARY - FMLB"
+
+netdown_summary <- landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=fmlb)
+
+pretty_table(netdown_summary)
+```
 
 
 ## Delineating the FALB
@@ -269,17 +281,17 @@ lclass<-"Ownership_Areas_Excluded_from_FALB"
 n_step<-"n02_ownership"
 
 netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-netdown_tab<-update_areas1(netdown_tab,n_step)
+netdown_tab<-update_areas_falb(netdown_tab,n_step)
 running_total<-get_running_total(netdown_summary,lclass)
 netdown <- get_netdown(netdown_summary,lclass)
-
 pretty_table(netdown_summary)
 ```
 
 ### FALB Summary
 
 ```{r falb_landbase, eval= TRUE}
-lclass<-"Forest Assessment Land Base (FALB)"
+
+lclass<-"LANDBASE SUMMARY - FALB"
 
 netdown_summary <- landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=falb)
 
@@ -307,12 +319,13 @@ lclass<-"Ownership_Areas_Excluded_from_AFLB"
 n_step<-"n03_ownership"
 
 netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-netdown_tab<-update_areas1(netdown_tab,n_step)
+netdown_tab<-update_areas_aflb(netdown_tab,n_step)
 running_total<-get_running_total(netdown_summary,lclass)
 netdown <- get_netdown(netdown_summary,lclass)
 
 pretty_table(netdown_summary)
 ```
+
 
 ### n04_nonfor
 
@@ -328,7 +341,7 @@ n_step<-"n04_nonfor"
 
 netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
 
-netdown_tab<-update_areas1(netdown_tab,n_step)
+netdown_tab<-update_areas_aflb(netdown_tab,n_step)
 
 running_total<-get_running_total(netdown_summary,lclass)
 
@@ -356,24 +369,27 @@ mutate( aflb = aflb * (1-p05_linear_features),
 thlb_net = thlb_net * (1-p05_linear_features)
 )
 
-
-netdown_tab<-update_areas1(netdown_tab,n_step)
-
 running_total<-get_running_total(netdown_summary,lclass)
 
 netdown<-get_netdown(netdown_summary,lclass)
-
 pretty_table(netdown_summary)
 ```
 
 ### AFLB Summary
 
 ```{r aflb_landbase, eval= TRUE}
-lclass<-"Analysis Forest Landbase (AFLB)"
+lclass<-"LANDBASE SUMMARY - AFLB"
 
 netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=aflb)
 
 pretty_table(netdown_summary)
+```
+
+## Write to Postgres
+
+```{r aflb_to_pg, eval= TRUE}
+
+df_to_pg(Id(schema = 'thlb_proxy', table = 'netdown_fmlb_falb_aflb'), netdown_tab[,c('gr_skey', 'fmlb', 'falb', 'aflb')], conn_list, overwrite=TRUE)
 ```
 
 ## Delineating the THLB
@@ -392,8 +408,6 @@ netdown_tab <- netdown_tab %>%
   mutate(thlb_net = thlb_net * (1-p06_riparian)
   )
 
-
-netdown_tab<-update_areas1(netdown_tab,n_step)
 running_total<-get_running_total(netdown_summary,lclass)
 netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
@@ -416,9 +430,7 @@ netdown_tab <- netdown_tab %>%
   mutate(thlb_net = thlb_net * (1-p07_phys_inop)
   )
 
-netdown_tab<-update_areas1(netdown_tab,n_step)
 running_total<-get_running_total(netdown_summary,lclass)
-netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
 ```
 
@@ -429,7 +441,7 @@ lclass<-"Merchantability"
 n_step<-"n08_merchantability"
 
 netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-netdown_tab<-update_areas1(netdown_tab,n_step)
+netdown_tab<-update_areas_thlb(netdown_tab,n_step)
 running_total<-get_running_total(netdown_summary,lclass)
 netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
@@ -439,7 +451,7 @@ pretty_table(netdown_summary)
 ### THLB Summary
 
 ```{r thlb_landbase, eval= TRUE}
-lclass<-"Timber Harvest Landbase (THLB)"
+lclass<-"LANDBASE SUMMARY - THLB"
 
 netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=thlb_net)
 

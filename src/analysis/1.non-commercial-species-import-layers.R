@@ -141,3 +141,153 @@ query <- "UPDATE thlb_proxy.vri_species_cd_datadict SET species_full_name = 'Wil
 run_sql_r(query, conn_list)
 query <- "UPDATE thlb_proxy.vri_species_cd_datadict SET species_full_name = 'Unknown hardwood' WHERE species_cd = 'XH';"
 run_sql_r(query, conn_list)
+
+### add coniferous/deciduous/unknow
+query <- "alter table thlb_proxy.vri_species_cd_datadict add column type text;"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Alaska Paper Birch';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Alder';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Alpine Larch';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Amabilis Fir';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Arbutus';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'balsam fir';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'balsam poplar';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Bigleaf Maple';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Birch';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'bitter cherry';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Black Cottonwood';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Black Spruce';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Cedar';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Dahurian Larch';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Douglas-Fir';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Douglas-Fir (Coast)';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Douglas fir';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Douglas Fir (Interior)';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Engelmann spruce';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Engelmann x white spruce';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'European larch/Larix decidua';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Garry oak';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Grand Fir';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Green/Sitka Alder (N)';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Hemlocks';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Jack Pine';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Japanese larch/Larix kaempferi';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Larch';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Limber Pine';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Lodgepole Pine';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Lodgepole Pine (Coast)';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Lodgepole Pine (Interior)';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Mountain Hemlock';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Noble Fir';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Norway maple';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Norway Spruce';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Other hardwood';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Unknown' where species_full_name = 'Other tree, not on list';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Paper Birch';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Pine';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Poplar';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Poplar Hybrid';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Red Alder';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'red pine';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Rocky Mtn Juniper';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Scotch pine/Pinus sylvestris';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Scouler''s willow';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Shasta Red Fir';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Siberian Larch';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'silver birch';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Sitka Spruce';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Sitka x white Spruce';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Sitka X/Unknown Hybrid';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Spruce';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Spruce Hybrid';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Sub Alpine Fir';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Tamarack';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Trembling Aspen';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'True Fir';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Unknown' where species_full_name = 'Unknown';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Unknown conifer';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Unknown hardwood';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Western Hemlock';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Western Larch';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Western Red Cedar';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Western White Pine';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'White Spruce';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Whitebark Pine';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Willow';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Yellow Cypress';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Yellow Pine';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Yew';"
+run_sql_r(query, conn_list)
+query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Coniferous' where species_full_name = 'Norway spruce/Picea abies  ';"
+run_sql_r(query, conn_list)
