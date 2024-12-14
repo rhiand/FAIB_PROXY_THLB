@@ -8,6 +8,30 @@ print(glue("Script started at {format(start_time, '%Y-%m-%d %I:%M:%S %p')}"))
 query <- 'DROP TABLE IF EXISTS thlb_proxy.prov_netdown'
 run_sql_r(query, conn_list)
 query <- "CREATE TABLE thlb_proxy.prov_netdown AS
+WITH vri_species_cd_datadict AS (
+	SELECT
+		CASE 
+			WHEN upper(species_cd) IN ('AC','ACB','ACT','AD','AX','DG', 'E','EA','EB','EP', 'ES', 'EW','M','MB','MN', 'MV', 'QG', 'RA', 'VB', 'W', 'WS', 'XH', 'ZH') then 'decid'
+			WHEN upper(species_cd) IN ('AT', 'SS', 'SB', 'PA') THEN lower(species_full_name)
+			WHEN upper(species_cd) IN ('D', 'DR') THEN 'alder'
+			WHEN upper(species_cd) LIKE 'F%' THEN 'fir'
+			WHEN upper(species_cd) LIKE 'C%' then 'cedar'
+			WHEN upper(species_cd) LIKE 'H%' then 'hemlock'
+			WHEN upper(species_cd) LIKE 'S%' then 'spruce'
+			WHEN upper(species_cd) LIKE 'B%' then 'balsam'
+			WHEN upper(species_cd) IN ('PF','PW') then 'white pine'
+			WHEN upper(species_cd) IN ('P','PL','PLI','PLC', 'PJ') then 'pine'
+			WHEN upper(species_cd) IN ('PY') then 'yellow pine'
+			WHEN upper(species_cd)  LIKE 'L%' then 'larch'
+			WHEN upper(species_cd) IN ('YC') then 'cypress'
+			ELSE 'other'
+		END as species_grouping,
+		species_cd,
+		species_full_name,
+		type
+	FROM
+		thlb_proxy.vri_species_cd_datadict			   
+)
 SELECT
 	bc_gr_skey.gr_skey,
 	man_unit.man_unit,
@@ -50,6 +74,9 @@ SELECT
 		WHEN inop.class2 > 250 THEN inop.class2::numeric/1000
 		ELSE 0
 	END AS inop_fact,
+	rr.land_designation_type_code,
+	rr.harvest_restriction_class_rank,
+	rr.harvest_restriction_class_name,
 	CASE 
 		WHEN bec.natural_disturbance = 'NDT5' THEN 'NDT5'
 		-- if its been harvested then its forested
@@ -92,27 +119,32 @@ SELECT
 	coalesce(lin.fact,0) as p05_linear_features,
 	coalesce(rip.fact,0) as p06_riparian,
 	coalesce(inop.inop_fact,0) as p07_phys_inop,
-	CASE WHEN merch.merchantability = 0 THEN 'non_merchantable' ELSE NULL END as n08_merchantability
+	CASE WHEN merch.merchantability = 0 THEN 'non_merchantable' ELSE NULL END as n08_merchantability,
+	non_com.non_commercial as n09_non_commercial
 FROM
-whse.all_bc_gr_skey bc_gr_skey
-LEFT JOIN thlb_proxy.seral_2023_tap_method fmlb on fmlb.gr_skey = bc_gr_skey.gr_skey
-LEFT JOIN whse.f_own_gr_skey fown_key ON bc_gr_skey.gr_skey = fown_key.gr_skey
+whse.all_bc_gr_skey bc
+LEFT JOIN thlb_proxy.seral_2023_tap_method fmlb on fmlb.gr_skey = bc.gr_skey
+LEFT JOIN whse.f_own_gr_skey fown_key ON bc.gr_skey = fown_key.gr_skey
 LEFT JOIN (SELECT own || schedule as own_sched, own || schedule || ' - ' || ownership_description AS own_sched_desc, pgid FROM whse.f_own) fown USING (pgid)
-LEFT JOIN whse.bec_biogeoclimatic_poly_gr_skey bec_key on bec_key.gr_skey = bc_gr_skey.gr_skey
+LEFT JOIN whse.bec_biogeoclimatic_poly_gr_skey bec_key on bec_key.gr_skey = bc.gr_skey
 LEFT JOIN whse.bec_biogeoclimatic_poly bec ON bec.pgid = bec_key.pgid
-LEFT JOIN thlb_proxy.btm_present_land_use_v1_svw_gr_skey btmg on btmg.gr_skey = bc_gr_skey.gr_skey 
+LEFT JOIN thlb_proxy.btm_present_land_use_v1_svw_gr_skey btmg on btmg.gr_skey = bc.gr_skey 
 LEFT JOIN thlb_proxy.btm_present_land_use_v1_svw btm on btm.pgid = btmg.pgid
-LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023_gr_skey vri_key on vri_key.gr_skey = bc_gr_skey.gr_skey 
+LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023_gr_skey vri_key on vri_key.gr_skey = bc.gr_skey 
 LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023 vri on vri.pgid = vri_key.pgid
-LEFT JOIN whse.veg_consolidated_cut_blocks_sp_2024_gr_skey ccg on ccg.gr_skey = bc_gr_skey.gr_skey 
+LEFT JOIN vri_species_cd_datadict on vri.species_cd_1 = vri_species_cd_datadict.species_cd
+LEFT JOIN whse.veg_consolidated_cut_blocks_sp_2024_gr_skey ccg on ccg.gr_skey = bc.gr_skey 
 LEFT JOIN whse.veg_consolidated_cut_blocks_sp_2024 cc on cc.pgid = ccg.pgid 
-LEFT JOIN whse.fwa_wetlands_gr_skey wet_key ON wet_key.gr_skey = bc_gr_skey.gr_skey
+LEFT JOIN whse.fwa_wetlands_gr_skey wet_key ON wet_key.gr_skey = bc.gr_skey
 LEFT JOIN whse.fwa_wetlands wet ON wet.pgid = wet_key.pgid
-LEFT JOIN thlb_proxy.bc_linear_features lin ON lin.gr_skey = bc_gr_skey.gr_skey
-LEFT JOIN thlb_proxy.bc_riparian_buffers rip ON rip.gr_skey = bc_gr_skey.gr_skey
-LEFT JOIN thlb_proxy.bc_inoperable_gr_skey inop ON inop.gr_skey = bc_gr_skey.gr_skey
-LEFT JOIN thlb_proxy.bc_merchantability_gr_skey merch ON merch.gr_skey = bc_gr_skey.gr_skey
-LEFT JOIN whse.man_unit_gr_skey man_unit on man_unit.gr_skey = bc_gr_skey.gr_skey"
+LEFT JOIN thlb_proxy.bc_linear_features lin ON lin.gr_skey = bc.gr_skey
+LEFT JOIN thlb_proxy.bc_riparian_buffers rip ON rip.gr_skey = bc.gr_skey
+LEFT JOIN thlb_proxy.bc_inoperable_gr_skey inop ON inop.gr_skey = bc.gr_skey
+LEFT JOIN thlb_proxy.bc_merchantability_gr_skey merch ON merch.gr_skey = bc.gr_skey
+LEFT JOIN whse.man_unit_gr_skey man_unit on man_unit.gr_skey = bc.gr_skey
+LEFT JOIN thlb_proxy.non_commercial_lu_table non_com on non_com.tsa = man_unit.tsa_rank1 and vri_species_cd_datadict.species_grouping = non_com.species_grouping
+LEFT JOIN whse.rr_restriction_202408_gr_skey rr_key on rr_key.gr_skey = bc.gr_skey
+LEFT JOIN whse.rr_restriction_202408 rr on rr.pgid = rr_key.pgid;"
 run_sql_r(query, conn_list)
 
 query <- "ALTER TABLE thlb_proxy.prov_netdown ADD PRIMARY KEY (gr_skey)"
