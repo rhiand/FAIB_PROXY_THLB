@@ -105,9 +105,14 @@ library(tidyverse)
 source('../utils/functions.R')
 
 conn_list <- dadmtools::get_pg_conn_list()
+## The following query was ran prior
+## src\analysis\3.netdown-create-table.R
 query <- "	SELECT 
   gr_skey,
   own,
+  wha_label,
+  harvest_restriction_class_name,
+  land_designation_type_code,
 	n01_fmlb,
 	n02_ownership,
 	n03_ownership,
@@ -116,7 +121,8 @@ query <- "	SELECT
 	p06_riparian,
 	p07_phys_inop,
 	n08_merchantability
-FROM thlb_proxy.prov_netdown net"
+FROM thlb_proxy.prov_netdown net
+WHERE man_unit = 'Boundary TSA'"
 netdown_tab <- sql_to_df(query, conn_list)
 netdown_summary <- setup_tracking_variable(netdown_tab)
 running_total <- 0
@@ -130,9 +136,7 @@ Each netdown step (area deduction) is described in the following sub-sections.
 
 ## Delineating the FMLB
 
-The following area deductions are removed from the Provincial Boundary area to classify the FMLB. FMLB Logic:
-
-Legend:  
+The following area deductions are removed from the Provincial Boundary area to classify the FMLB. The FMLB used for the provincial THLB Proxy is an adjusted version of the VRI field: `for_mgmt_land_base_ind`. A description and code snippet of the `for_mgmt_land_base_ind` is below. The field is a text field composed of either:
 
 - 'N': non forested 
 - 'Y': forested 
@@ -147,10 +151,10 @@ Description:
 + OTHERWISE vri.for_mgmt_land_base_ind
 
 Code:
-The following logic is used to derive the `for_mgmt_land_base_ind` field.
+The following code snippet show's how `for_mgmt_land_base_ind` is derived.
 
 
-```{sql eval= FALSE}
+```{sql fmlb_sql, eval= FALSE}
 WITH recreate_for_mgmt_land_base_ind AS (
 SELECT
   CASE
@@ -226,6 +230,25 @@ FROM
 recreate_for_mgmt_land_base_ind;
 ```
 
+
+Below is a SQL snippet illustrating the logic used to build adjusted FMLB:
+
+```{sql fmlb_adj_sql, eval= FALSE}
+		CASE 
+			WHEN bec.natural_disturbance = 'NDT5' THEN 'NDT5'
+			-- if its been harvested then its forested
+			WHEN (nullif(vri.opening_id::text,'0') is not null or nullif(vri.opening_number::text,'0') is not null or cc.harvest_start_year_calendar is not null or ccg.gr_skey is not null) THEN NULL
+			-- bring back in btm forested
+			WHEN (coalesce(vri.bclcs_level_1,'') IN ('U', '') AND btm.present_land_use_label IN ('Old Forest', 'Recently Logged', 'Selectively Logged','Young Forest')) THEN NULL
+			-- exclude where vegetated, not treed and not fire_update
+			WHEN vri.bclcs_level_1 = 'V' AND coalesce(vri.bclcs_level_2,'') <> 'T' AND vri.project NOT LIKE 'FIRE_UPDATE%' THEN 'not_treed_not_fire'
+			-- exclude urban that has been classified as forested
+			WHEN ((trim(vri.non_productive_descriptor_cd) = 'U' OR vri.bclcs_level_5 = 'UR' OR vri.land_cover_class_cd_1 = 'UR' OR vri.land_cover_class_cd_2 = 'UR' OR vri.land_cover_class_cd_3 = 'UR' OR vri.non_veg_cover_type_1 = 'UR')) AND (coalesce(vri.for_mgmt_land_base_ind,'Y') = 'Y') THEN 'URBAN and fmlb_orig = Y'
+			WHEN vri.for_mgmt_land_base_ind = 'Y' THEN NULL
+			WHEN vri.for_mgmt_land_base_ind = 'N' THEN 'fmlb_orig = N'
+		END AS n01_fmlb
+```
+
 **Data sources:** WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_BASEMAPPING.BTM_PRESENT_LAND_USE_V1_SVW, WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY
 
 
@@ -265,7 +288,7 @@ pretty_table(netdown_summary)
 
 The following area deductions are removed from the FMLB to classify the FALB
 
-## n02_ownership
+### n02_ownership
 
 The next phase of the netdown process delineates the FALB from the FMLB. The FALB excludes private, municipal and first nation reserve lands. Below is a specific list of ownership classes excluded:
 
@@ -335,6 +358,25 @@ Identifying non-forest/non-productive is done using a long 'case when' statement
 
 **Data sources:** WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_BASEMAPPING.FWA_WETLANDS_POLY
 
+Below is a SQL snippet illustrating the logic used to build non-productive and non-forest areas:
+
+```{sql aflt_nonfor_sql, eval= FALSE}
+		CASE 
+			WHEN bec.natural_disturbance = 'NDT5' THEN 'NDT5'
+			-- if its been harvested then its forested
+			WHEN (nullif(vri.opening_id::text,'0') is not null or nullif(vri.opening_number::text,'0') is not null or cc.harvest_start_year_calendar is not null or ccg.gr_skey is not null) THEN NULL
+			-- bring back in btm forested
+			WHEN (coalesce(vri.bclcs_level_1,'') IN ('U', '') AND btm.present_land_use_label IN ('Old Forest', 'Recently Logged', 'Selectively Logged','Young Forest')) THEN NULL
+			-- exclude where vegetated, not treed and not fire_update
+			WHEN vri.bclcs_level_1 = 'V' AND coalesce(vri.bclcs_level_2,'') <> 'T' AND vri.project NOT LIKE 'FIRE_UPDATE%' THEN 'not_treed_not_fire'
+			-- exclude urban that has been classified as forested
+			WHEN ((trim(vri.non_productive_descriptor_cd) = 'U' OR vri.bclcs_level_5 = 'UR' OR vri.land_cover_class_cd_1 = 'UR' OR vri.land_cover_class_cd_2 = 'UR' OR vri.land_cover_class_cd_3 = 'UR' OR vri.non_veg_cover_type_1 = 'UR')) AND (coalesce(vri.for_mgmt_land_base_ind,'Y') = 'Y') THEN 'URBAN and fmlb_orig = Y'
+			WHEN vri.for_mgmt_land_base_ind = 'Y' THEN NULL
+			WHEN vri.for_mgmt_land_base_ind = 'N' THEN 'fmlb_orig = N'
+		END AS n01_fmlb
+```
+
+
 ```{r aflb_nonfor, eval= TRUE}
 lclass<-"Non_Forest_and_Non_Productive_Forest"
 n_step<-"n04_nonfor"
@@ -385,9 +427,9 @@ netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,n
 pretty_table(netdown_summary)
 ```
 
-## Write to Postgres
+## Write AFLB to Postgres
 
-```{r aflb_to_pg, eval= TRUE}
+```{r aflb_to_pg, eval= FALSE}
 
 df_to_pg(Id(schema = 'thlb_proxy', table = 'netdown_fmlb_falb_aflb'), netdown_tab[,c('gr_skey', 'fmlb', 'falb', 'aflb')], conn_list, overwrite=TRUE)
 ```
@@ -395,6 +437,67 @@ df_to_pg(Id(schema = 'thlb_proxy', table = 'netdown_fmlb_falb_aflb'), netdown_ta
 ## Delineating the THLB
 
 The next phase of the netdown process delineates the THLB from the AFLB. 
+
+### n06_park
+
+
+```{r thlb_parks, eval= TRUE}
+lclass<-"Parks_and_Protected_Areas"
+n_step<-"n06_park"
+
+netdown_tab <- netdown_tab %>%
+  mutate(n06_park = case_when(
+  own  == '60N' ~ 'Conservancy_Ecological_Reserve_Protected_Area_Provincial_Park',
+  own == '81U' ~ 'Local_Region_Park'))
+
+netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+netdown_tab<-update_areas_thlb(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
+pretty_table(netdown_summary)
+```
+
+
+### n07_wha
+
+
+```{r thlb_wha, eval= TRUE}
+lclass<-"Wildlife_Habitat_Areas"
+n_step<-"n07_wha"
+
+netdown_tab <- netdown_tab %>%
+  mutate(n07_wha = case_when(
+  wha_label  == 'NO HARVEST ZONE' ~ 'NO HARVEST ZONE',
+  wha_label == 'NO HARVEST' ~ 'NO HARVEST'))
+
+netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+netdown_tab<-update_areas_thlb(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
+pretty_table(netdown_summary)
+```
+
+### n08_harvest_restrictions
+
+
+```{r thlb_rr, eval= TRUE}
+lclass<-"Harvest_Restrictions"
+n_step<-"n08_harvest_restrictions"
+
+netdown_tab <- netdown_tab %>%
+  mutate(n08_harvest_restrictions = case_when(
+  harvest_restriction_class_name  == 'Prohibited' ~ glue('{harvest_restriction_class_name} - {land_designation_type_code}'),
+  harvest_restriction_class_name == 'Protected' ~ glue('{harvest_restriction_class_name} - {land_designation_type_code}')))
+
+netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+netdown_tab<-update_areas_thlb(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
+pretty_table(netdown_summary)
+```
+
+
+
 
 ### p06_riparian
 
@@ -439,6 +542,46 @@ pretty_table(netdown_summary)
 ```{r thlb_merch, eval= TRUE}
 lclass<-"Merchantability"
 n_step<-"n08_merchantability"
+
+netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+netdown_tab<-update_areas_thlb(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
+pretty_table(netdown_summary)
+```
+
+
+### retention
+Stand level retention refers to unharvested areas associated with individual cutblocks. An analysis of retention practices derived from RESULTS spatial data collected from 2012 to 2024 were utilized to estimate total stand level retention for the province.
+
+The retention estimate includes areas occupied by biodiveristy, riparian retention, wildlife tree retention (grouped retention), as well as retention for the protection of forest values including archaeological features, site specific habitat features, and/or blue listed species or ecosystems. Stand level retention in the netdown process is modelled as an aspatial adjustment factor and applied to each hectare in the THLB, based on the geometric mean stand level retention for the TSA.
+
+This approach recognises that although retention is not dispersed evenly across the land base the spatial variation in retention levels can be generalized across the land base without undue risk to yield estimation and forms a reasonable approximation for modelling timber supply in a TSA.
+
+To calculate long-term retention, the percentage of coverage by RESULTS reserves relative to the total opening area was determined. Reserves with the Reserve Objective Codes "TIM" (Timber Objective) and "RMA" (Riparian Management Area) were excluded from this calculation. The "TIM" objective does not represent long-term retention, and riparian areas were excluded to avoid double-counting as they are addressed during a separate netdown step.
+
+Additionally, the RESULTS reserves data was filtered to include:
++ Reserves with a silviculture reserve code of "G" (mapped reserves).
++ Disturbance data from 2012 onward, as the "G" reserve code was established in 2011 with a grace period of 1 year, before enforcement in 2012.
++ Only openings where the Opening Category Code is not in ('NREQ', 'SPEX', 'UHRV'), to exclude government-funded silviculture activities.
+
+The distribution of the % retention over the opening was analyzed. A lower cutoff and an upper cutoff was developed to "clean" the data and to remove outliers. The weighted mean of the cleaned RESULTS dataset for each TSA was calculated as the preliminary stand level retention THLB reduction factor. 
+
+The second phase of the process is to adjust the stand level retention reduction to THLB to account for land classes that have already been excluded from the THLB to avoid double counting. A spatial sample of the RESULTS retention dataset was examined through the netdown process to assess the amount of non-productive, inoperable or non merchantable forest that was generally retained within openings.
+
+
+See below table of cutoffs and ..
+
+```{r retention_table, eval= TRUE}
+library(dadmtools)
+query <- "SELECT * FROM thlb_proxy.retention_thresholds_man_unit ORDER BY man_unit"
+df <- sql_to_df(query, conn_list)
+pretty_table(df)
+```
+
+```{r retention, eval= FALSE}
+lclass<-"Retention"
+n_step<-"??"
 
 netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
 netdown_tab<-update_areas_thlb(netdown_tab,n_step)
