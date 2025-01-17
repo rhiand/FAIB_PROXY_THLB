@@ -108,21 +108,35 @@ conn_list <- dadmtools::get_pg_conn_list()
 ## The following query was ran prior
 ## src\analysis\3.netdown-create-table.R
 query <- "	SELECT 
-  gr_skey,
-  own,
-  wha_label,
-  harvest_restriction_class_name,
-  land_designation_type_code,
-	n01_fmlb,
-	n02_ownership,
-	n03_ownership,
-	n04_nonfor,
-	p05_linear_features,
-	p06_riparian,
-	p07_phys_inop,
-	n08_merchantability
-FROM thlb_proxy.prov_netdown net
-WHERE man_unit = 'Boundary TSA'"
+  p.gr_skey,
+  p.tsa_rank1,
+  p.own,
+  p.wha_label,
+  p.harvest_restriction_class_name,
+  p.land_designation_type_code,
+  p.harvest_start_year_calendar AS cc_year,
+  p.res_opening_id,
+	p.n01_fmlb,
+	p.n02_ownership,
+	p.n03_ownership,
+	p.n04_nonfor,
+	p.p05_linear_features,
+	p.n06_parks,
+	p.n07_wha,
+	p.n08_rec,
+	p.n09_misc,
+	p.p10_riparian,
+  p.n11_arch,
+	p.n12_harvest_restrictions,
+	p.p13_phys_inop,
+	p.n14_merchantability,
+	p.n15_non_commercial
+FROM thlb_proxy.prov_netdown p
+-- JOIN public.tsa13_netdown USING (gr_skey)                                                                                                                  -- 1,240,878 || AFLB = 753,633.27
+-- WHERE tsa_rank1 = 'Kootenay Lake TSA'                                                                                                                      -- 1,240,878 || AFLB = 753,633.27
+-- JOIN whse.prov_thlb_tsas_gr_skey thlb_key ON p.gr_skey = thlb_key.gr_skey JOIN whse.prov_thlb_tsas thlb ON thlb.pgid = thlb_key.pgid WHERE tsa_number = 13 -- 684,539   || AFLB = 663,045.87
+WHERE man_unit = 'Kootenay Lake TSA' 
+"
 netdown_tab <- sql_to_df(query, conn_list)
 netdown_summary <- setup_tracking_variable(netdown_tab)
 running_total <- 0
@@ -249,7 +263,7 @@ Below is a SQL snippet illustrating the logic used to build adjusted FMLB:
 		END AS n01_fmlb
 ```
 
-**Data sources:** WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_BASEMAPPING.BTM_PRESENT_LAND_USE_V1_SVW, WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY
+**Data sources:** BCGW files: WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_BASEMAPPING.BTM_PRESENT_LAND_USE_V1_SVW, WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY
 
 
 ```{r fmlb, eval= TRUE}
@@ -258,7 +272,8 @@ netdown_tab <- netdown_tab %>%
     fmlb = 1,
     falb = 1,
     aflb = 1,
-    thlb_net = 1
+    thlb_net = 1,
+    thlb_pre_ret = 1
   )
 
 lclass<-"FMLB"
@@ -297,6 +312,7 @@ The next phase of the netdown process delineates the FALB from the FMLB. The FAL
 + 52N, Federal - Indian Reserve
 + 80N, Crown Municipal Parcels
 
+**Data sources:** BCGW file: WHSE_FOREST_VEGETATION.F_OWN
 
 ```{r falb, eval= TRUE}
 
@@ -335,6 +351,7 @@ The FALB excludes the remaining federal lands. Below is a specific list of owner
 + 53N, Federal - Military Reserve
 + 54N, Federal - Dominion government Block/Federal Parcels
 
+**Data sources:** BCGW file: WHSE_FOREST_VEGETATION.F_OWN
 
 ```{r aflb_own, eval= TRUE}
 
@@ -356,7 +373,7 @@ The FALB land base is further excluded to create a 'not forested or non producti
 
 Identifying non-forest/non-productive is done using a long 'case when' statement in a previous postgres table creation. In the netdown table each non-productive class is assigned it’s own descriptive label under the variable n04_nonfor.
 
-**Data sources:** WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_BASEMAPPING.FWA_WETLANDS_POLY
+**Data sources:** BCGW files: WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_BASEMAPPING.FWA_WETLANDS_POLY
 
 Below is a SQL snippet illustrating the logic used to build non-productive and non-forest areas:
 
@@ -408,7 +425,8 @@ netdown_summary<-netdown_prop(netdown_tab,netdown_summary,running_total,lclass,n
 
 netdown_tab <- netdown_tab %>%
 mutate( aflb = aflb * (1-p05_linear_features),
-thlb_net = thlb_net * (1-p05_linear_features)
+thlb_net = thlb_net * (1-p05_linear_features),
+thlb_pre_ret = thlb_pre_ret * (1-p05_linear_features)
 )
 
 running_total<-get_running_total(netdown_summary,lclass)
@@ -427,31 +445,31 @@ netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,n
 pretty_table(netdown_summary)
 ```
 
-## Write AFLB to Postgres
-
-```{r aflb_to_pg, eval= FALSE}
-
-df_to_pg(Id(schema = 'thlb_proxy', table = 'netdown_fmlb_falb_aflb'), netdown_tab[,c('gr_skey', 'fmlb', 'falb', 'aflb')], conn_list, overwrite=TRUE)
-```
 
 ## Delineating the THLB
 
 The next phase of the netdown process delineates the THLB from the AFLB. 
 
 ### n06_park
+BC has an extensive protected areas strategy that was developed to protect natural, cultural and recreational values. Protection is afforded under several Acts including the Ecological Reserves Act, Park Act, Protected Areas Act and Environment and Land Use Act. These types of protected areas within the TSA will be considered part of the AFLB and contribute to objectives for biodiversity and wildlife. However, these areas are not administered by the MOF for timber supply and thus are excluded from the THLB. Once again the ownership code is used to identify protected areas to be excluded during the netdown process.
 
+Below is a specific list of ownership classes excluded:
+
++ 60N, Crown - Ecological Reserve
++ 60N, Crown – Provincial Park 
++ 60N, Crown – Protected Area 
++ 60N, Crown - Conservancy Area
++ 81U, Local/Regional Park
+
+**Data sources:** BCGW file: WHSE_FOREST_VEGETATION.F_OWN
 
 ```{r thlb_parks, eval= TRUE}
 lclass<-"Parks_and_Protected_Areas"
-n_step<-"n06_park"
-
-netdown_tab <- netdown_tab %>%
-  mutate(n06_park = case_when(
-  own  == '60N' ~ 'Conservancy_Ecological_Reserve_Protected_Area_Provincial_Park',
-  own == '81U' ~ 'Local_Region_Park'))
+n_step<-"n06_parks"
 
 netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-netdown_tab<-update_areas_thlb(netdown_tab,n_step)
+## TODO FIX IT BACK
+netdown_tab<-update_areas_thlb_pre_ret(netdown_tab,n_step)
 running_total<-get_running_total(netdown_summary,lclass)
 netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
@@ -459,56 +477,80 @@ pretty_table(netdown_summary)
 
 
 ### n07_wha
+The Identified Wildlife Management Strategy (IWMS) provides direction, policy, procedures and guidelines for managing Identified Wildlife. The goals of the strategy are to minimize the effects of forest and range practices on Identified Wildlife situated on on the AFLB and to maintain their limiting habitats throughout their current ranges and, where appropriate, their historic ranges. In some cases, this will entail restoration of previously occupied habitats, particularly for those species most at risk. Identified Wildlife are managed through the establishment of Wildlife Habitat Areas (WHAs) and the implementation of GWMs and WHA objectives, or through other management practices specified in strategic or landscape level plans. Both Ungulate Winter Ranges (UWRs) and WHAs objectives fall into two categories: 
+
+1. Harvest and Road construction activities are excluded
+2. Fover Cover Objectives must be maintained
+
+Areas that exclude harvest are maintained in the AFLB but are removed from the THLB
+
+**Data sources:** BCGW file: WHSE_WILDLIFE_MANAGEMENT.WCP_WILDLIFE_HABITAT_AREA_POLY
 
 
 ```{r thlb_wha, eval= TRUE}
 lclass<-"Wildlife_Habitat_Areas"
 n_step<-"n07_wha"
 
-netdown_tab <- netdown_tab %>%
-  mutate(n07_wha = case_when(
-  wha_label  == 'NO HARVEST ZONE' ~ 'NO HARVEST ZONE',
-  wha_label == 'NO HARVEST' ~ 'NO HARVEST'))
-
 netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-netdown_tab<-update_areas_thlb(netdown_tab,n_step)
+netdown_tab<-update_areas_thlb_pre_ret(netdown_tab,n_step)
 running_total<-get_running_total(netdown_summary,lclass)
 netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
 ```
 
-### n08_harvest_restrictions
+### n08_rec
+Below is a specific list of ownership classes excluded:
 
++ 66N, Crown - Recreation Area 
++ 68U, Crown - Forest Recreation 
 
-```{r thlb_rr, eval= TRUE}
-lclass<-"Harvest_Restrictions"
-n_step<-"n08_harvest_restrictions"
+**Data sources:** BCGW file: WHSE_FOREST_VEGETATION.F_OWN
 
-netdown_tab <- netdown_tab %>%
-  mutate(n08_harvest_restrictions = case_when(
-  harvest_restriction_class_name  == 'Prohibited' ~ glue('{harvest_restriction_class_name} - {land_designation_type_code}'),
-  harvest_restriction_class_name == 'Protected' ~ glue('{harvest_restriction_class_name} - {land_designation_type_code}')))
+```{r thlb_rec, eval= TRUE}
+lclass<-"Recreation_Features"
+n_step<-"n08_rec"
 
 netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
-netdown_tab<-update_areas_thlb(netdown_tab,n_step)
+netdown_tab<-update_areas_thlb_pre_ret(netdown_tab,n_step)
 running_total<-get_running_total(netdown_summary,lclass)
 netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
 ```
 
 
+### n09_misc
+Below is a specific list of ownership classes excluded:
+
++ 69U, Crown - Misc. Reserves
++ 69U, Crown - Misc. Reserves Caribou
++ 69U, Crown - Watershed Reserve
++ 99N, Crown – Misc. lease
+
+**Data sources:** BCGW file: WHSE_FOREST_VEGETATION.F_OWN
+
+```{r thlb_misc, eval= TRUE}
+lclass <- "Misc_Tenures"
+n_step <- "n09_misc"
+
+netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+netdown_tab<-update_areas_thlb_pre_ret(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
+pretty_table(netdown_summary)
+```
 
 
-### p06_riparian
+### p10_riparian
 
 ```{r thlb_rip, eval= TRUE}
 lclass<-"Riparian_Buffers"
-n_step<-"p06_riparian"
+n_step<-"p10_riparian"
 
 netdown_summary<-netdown_prop(netdown_tab,netdown_summary,running_total,lclass,n_step)
 
 netdown_tab <- netdown_tab %>%
-  mutate(thlb_net = thlb_net * (1-p06_riparian)
+  mutate(thlb_net = thlb_net * (1-p10_riparian),
+         thlb_pre_ret = thlb_pre_ret * (1-p10_riparian)
   )
 
 running_total<-get_running_total(netdown_summary,lclass)
@@ -516,32 +558,114 @@ netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
 ```
 
-### p07_phys_inop
+### n11_arch
+
+A cultural heritage resource is defined in the Forest Act as, “an object, site, or location of a traditional societal practice that is of historical, cultural or archaeological significance to the province, a community, or an aboriginal people”. Cultural heritage resources include archaeological sites structural features, heritage landscape features, and traditional use sites.
+
+The Heritage Conservation Act provides for the protection of British Columbia’s archaeological sites predating 1846. In accordance with the Act (Section 13(2)), archaeological sites may not be damaged, excavated or altered without a permit issued by the Minister or designate.The BC Provincial Heritage Register database is the basis for records on archaeological sites and provides a polygon layer. For this timber supply review, all identified buffered archaeological sites within the provincial application Remote Access to Archaeological Data (RAAD) are excluded from the timber harvesting land base.
+
+**Data source:** BCGW file (restricted) WHSE_ARCHAEOLOGY.RAAD_TFM_SITES_SVW
+Access date: Jan 7, 2025
+
+```{r thlb_arch, eval= TRUE}
+lclass<-"Non-Cultural_Heritage_Features"
+n_step<-"n11_arch"
+
+netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+netdown_tab<-update_areas_thlb_pre_ret(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
+pretty_table(netdown_summary)
+```
+
+### THLB Summary pre RR
+
+```{r thlb_landcase_pre_rr, eval= TRUE}
+lclass<-"LANDBASE SUMMARY - THLB pre RR"
+
+netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=thlb_net)
+
+pretty_table(netdown_summary)
+```
+
+
+### n12_harvest_restrictions
+Ensure to filter out nonlegal ogmas that are currently in the Prohibited category
+
+
+```{r rr, eval= TRUE}
+lclass<-"Harvest_Restrictions"
+n_step<-"n12_harvest_restrictions"
+
+netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+netdown_tab<-update_areas_thlb(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
+pretty_table(netdown_summary)
+```
+
+### p13_phys_inop
 To determine physically inoperable areas, elevation, slope and terrain stability mapping were assessed related to historic practice since 2014. 
 
 For each TSA and TFL, binary rasters at 25-meter resolution were created to identify areas with slopes exceeding the 99th percentile within harvested cutblocks since 2014, areas with elevations exceeding 99th percentile within harvested cutblocks since 2014 and areas with unstable or potentially unstable slopes. These rasters were then combined to produce a single "physically inoperable" variable. Finally, the data was aggregated to a 1-hectare resolution to form a proportional inoperable variable.
 
 Please note that when creating the 99th percentile threshold, it was required to have a minumum of 30 cutblocks within the TFL/TSA. If the unit did not have > 30 cutblocks, a TFL would using the threshold of the TSA the TFL overlaps with the most. Only TFL 43 had < 30 cutblocks, and instead, the thresolds from 39 - Sunshine Coast TSA were used for TFL 43.
 
+Note: If an area has ever been harvested (ie. in the consolidated cutblock), the THLB is not adjusted by physically inoperability.
+
 ```{r thlb_phys_inop, eval= TRUE}
 lclass<-"Physical_Inoperable"
-n_step<-"p07_phys_inop"
+n_step<-"p13_phys_inop"
 
 netdown_summary<-netdown_prop(netdown_tab,netdown_summary,running_total,lclass,n_step)
 
 netdown_tab <- netdown_tab %>%
-  mutate(thlb_net = thlb_net * (1-p07_phys_inop)
+  mutate(thlb_net = case_when(
+    (!is.na(cc_year)) ~ thlb_net, ## leave THLB as is if cell was ever previously a cutblock (ie. consolidated cutblock year exists)
+    is.na(cc_year) ~ thlb_net * (1-p13_phys_inop)
+    )
   )
 
 running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
 ```
 
-### n08_merchantability
+### n14_merchantability
+Note: If an area has ever been harvested (ie. in the consolidated cutblock), the THLB is not adjusted by merchantability.
+
 
 ```{r thlb_merch, eval= TRUE}
 lclass<-"Merchantability"
-n_step<-"n08_merchantability"
+n_step<-"n14_merchantability"
+
+netdown_tab <- netdown_tab %>%
+  mutate(n14_merchantability = case_when(
+    (!is.na(cc_year)) ~ NA, ##adjust non-merchantable value to NA if cell was ever previously a cutblock (ie. consolidated cutblock year exists)
+    is.na(cc_year) ~ n14_merchantability
+    )
+  )
+netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+netdown_tab<-update_areas_thlb(netdown_tab,n_step)
+running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
+pretty_table(netdown_summary)
+```
+
+### n15_non_commercial
+Note: If an area has ever been harvested (ie. in the consolidated cutblock), the THLB is not adjusted by non-commercial.
+
+
+```{r thlb_noncom, eval= TRUE}
+lclass<-"Non-Commercial"
+n_step<-"n15_non_commercial"
+
+netdown_tab <- netdown_tab %>%
+  mutate(n15_non_commercial = case_when(
+    (!is.na(cc_year)) ~ NA, ##adjust non-merchantable value to NA if cell was ever previously a cutblock (ie. consolidated cutblock year exists)
+    is.na(cc_year) ~ n15_non_commercial
+    )
+  )
 
 netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
 netdown_tab<-update_areas_thlb(netdown_tab,n_step)
@@ -550,8 +674,9 @@ netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
 ```
 
-
 ### retention
+
+
 Stand level retention refers to unharvested areas associated with individual cutblocks. An analysis of retention practices derived from RESULTS spatial data collected from 2012 to 2024 were utilized to estimate total stand level retention for the province.
 
 The retention estimate includes areas occupied by biodiveristy, riparian retention, wildlife tree retention (grouped retention), as well as retention for the protection of forest values including archaeological features, site specific habitat features, and/or blue listed species or ecosystems. Stand level retention in the netdown process is modelled as an aspatial adjustment factor and applied to each hectare in the THLB, based on the geometric mean stand level retention for the TSA.
@@ -572,16 +697,53 @@ The second phase of the process is to adjust the stand level retention reduction
 
 See below table of cutoffs and ..
 
-```{r retention_table, eval= TRUE}
-library(dadmtools)
-query <- "SELECT * FROM thlb_proxy.retention_thresholds_man_unit ORDER BY man_unit"
-df <- sql_to_df(query, conn_list)
-pretty_table(df)
+
+```{r thlb_ltr, eval= FALSE}
+avg_opening_thlb <- netdown_tab %>%
+  group_by(res_opening_id, tsa_rank1) %>%
+  summarize(
+    sum_thlb_net = sum(thlb_net, na.rm = TRUE),
+    count = n(),
+    pct = sum_thlb_net / count,
+    .groups = "drop"
+  ) %>%
+  group_by(tsa_rank1) %>%
+  summarize(
+    avg_thlb_pct = mean(pct, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+## bring in the table of long term retention
+ltr <- sql_to_df('SELECT b.tsa_number_description AS tsa_rank1, weighted_mean_ltr FROM thlb_proxy.retention_thresholds_man_unit a JOIN whse.mu_lookup_table_im b USING (man_unit)', conn_list)
+
+## merge the long term retention with the table of THLB percent per opening per TSA
+ltr_thlb <- merge(ltr, avg_opening_thlb, by='tsa_rank1')
+ltr_thlb$n16_long_term_retention <- ltr_thlb$weighted_mean_ltr * ltr_thlb$avg_thlb_pct
+
+lclass<-"Long_Term_Retention"
+n_step<-"n16_long_term_retention"
+
+
+netdown_tab <- netdown_tab %>%
+  left_join(ltr_thlb, by = "tsa_rank1")
+
+netdown_tab <- netdown_tab %>%
+  mutate(thlb_net = thlb_net * (1-n16_long_term_retention)
+  )
+
+netdown_summary<-netdown_prop(netdown_tab,netdown_summary,running_total,lclass,n_step)
+
+
+running_total<-get_running_total(netdown_summary,lclass)
+netdown<-get_netdown(netdown_summary,lclass)
+pretty_table(netdown_summary)
 ```
 
-```{r retention, eval= FALSE}
-lclass<-"Retention"
-n_step<-"??"
+
+
+```{r thlb_ret, eval= FALSE}
+lclass<-"Current_Retention"
+n_step<-"n16_current_retention"
 
 netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
 netdown_tab<-update_areas_thlb(netdown_tab,n_step)
@@ -589,6 +751,7 @@ running_total<-get_running_total(netdown_summary,lclass)
 netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
 ```
+
 
 
 ### THLB Summary
@@ -600,3 +763,30 @@ netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,n
 
 pretty_table(netdown_summary)
 ```
+
+
+```{r aflb_to_pg, eval= FALSE}
+
+df_to_pg(Id(schema = 'thlb_proxy', table = 'prov_netdown_jan13'), netdown_tab[,c('gr_skey', 'fmlb','falb','aflb','thlb_pre_ret', 'thlb_net')], conn_list, overwrite=TRUE)
+
+query <- "ALTER TABLE thlb_proxy.prov_netdown add column future_retention double precision;"
+run_sql_r(query, conn_list)
+query <- "ALTER TABLE thlb_proxy.prov_netdown add column fmlb double precision;"
+run_sql_r(query, conn_list)
+query <- "ALTER TABLE thlb_proxy.prov_netdown add column falb double precision;"
+run_sql_r(query, conn_list)
+query <- "ALTER TABLE thlb_proxy.prov_netdown add column aflb double precision;"
+run_sql_r(query, conn_list)
+query <- "ALTER TABLE thlb_proxy.prov_netdown add column thlb_net double precision;"
+run_sql_r(query, conn_list)
+
+query <- "UPDATE thlb_proxy.prov_netdown set fmlb = a.fmlb,
+falb = a.falb,
+aflb = a.aflb,
+thlb_net = a.thlb_net
+from
+thlb_proxy.prov_netdown_jan13 a
+where a.gr_skey = thlb_proxy.prov_netdown.gr_skey;"
+run_sql_r(query, conn_list)
+```
+

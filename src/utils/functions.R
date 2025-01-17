@@ -683,6 +683,7 @@ update_areas_fmlb <- function(netdown_tab,var_name) {
     mutate(fmlb = if_else(is.na(get(var_name)), fmlb, 0),
            falb = if_else(is.na(get(var_name)), falb, 0),
 		   aflb = if_else(is.na(get(var_name)), aflb, 0),
+		   thlb_pre_ret = if_else(is.na(get(var_name)), thlb_pre_ret, 0),
            thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
   
 }
@@ -692,6 +693,7 @@ update_areas_falb <- function(netdown_tab,var_name) {
     # update the aflb, thlb_net and gthlb_net variables. If the variable specified is NA, then leave aflb, thlb_net, and gthlb as is. If the variable is NA then update aflb, thlb_net and gthlb to 0.
     mutate(falb = if_else(is.na(get(var_name)), falb, 0),
 		   aflb = if_else(is.na(get(var_name)), aflb, 0),
+		   thlb_pre_ret = if_else(is.na(get(var_name)), thlb_pre_ret, 0),
            thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
 }
 
@@ -699,14 +701,21 @@ update_areas_aflb <- function(netdown_tab,var_name) {
   netdown_tab%>%
     # update the aflb, thlb_net and gthlb_net variables. If the variable specified is NA, then leave aflb, thlb_net, and gthlb as is. If the variable is NA then update aflb, thlb_net and gthlb to 0.
     mutate(aflb = if_else(is.na(get(var_name)), aflb, 0),
+		   thlb_pre_ret = if_else(is.na(get(var_name)), thlb_pre_ret, 0),
            thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
+}
+
+# see comments for update_areas1
+update_areas_thlb_pre_ret <- function(netdown_tab,var_name) {
+  netdown_tab%>%
+	mutate(thlb_pre_ret = if_else(is.na(get(var_name)), thlb_pre_ret, 0),
+    thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
 }
 
 # see comments for update_areas1
 update_areas_thlb <- function(netdown_tab,var_name) {
   netdown_tab%>%
     mutate(thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
-  
 }
 
 
@@ -762,7 +771,7 @@ netdown_prop<-function(netdown_tab, netdown_summary, running_total, lclass, n_st
   total <- netdown_tab %>%
     summarise(x = sum(get(n_step), na.rm=T)) %>% 
     pull(),
-  ifelse(landclass == "Retention",
+  ifelse(landclass == "dont_do_Future_Retention",
          total<- netdown_tab %>%
            # multiply included by retention proportion (last step in netdown)
            summarise(x = sum(included * ret_prop))%>%

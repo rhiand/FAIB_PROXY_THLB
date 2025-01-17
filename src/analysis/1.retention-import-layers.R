@@ -38,18 +38,6 @@ run_sql_r(query, conn_list)
 query <- "ANALYZE thlb_proxy.rslt_opening_svw;"
 run_sql_r(query, conn_list)
 
-# WHSE_FOREST_VEGETATION.RSLT_FOREST_COVER_RESERVE_SVW
-# import_bcgw_to_pg(src_schema     = "WHSE_FOREST_VEGETATION",
-#                   src_layer      = "RSLT_FOREST_COVER_RESERVE_SVW",
-#                   fdw_schema     = "load",
-#                   dst_schema     = "thlb_proxy",
-#                   dst_layer      = "RSLT_FOREST_COVER_RESERVE_SVW",
-#                   fields_to_keep = "OPENING_ID, CUT_BLOCK_ID, SILV_RESERVE_CODE, SILV_RESERVE_OBJECTIVE_CODE, SILV_POLYGON_AREA",
-#                   geometry_name  = NULL,
-#                   geometry_type  = "MultiPolygon",
-#                   grouping_name  = NULL,
-#                   pg_conn_list   = conn_list)
-
 ## WHSE_FOREST_VEGETATION.RSLT_FOREST_COVER_INV_SVW
 import_bcgw_to_pg(src_schema     = "WHSE_FOREST_VEGETATION",
                   src_layer      = "RSLT_FOREST_COVER_INV_SVW",

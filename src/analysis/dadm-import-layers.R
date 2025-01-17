@@ -24,3 +24,4 @@ batch_import_to_pg_gr_skey(
   out_tif_path      = 'data\\output\\',
   import_rast_to_pg = FALSE
 )
+

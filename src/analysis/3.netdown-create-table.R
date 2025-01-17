@@ -45,6 +45,7 @@ for (i in 1:nrow(tsas)){
 	)
 	SELECT
 		bc.gr_skey,
+		bc.geom,
 		man_unit.man_unit,
 		man_unit.tsa_rank1,
 		fown.own_sched as own,
@@ -99,52 +100,78 @@ for (i in 1:nrow(tsas)){
 		
 		-- wildlife habitat area
 		wha.TIMBER_HARVEST_CODE as wha_label,
-		-- FMLB 
-		CASE 
-			WHEN bec.natural_disturbance = 'NDT5' THEN 'NDT5'
-			-- if its been harvested then its forested
-			WHEN (nullif(vri.opening_id::text,'0') is not null or nullif(vri.opening_number::text,'0') is not null or cc.harvest_start_year_calendar is not null or ccg.gr_skey is not null) THEN NULL
-			-- 
-			WHEN (coalesce(vri.bclcs_level_1,'') IN ('U', '') AND btm.present_land_use_label IN ('Old Forest', 'Recently Logged', 'Selectively Logged','Young Forest')) THEN NULL
-			---- WHEN upper(bec_zone || bec_subzone) IN ('SWBMKS', 'SWBUNS', 'SWBVKS') then 'N'
-			-- exclude where vegetated, not treed and not fire_update
-			WHEN vri.bclcs_level_1 = 'V' AND coalesce(vri.bclcs_level_2,'') <> 'T' AND vri.project NOT LIKE 'FIRE_UPDATE%' THEN 'not_treed_not_fire'
-			-- exclude urban that has been classified as forested
-			WHEN ((trim(vri.non_productive_descriptor_cd) = 'U' OR vri.bclcs_level_5 = 'UR' OR vri.land_cover_class_cd_1 = 'UR' OR vri.land_cover_class_cd_2 = 'UR' OR vri.land_cover_class_cd_3 = 'UR' OR vri.non_veg_cover_type_1 = 'UR')) AND (coalesce(vri.for_mgmt_land_base_ind,'Y') = 'Y') THEN 'URBAN and fmlb_orig = Y'
-			WHEN vri.for_mgmt_land_base_ind = 'Y' THEN NULL
-			WHEN vri.for_mgmt_land_base_ind = 'N' THEN 'fmlb_orig = N'
-		END AS n01_fmlb,
-		CASE WHEN fown.own_sched IN ('40N', '41N', '52N', '80N') THEN own_sched_desc ELSE NULL END AS n02_ownership,
-		CASE WHEN fown.own_sched IN ('50N', '51N', '53N', '54N') THEN own_sched_desc ELSE NULL END AS n03_ownership,
-		CASE
-			-- ALPINE
-			WHEN vri.bclcs_level_1 = 'N' AND vri.bclcs_level_3 = 'A' THEN 'non_vegetated_alpine_lcs' -- Alpine Rock and Ice
-			WHEN vri.bclcs_level_2 = 'N' AND vri.bclcs_level_3 = 'A' THEN 'non_treed_alpine_lcs' -- Shrub/Lichen
-			WHEN bec.bgc_label IN ('BAFAun', 'IMA') THEN 'alpine_bec' -- # BEC sourced Alpine,
-			-- RIPARIAN
-			WHEN vri.bclcs_level_1 = 'N' AND vri.bclcs_level_5 = 'LA' THEN 'lake_lcs' -- lakes
-			WHEN vri.bclcs_level_1 = 'N' AND vri.bclcs_level_5 = 'RE' THEN 'reservoir_lcs' -- reservoir
-			WHEN vri.bclcs_level_1 = 'N' AND vri.bclcs_level_5 = 'RI' THEN 'riparian_lcs' -- riparian
-			WHEN vri.bclcs_level_2 = 'T' AND vri.bclcs_level_3 = 'W' THEN 'treed_wetland_lcs' -- treed wetland
-			WHEN vri.bclcs_level_2 = 'N' AND vri.bclcs_level_3 = 'W' THEN 'non_treed_wetland_lcs'
-			WHEN vri.bclcs_level_3 = 'W' THEN 'wetlands_lcs' -- nontreed wetland
-			WHEN wet.waterbody_type = 'W' THEN 'wetland_fwa' -- FWA classification
-			--  NonVegetated/low productivity
-			WHEN vri.bclcs_level_1 = 'N' AND cc.harvest_start_year_calendar is null THEN 'non_vegetated_lcs' -- nonvegetated and not an opening
-			WHEN vri.bclcs_level_2 = 'N' AND vri.bclcs_level_4 NOT IN ('ST', 'SL') AND cc.harvest_start_year_calendar is null THEN 'non_treed_herb_lcs' -- nontreed but not in a cutblock
-			WHEN vri.bclcs_level_4 IN ('ST', 'SL') AND cc.harvest_start_year_calendar is null THEN 'non_treed_shrub_lcs'
-			WHEN vri.site_index < 5 AND cc.harvest_start_year_calendar is null THEN 'non_productive_si_vri' -- low productivity stands
-			WHEN vri.non_productive_descriptor_cd is not null AND cc.harvest_start_year_calendar is null THEN 'FC1_' || vri.non_productive_descriptor_cd -- stand classified in the FC1 as nonproductive
-			WHEN vri.bclcs_level_1 || vri.bclcs_level_2 = 'VT' AND vri.species_cd_1 is null THEN 'no_species_cd_1' -- species label
-			WHEN vri.bclcs_level_1 = 'U' OR vri.bclcs_level_1 is null THEN 'unclassified'
+		
+		-- non-commercial
+		non_com.non_commercial,
+
+		-- merchantability
+		merch.merchantability,
+
+		-- RESULTS OPENINGS
+		CASE WHEN res_inv.forest_cover_when_updated >= '2012-01-01' AND opening.DISTURBANCE_START_DATE > '2012-01-01' THEN opening.opening_id ELSE NULL END AS res_opening_id,
+
+		 -- FMLB 
+		 CASE 
+		 	WHEN bec.natural_disturbance = 'NDT5' THEN 'NDT5'
+		 	-- if its been harvested then its forested
+		 	WHEN (nullif(vri.opening_id::text,'0') is not null or nullif(vri.opening_number::text,'0') is not null or cc.harvest_start_year_calendar is not null or ccg.gr_skey is not null) THEN NULL
+		 	-- 
+		 	WHEN (coalesce(vri.bclcs_level_1,'') IN ('U', '') AND btm.present_land_use_label IN ('Old Forest', 'Recently Logged', 'Selectively Logged','Young Forest')) THEN NULL
+		 	---- WHEN upper(bec_zone || bec_subzone) IN ('SWBMKS', 'SWBUNS', 'SWBVKS') then 'N'
+		 	-- exclude where vegetated, not treed and not fire_update
+		 	WHEN vri.bclcs_level_1 = 'V' AND coalesce(vri.bclcs_level_2,'') <> 'T' AND vri.project NOT LIKE 'FIRE_UPDATE%' THEN 'not_treed_not_fire'
+		 	-- exclude urban that has been classified as forested
+		 	WHEN ((trim(vri.non_productive_descriptor_cd) = 'U' OR vri.bclcs_level_5 = 'UR' OR vri.land_cover_class_cd_1 = 'UR' OR vri.land_cover_class_cd_2 = 'UR' OR vri.land_cover_class_cd_3 = 'UR' OR vri.non_veg_cover_type_1 = 'UR')) AND (coalesce(vri.for_mgmt_land_base_ind,'Y') = 'Y') THEN 'URBAN and fmlb_orig = Y'
+		 	WHEN vri.for_mgmt_land_base_ind = 'Y' THEN NULL
+		 	WHEN vri.for_mgmt_land_base_ind = 'N' THEN 'fmlb_orig = N'
+		 END AS n01_fmlb,
+		 CASE WHEN fown.own_sched IN ('40N', '41N', '52N', '80N') THEN own_sched_desc ELSE NULL END AS n02_ownership,
+		 CASE WHEN fown.own_sched IN ('50N', '51N', '53N', '54N') THEN own_sched_desc ELSE NULL END AS n03_ownership,
+		 CASE
+		 	-- ALPINE
+		 	WHEN vri.bclcs_level_1 = 'N' AND vri.bclcs_level_3 = 'A' THEN 'non_vegetated_alpine_lcs' -- Alpine Rock and Ice
+		 	WHEN vri.bclcs_level_2 = 'N' AND vri.bclcs_level_3 = 'A' THEN 'non_treed_alpine_lcs' -- Shrub/Lichen
+		 	WHEN bec.bgc_label IN ('BAFAun', 'IMA') THEN 'alpine_bec' -- # BEC sourced Alpine,
+		 	-- RIPARIAN
+		 	WHEN vri.bclcs_level_1 = 'N' AND vri.bclcs_level_5 = 'LA' THEN 'lake_lcs' -- lakes
+		 	WHEN vri.bclcs_level_1 = 'N' AND vri.bclcs_level_5 = 'RE' THEN 'reservoir_lcs' -- reservoir
+		 	WHEN vri.bclcs_level_1 = 'N' AND vri.bclcs_level_5 = 'RI' THEN 'riparian_lcs' -- riparian
+		 	WHEN vri.bclcs_level_2 = 'T' AND vri.bclcs_level_3 = 'W' THEN 'treed_wetland_lcs' -- treed wetland
+		 	WHEN vri.bclcs_level_2 = 'N' AND vri.bclcs_level_3 = 'W' THEN 'non_treed_wetland_lcs'
+		 	WHEN vri.bclcs_level_3 = 'W' THEN 'wetlands_lcs' -- nontreed wetland
+		 	WHEN wet.waterbody_type = 'W' THEN 'wetland_fwa' -- FWA classification
+		 	--  NonVegetated/low productivity
+		 	WHEN vri.bclcs_level_1 = 'N' AND cc.harvest_start_year_calendar is null THEN 'non_vegetated_lcs' -- nonvegetated and not an opening
+		 	WHEN vri.bclcs_level_2 = 'N' AND vri.bclcs_level_4 NOT IN ('ST', 'SL') AND cc.harvest_start_year_calendar is null THEN 'non_treed_herb_lcs' -- nontreed but not in a cutblock
+		 	WHEN vri.bclcs_level_4 IN ('ST', 'SL') AND cc.harvest_start_year_calendar is null THEN 'non_treed_shrub_lcs'
+		 	WHEN vri.site_index < 5 AND cc.harvest_start_year_calendar is null THEN 'non_productive_si_vri' -- low productivity stands
+		 	WHEN vri.non_productive_descriptor_cd is not null AND cc.harvest_start_year_calendar is null THEN 'FC1_' || vri.non_productive_descriptor_cd -- stand classified in the FC1 as nonproductive
+		 	WHEN vri.bclcs_level_1 || vri.bclcs_level_2 = 'VT' AND vri.species_cd_1 is null THEN 'no_species_cd_1' -- species label
+		 	WHEN vri.bclcs_level_1 = 'U' OR vri.bclcs_level_1 is null THEN 'unclassified'
+		 	ELSE NULL
+		 END as n04_nonfor,
+		 coalesce(lin.fact,0) as p05_linear_features,
+		 CASE WHEN fown.own_sched IN ('60N', '81U') THEN own_sched_desc ELSE NULL END AS n06_parks,
+		 CASE WHEN wha.timber_harvest_code IN ('NO HARVEST ZONE', 'NO HARVEST') THEN wha.timber_harvest_code ELSE NULL END AS n07_wha,
+		 CASE WHEN fown.own_sched IN ('68U', '66N') THEN own_sched_desc ELSE NULL END AS n08_rec,
+		 CASE WHEN fown.own_sched IN ('69U', '99N') THEN own_sched_desc ELSE NULL END AS n09_misc,
+		 coalesce(rip.fact,0) as p10_riparian,
+		 CASE 
+		 	WHEN arch.pgid IS NOT NULL THEN 'arch sites' 
 			ELSE NULL
-		END as n04_nonfor,
-		coalesce(lin.fact,0) as p05_linear_features,
-		CASE WHEN fown.own_sched IN ('60N', '81U') THEN own_sched_desc ELSE NULL END AS n06_parks,
-		coalesce(rip.fact,0) as p06_riparian,
-		coalesce(inop.inop_fact,0) as p07_phys_inop,
-		CASE WHEN merch.merchantability = 0 THEN 'non_merchantable' ELSE NULL END as n08_merchantability,
-		non_com.non_commercial as n09_non_commercial
+		END AS n11_arch,
+		 CASE 
+		 	WHEN rr.land_designation_type_code = 'ogma_nonlegal' THEN NULL
+		 	WHEN rr.harvest_restriction_class_name IN ('Prohibited', 'Protected') THEN harvest_restriction_class_name || ' - ' || land_designation_type_code
+		 	ELSE NULL
+		 END AS n12_harvest_restrictions,
+		 coalesce(inop.inop_fact,0) as p13_phys_inop,
+		 CASE WHEN merch.merchantability = 0 THEN 'non_merchantable' ELSE NULL END as n14_merchantability,
+		 non_com.non_commercial as n15_non_commercial,
+		 CASE WHEN res.silv_reserve_code = 'G' AND res.silv_reserve_objective_code not in ('TIM') AND res_inv.forest_cover_when_updated >= '2012-01-01' THEN 'retention: ' || res.silv_reserve_objective_code
+		 ELSE NULL
+		 END as n16_current_retention
+
 	FROM
 	whse.all_bc_gr_skey bc
 	JOIN (SELECT * from whse.man_unit_gr_skey WHERE tsa_rank1 = '{tsa}') man_unit on man_unit.gr_skey = bc.gr_skey
@@ -170,7 +197,14 @@ for (i in 1:nrow(tsas)){
 	LEFT JOIN whse.rr_restriction_202408_gr_skey rr_key on rr_key.gr_skey = bc.gr_skey
 	LEFT JOIN whse.rr_restriction_202408 rr on rr.pgid = rr_key.pgid
 	LEFT JOIN thlb_proxy.wcp_wildlife_habitat_area_poly_gr_skey wha_key ON wha_key.gr_skey = bc.gr_skey
-	LEFT JOIN thlb_proxy.wcp_wildlife_habitat_area_poly wha ON wha.pgid = wha_key.pgid;")
+	LEFT JOIN thlb_proxy.wcp_wildlife_habitat_area_poly wha ON wha.pgid = wha_key.pgid
+	LEFT JOIN thlb_proxy.raad_tfm_sites_svw_gr_skey arch_key on bc.gr_skey = arch_key.gr_skey
+	LEFT JOIN thlb_proxy.raad_tfm_sites_svw arch ON arch.pgid = arch_key.pgid
+	LEFT JOIN thlb_proxy.rslt_opening_svw_20250110_gr_skey opening_key ON opening_key.gr_skey = bc.gr_skey
+	LEFT JOIN (SELECT pgid, opening_id, DISTURBANCE_START_DATE FROM thlb_proxy.rslt_opening_svw_20250110 WHERE timber_mark is not null) opening ON opening.pgid = opening_key.pgid
+	LEFT JOIN thlb_proxy.rslt_forest_cover_reserve_svw_20250110_gr_skey res_key ON res_key.gr_skey = bc.gr_skey
+	LEFT JOIN thlb_proxy.rslt_forest_cover_reserve_svw_20250110 res ON res.pgid = res_key.pgid
+	LEFT JOIN (SELECT distinct on (opening_id) opening_id, forest_cover_when_updated from thlb_proxy.rslt_forest_cover_inv_svw WHERE forest_cover_when_updated >= '2012-01-01' ORDER BY opening_id, forest_cover_when_updated desc) res_inv ON opening.opening_id = res_inv.opening_id ")
 	run_sql_r(query, conn_list)
 }
 
@@ -181,6 +215,9 @@ query <- "CREATE INDEX prov_netdown_man_unit_idx ON thlb_proxy.prov_netdown USIN
 run_sql_r(query, conn_list)
 
 query <- "CREATE INDEX prov_netdown_tsa_rank1_idx ON thlb_proxy.prov_netdown USING btree(tsa_rank1);"
+run_sql_r(query, conn_list)
+
+query <- "CREATE INDEX prov_netdown_geom_idx ON thlb_proxy.prov_netdown USING gist(geom);"
 run_sql_r(query, conn_list)
 
 query <- "ANALYZE thlb_proxy.prov_netdown;"

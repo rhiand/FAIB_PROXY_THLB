@@ -142,7 +142,7 @@ for (unit in man_units) {
     slice_max(order_by = value, n = 1)  
 
   filtered_ret <- filtered_ret %>%
-    filter(between(prop, filtered_percentile$p1, tail_cutoff$value)) ## lower bounds: 1st percentile, upper bounds: percentile less than 0.5 but closest to
+    filter(between(prop, filtered_percentile$p1, tail_cutoff$value)) ## lower bounds: 1st percentile, upper bounds: max percentile less than 0.5 
 
   ltr <- weighted.mean(filtered_ret$prop, filtered_ret$opening_area)
 
@@ -159,6 +159,4 @@ for (unit in man_units) {
   ret_df <- rbind(ret_df, new_row)
 }
 
-
-
-df_to_pg(Id(schema = 'thlb_proxy', table = 'retention_thresholds_man_unit'), ret_df, conn_list, overwrite=FALSE, append=FALSE)
+df_to_pg(Id(schema = 'thlb_proxy', table = 'retention_thresholds_man_unit'), ret_df, conn_list, overwrite=TRUE, append=FALSE)
