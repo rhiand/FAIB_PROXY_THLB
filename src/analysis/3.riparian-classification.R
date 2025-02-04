@@ -21,6 +21,8 @@ run_sql_r(query, conn_list)
 
 ## 48 (1) Wetlands have the following riparian classes:
 ## (a) W1, if the wetland is greater than 5 ha in size;"_
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
+
 
 print(glue('Processing W1 wetlands'))
 query <- "UPDATE thlb_proxy.fwa_wetlands_poly SET
@@ -38,6 +40,7 @@ run_sql_r(query, conn_list)
 ##     (iii) Interior Douglas-fir, very dry hot, very dry warm or very dry mild;  (zone = 'IDF' and subzone in ('xh', 'xw', 'xm'))
 ##     (iv)  Coastal Douglas-fir;  (zone = 'CDF')
 ##     (v)   Coastal Western Hemlock, very dry maritime, dry maritime or dry submaritime; (zone = 'CWH' and subzone in ('xm', 'dm', 'ds'))"_
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
 
 
 print(glue('Processing W2 wetlands'))
@@ -86,6 +89,7 @@ run_sql_r(query, conn_list)
 ## Calculate W3 wetland class:
 ##
 ## > _"(c) W3, if the wetland is not less than 1 ha and not more than 5 ha in size and is in a biogeoclimatic zone or subzone other than one referred to in paragraph (b)"_
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
 
 print(glue('Processing W3 wetlands'))
 query <- "UPDATE
@@ -108,6 +112,7 @@ run_sql_r(query, conn_list)
 ## > _"(d) W4, if the wetland is
 ## (i) not less than 0.25 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone referred to in paragraph (b) (i), (ii) or (iii), or
 ## (ii) not less than 0.5 ha and less than 1 ha in size and is in a biogeoclimatic zone or subzone referred to in paragraph (b) (iv) or (v)."_
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
 
 
 print(glue('Processing W4 wetlands'))
@@ -199,6 +204,7 @@ run_sql_r(query, conn_list)
 ##   (b)the combined size of the wetlands, excluding the upland areas, is 5 ha or larger."_
 ##
 ## As mentioned in section: References and resources > Wetland additional notes - further clarification states that a W5 class is a wetland complex meaning there are 2 or more individual wetlands with overlapping RMAs. A W1 has an RMA of 50. To have two of them overlap, you would need a distance of less than 100m between them. W2, W3, and W4 wetlands have RMAs of 30. (Source: Lisa Nordin, OCF, MOF) As such - for the analysis, buffers based on the wetland classification were created:
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
 
 
 query <- "ALTER TABLE thlb_proxy.fwa_wetlands_poly ADD COLUMN IF NOT EXISTS geom_buffer geometry(MultiPolygon, 3005);"
@@ -219,7 +225,7 @@ query <- "ANALYZE thlb_proxy.fwa_wetlands_poly"
 run_sql_r(query, conn_list)
 
 
-## identify any overlapping polygons:
+## identify any overlapping buffered polygons:
 ## SQL source: https://gis.stackexchange.com/questions/243565/check-whether-table-has-overlapping-polygons-in-postgis
 query <- "SELECT
 	a.waterbody_poly_id::integer as waterbody_poly_id,
@@ -1440,18 +1446,18 @@ if (max(review_rip$fact) < 1.01964 && nrow(review_rip) == 475) {
 	run_sql_r(query, conn_list)
 }
 
-
+## For when needing to output the riparian vector with classes for other analysts
 ## rivers
-system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_rivers_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM thlb_proxy.fwa_rivers_poly WHERE riparian_class IS NOT NULL\"")
+# system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_rivers_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM thlb_proxy.fwa_rivers_poly WHERE riparian_class IS NOT NULL\"")
 
-## lakes
-system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_lakes_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM thlb_proxy.fwa_lakes_poly WHERE riparian_class IS NOT NULL\" -update")
+# ## lakes
+# system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_lakes_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM thlb_proxy.fwa_lakes_poly WHERE riparian_class IS NOT NULL\" -update")
 
-## wetlands
-system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_wetlands_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM thlb_proxy.fwa_wetlands_poly WHERE riparian_class IS NOT NULL\" -update")
+# ## wetlands
+# system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_wetlands_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM thlb_proxy.fwa_wetlands_poly WHERE riparian_class IS NOT NULL\" -update")
 
-## streams
-system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTILINESTRING -nln fwa_stream_networks_sp_modelled_habitat_potential -sql \"SELECT fid, linear_feature_id::int, fish_habitat_id, blue_line_key, watershed_key, gnis_name, fwa_watershed_code, watershed_group_code, downstream_route_measure, waterbody_key, fwa_fcode_label, observation_id, gradient_barrier_030_id,gradient_barrier_050_id,gradient_barrier_080_id,gradient_barrier_150_id,gradient_barrier_220_id,gradient_barrier_300_id,intermittent_id,fish_obstacle_point_id,obstruction_id,subsurfaceflow_id,fish_habitat,slope,slope_class,stream_order,stream_magnitude,geom,channel_width,channel_width_source,community_watershed,riparian_class,riparian_class_reason,riparian_data_source FROM thlb_proxy.modelled_habitat_potential WHERE NOT inside_fwa_polygon AND riparian_class IS NOT NULL\" -update")
+# ## streams
+# system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTILINESTRING -nln fwa_stream_networks_sp_modelled_habitat_potential -sql \"SELECT fid, linear_feature_id::int, fish_habitat_id, blue_line_key, watershed_key, gnis_name, fwa_watershed_code, watershed_group_code, downstream_route_measure, waterbody_key, fwa_fcode_label, observation_id, gradient_barrier_030_id,gradient_barrier_050_id,gradient_barrier_080_id,gradient_barrier_150_id,gradient_barrier_220_id,gradient_barrier_300_id,intermittent_id,fish_obstacle_point_id,obstruction_id,subsurfaceflow_id,fish_habitat,slope,slope_class,stream_order,stream_magnitude,geom,channel_width,channel_width_source,community_watershed,riparian_class,riparian_class_reason,riparian_data_source FROM thlb_proxy.modelled_habitat_potential WHERE NOT inside_fwa_polygon AND riparian_class IS NOT NULL\" -update")
 
 
 ## Add geometry field to the FREP monitoring data
