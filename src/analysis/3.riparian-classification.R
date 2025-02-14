@@ -311,6 +311,7 @@ run_sql_r(query, conn_list)
 
 ## > _"49 (1) Lakes have the following riparian classes:
 ## (a) L1-A, if the lake is 1000 ha or greater in size;"_
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
 
 print(glue('Processing L1A lakes'))
 query <- "UPDATE thlb_proxy.fwa_lakes_poly
@@ -325,6 +326,7 @@ run_sql_r(query, conn_list)
 ## > _"(b) L1-B, if
 ##  (i)  the lake is greater than 5 ha but less than 1 000 ha in size, or
 ##  (ii) the minister designates the lake as L1-B;"_
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
 
 print(glue('Processing L1B lakes'))
 query <- "UPDATE thlb_proxy.fwa_lakes_poly
@@ -347,6 +349,7 @@ run_sql_r(query, conn_list)
 ##     (iii) Interior Douglas-fir, very dry hot, very dry warm or very dry mild;  (zone = 'IDF' and subzone in ('xh', 'xw', 'xm'))
 ##     (iv)  Coastal Douglas-fir;  (zone = 'CDF')
 ##     (v)   Coastal Western Hemlock, very dry maritime, dry maritime or dry submaritime; (zone = 'CWH' and subzone in ('xm', 'dm', 'ds'))"_
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
 
 print(glue('Processing L2 lakes'))
 query <- "WITH clipped AS (
@@ -393,6 +396,7 @@ run_sql_r(query, conn_list)
 ## Calculate L3 lake class:
 ##
 ##  _"(d)L3, if the lake is not less than 1 ha and not more than 5 ha in size and is in a biogeoclimatic zone or subzone other than one referred to in paragraph (c);"_
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
 
 print(glue('Processing L3 lakes'))
 query <- "UPDATE
@@ -409,11 +413,12 @@ query <- "UPDATE
 		  		riparian_class IS NULL"
 run_sql_r(query, conn_list)
 
-## Calculate L4 lake class:
+## Calculate L4 lake class (there is no L5 class):
 
 ## > _"(e)L4, if the lake is
 ## (i) not less than 0.25 ha and not more than 1 ha in size and is in a biogeoclimatic zone or subzone referred to in paragraph (c) (i), (ii) or (iii), or
 ## (ii) not less than 0.5 ha and not more than 1 ha in size and is in a biogeoclimatic zone or subzone referred to in paragraph (c) (iv) or (v)."_
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
 
 print(glue('Processing L4 lakes'))
 query <- "WITH clipped AS (
@@ -654,9 +659,29 @@ run_sql_psql(sql_var = NULL, sql_file = 'data//input//stream_reaches_with_contri
 query <- "UPDATE thlb_proxy.modelled_habitat_potential a SET channel_width = NULL FROM public.stream_reaches_with_contributing_areas_outside_bc outside_bc where outside_bc.linear_feature_id = a.linear_feature_id;"
 run_sql_r(query, conn_list)
 
+## Add in natural resource area field
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS adm_nr_areas;"
+run_sql_r(query, conn_list)
+query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN adm_nr_areas varchar(5);"
+run_sql_r(query, conn_list)
+query <- "UPDATE thlb_proxy.modelled_habitat_potential fishy SET adm_nr_areas =
+CASE
+  WHEN adm.area_name = 'Coast Natural Resource Area' then 'coast'
+  WHEN adm.area_name = 'South Natural Resource Area' then 'south'
+  WHEN adm.area_name = 'North Natural Resource Area' then 'north'
+END
+FROM
+  thlb_proxy.adm_nr_areas_sp adm
+WHERE
+ST_Intersects(adm.geom, fishy.line_center_point);"
+run_sql_r(query, conn_list)
+
 
 ## "(2) A stream that is a fish stream or is located in a community watershed has the following riparian class:
 ##  (a) S1A, if the stream averages, over a one km length, either a stream width or an active flood plain width of 100 m or greater;"_
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
+
+
 query <- "
 WITH main_rivers AS (
 	-- retrieve streams with channel width >= 100 and in community watershed or has fish
@@ -802,6 +827,8 @@ run_sql_r(query, conn_list)
 
 
 ## "(b) S1B, if the stream width is greater than 20 m but the stream does not have a riparian class of S1A"_
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
+
 query <- "UPDATE
 	thlb_proxy.modelled_habitat_potential
 SET
@@ -823,6 +850,8 @@ AND
 run_sql_r(query, conn_list)
 
 ## "(c) S2, if the stream width is not less than 5 m but not more than 20 m"
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
+
 query <- "UPDATE
 	thlb_proxy.modelled_habitat_potential
 SET
@@ -844,6 +873,8 @@ AND
 run_sql_r(query, conn_list)
 
 ## (d)S3, if the stream width is not less than 1.5 m but is less than 5 m;
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
+
 query <- "UPDATE
 	thlb_proxy.modelled_habitat_potential
 SET
@@ -865,6 +896,8 @@ AND
 run_sql_r(query, conn_list)
 
 ## (e) S4, if the stream width is less than 1.5 m."
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
+
 query <- "UPDATE
 	thlb_proxy.modelled_habitat_potential
 SET
@@ -885,6 +918,8 @@ run_sql_r(query, conn_list)
 
 ## (3)A stream that is not a fish stream and is located outside of a community watershed has the following riparian class:
 ## (a)S5, if the stream width is greater than 3 m;"_
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
+
 
 query <- "UPDATE
 	thlb_proxy.modelled_habitat_potential
@@ -905,8 +940,11 @@ AND
 run_sql_r(query, conn_list)
 
 
-
+## (3)A stream that is not a fish stream and is located outside of a community watershed has the following riparian class:
 ## "(b)S6, if the stream width is 3 m or less."
+## source https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829
+
+
 query <- "UPDATE
 	thlb_proxy.modelled_habitat_potential
 SET
@@ -925,34 +963,7 @@ AND
   riparian_class IS NULL;"
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS adm_nr_areas;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN adm_nr_areas varchar(5);"
-run_sql_r(query, conn_list)
-query <- "UPDATE thlb_proxy.modelled_habitat_potential fishy SET adm_nr_areas =
-CASE
-  WHEN adm.area_name = 'Coast Natural Resource Area' then 'coast'
-  WHEN adm.area_name = 'South Natural Resource Area' then 'south'
-  WHEN adm.area_name = 'North Natural Resource Area' then 'north'
-END
-FROM
-  thlb_proxy.adm_nr_areas_sp adm
-WHERE
-ST_Intersects(adm.geom, fishy.line_center_point);"
-run_sql_r(query, conn_list)
-
-## Bring into tsa in case its needed
-query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential DROP COLUMN IF EXISTS tsa;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.modelled_habitat_potential ADD COLUMN tsa smallint;"
-run_sql_r(query, conn_list)
-query <- "UPDATE thlb_proxy.modelled_habitat_potential fishy SET tsa = adm.tsa
-FROM
-  thlb_proxy.tsa_boundaries_2020 adm
-WHERE
-ST_Intersects(adm.geom, fishy.line_center_point);"
-run_sql_r(query, conn_list)
-
+## when riparian_class IS NULL, then assign riparian class based on stream order and natural resource area.
 query <- "UPDATE
 	thlb_proxy.modelled_habitat_potential
 SET
@@ -1297,8 +1308,10 @@ run_sql_r(query, conn_list)
 query <- "ANALYZE thlb_proxy.modelled_habitat_potential;"
 run_sql_r(query, conn_list)
 
-# merge all the vector together into one buffer layer
-# cannot do the entir province in one go - chop up via mapsheet
+
+## Convert buffers into riparian raster
+## First step is to merge all the vectors (buffered lakes, streams wetlands and rivers) together into one buffer layer
+## Exceeds memory to do it in one SQL command, instead, iterate over each 50k mapsheet
 
 grid_table <- "thlb_proxy.nts_50k_grid"
 grid_loop_fld <- "map_tile"
@@ -1400,7 +1413,8 @@ for (i in 1:nrow(grid_df)) {
 	run_sql_r(glue(query), conn_list)
 }
 
-## rasterize the buffer to the gr_skey grid
+## Now that we have a riparian polygon for the whole province, rasterize 100m gr_skey grid
+## Ran into memory issues rasterizing the whole province, instead, iterating over 50K mapsheets
 grid_loop_fld <- "map_tile"
 
 spatial_query <- "SELECT
@@ -1446,7 +1460,8 @@ if (max(review_rip$fact) < 1.01964 && nrow(review_rip) == 475) {
 	run_sql_r(query, conn_list)
 }
 
-## For when needing to output the riparian vector with classes for other analysts
+## Example code of outputting riparian vectors into a file geodatabase
+## Used when outputting the riparian vectors to other analysts
 ## rivers
 # system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTIPOLYGON -nln fwa_rivers_poly -sql \"SELECT waterbody_poly_id::int, watershed_group_id::int, waterbody_type, gnis_name_1, fwa_watershed_code, local_watershed_code, watershed_group_code, left_right_tributary, feature_area_sqm, feature_length_m, geom, riparian_class_reason, riparian_class, riparian_data_source FROM thlb_proxy.fwa_rivers_poly WHERE riparian_class IS NOT NULL\"")
 
@@ -1458,153 +1473,3 @@ if (max(review_rip$fact) < 1.01964 && nrow(review_rip) == 475) {
 
 # ## streams
 # system("ogr2ogr -f \"FileGDB\" C:\\projects\\THLB_Proxy\\data\\output\\riparian.gdb PG:\"dbname='prov_data' host='localhost' user='postgres'\" -nlt MULTILINESTRING -nln fwa_stream_networks_sp_modelled_habitat_potential -sql \"SELECT fid, linear_feature_id::int, fish_habitat_id, blue_line_key, watershed_key, gnis_name, fwa_watershed_code, watershed_group_code, downstream_route_measure, waterbody_key, fwa_fcode_label, observation_id, gradient_barrier_030_id,gradient_barrier_050_id,gradient_barrier_080_id,gradient_barrier_150_id,gradient_barrier_220_id,gradient_barrier_300_id,intermittent_id,fish_obstacle_point_id,obstruction_id,subsurfaceflow_id,fish_habitat,slope,slope_class,stream_order,stream_magnitude,geom,channel_width,channel_width_source,community_watershed,riparian_class,riparian_class_reason,riparian_data_source FROM thlb_proxy.modelled_habitat_potential WHERE NOT inside_fwa_polygon AND riparian_class IS NOT NULL\" -update")
-
-
-## Add geometry field to the FREP monitoring data
-## one time
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF NOT EXISTS geom;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN IF NOT EXISTS geom Geometry(Point, 3005);"
-run_sql_r(query, conn_list)
-query <- "UPDATE thlb_proxy.june13_riparian_data_for_faib SET geom = ST_SetSRID(ST_Point(bcalbers_easting, bcalbers_northing), 3005);"
-run_sql_r(query, conpg_conn_listn_list)
-
-## Compare the modeled stream width with FREP data
-Add a linking key (Ie. `modelled_habitat_potential_fid`) to `thlb_proxy.june13_riparian_data_for_faib` with the fid of the nearest linestring of `thlb_proxy.modelled_habitat_potential`
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS modelled_habitat_potential_fid;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN modelled_habitat_potential_fid INTEGER;"
-run_sql_r(query, conn_list)
-
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_line;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN distance_to_line real;"
-run_sql_r(query, conn_list)
-
-query <- "WITH nearest_lines AS (
-    SELECT
-        r.objectid AS point_fid,
-        l.fid AS line_fid,
-		l.distance
-    FROM
-        thlb_proxy.june13_riparian_data_for_faib r
-    CROSS JOIN LATERAL (
-        SELECT
-		fid,
-		ST_Distance(r.geom, l.geom) as distance
-        FROM thlb_proxy.modelled_habitat_potential l
-        ORDER BY r.geom <-> l.geom
-        LIMIT 1
-    ) l
-)
-UPDATE thlb_proxy.june13_riparian_data_for_faib r
-SET
-	modelled_habitat_potential_fid = nl.line_fid,
-	distance_to_line= nl.distance
-FROM
-	nearest_lines nl
-WHERE
-	r.objectid = nl.point_fid;"
-run_sql_r(query, conn_list)
-
-
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS fwa_rivers_poly_waterbody_poly_id;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN fwa_rivers_poly_waterbody_poly_id INTEGER;"
-run_sql_r(query, conn_list)
-
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_poly;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN distance_to_poly real;"
-run_sql_r(query, conn_list)
-
-query <- "WITH nearest_lines AS (
-    SELECT
-        r.objectid AS point_fid,
-        l.waterbody_poly_id AS line_fid,
-		l.distance
-    FROM
-        thlb_proxy.june13_riparian_data_for_faib r
-    CROSS JOIN LATERAL (
-        SELECT
-          waterbody_poly_id,
-          ST_Distance(r.geom, l.geom) as distance
-        FROM thlb_proxy.fwa_rivers_poly l
-        ORDER BY r.geom <-> l.geom
-        LIMIT 1
-    ) l
-)
-UPDATE thlb_proxy.june13_riparian_data_for_faib r
-SET
-	fwa_rivers_poly_waterbody_poly_id = nl.line_fid,
-	distance_to_poly= nl.distance
-FROM
-	nearest_lines nl
-WHERE
-	r.objectid = nl.point_fid;"
-run_sql_r(query, conn_list)
-
-query <- "SELECT
-	frep.stream_class_in_field,
-	CASE
-		-- when observed class in field is either S1, S2, or S5, get the closest river distance, otherwise, get the closest stream distance
-		WHEN frep.stream_class_in_field IN ('S1', 'S2', 'S5') THEN
-			CASE
-				WHEN frep.distance_to_poly < frep.distance_to_line THEN 'rivers'
-				ELSE 'streams'
-			END
-		ELSE 'streams'
-	END as data_source,
-	CASE
-		-- when observed class in field is either S1, S2, or S5, get the closest river distance, otherwise, get the closest stream distance
-		WHEN frep.stream_class_in_field IN ('S1', 'S2', 'S5') THEN
-			CASE
-				WHEN frep.distance_to_poly < frep.distance_to_line THEN riv.riparian_class
-				ELSE stream.riparian_class
-			END
-		ELSE stream.riparian_class
-	END as riparian_class,
-	CASE
-		-- when observed class in field is either S1, S2, or S5, get the closest river distance, otherwise, get the closest stream distance
-		WHEN frep.stream_class_in_field IN ('S1', 'S2', 'S5') THEN
-			CASE
-				WHEN frep.distance_to_poly < frep.distance_to_line THEN frep.distance_to_poly
-				ELSE frep.distance_to_line 
-			END
-		ELSE frep.distance_to_line
-	END as distance,
-	frep.channel_width as frep_channel_width,
-	stream.channel_width as modelled_channel_width,
-	CASE WHEN 
-			CASE
-			WHEN frep.stream_class_in_field IN ('S1', 'S2', 'S5') THEN
-				CASE
-					WHEN frep.distance_to_poly < frep.distance_to_line THEN riv.riparian_class
-					ELSE stream.riparian_class
-				END
-			ELSE stream.riparian_class
-			END
-			= frep.stream_class_in_field THEN 1
-	ELSE 0
-	END as match
-FROM
-thlb_proxy.june13_riparian_data_for_faib frep
-LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, channel_width, fid FROM thlb_proxy.modelled_habitat_potential) stream ON frep.modelled_habitat_potential_fid = stream.fid
-LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, waterbody_poly_id from thlb_proxy.fwa_rivers_poly) riv ON riv.waterbody_poly_id = frep.fwa_rivers_poly_waterbody_poly_id
-WHERE 
-	stream_class_in_field in ('S1', 'S2', 'S3', 'S4', 'S5', 'S6')
-ORDER BY distance desc"
-mod_order_based_v1_frep_comparison <- sql_to_df(query, conn_list)
-conf_matrix2 <- confusionMatrix(factor(mod_channel_width_v1_frep_comparison$riparian_class), 
-                               factor(mod_channel_width_v1_frep_comparison$stream_class_in_field))
-
-
-conf_matrix <- confusionMatrix(factor(mod_channel_width_v1_frep_comparison$riparian_class), 
-                               factor(mod_channel_width_v1_frep_comparison$stream_class_in_field))
-
-## work with Peter
-foo <- glm(match ~ distance, data = mod_order_based_v1_frep_comparison, family = binomial)
-
-plot(mod_order_based_v1_frep_comparison$distance, 
-mod_order_based_v1_frep_comparison$match)
-lines(mod_order_based_v1_frep_comparison$distance, predict(foo, type="response"))

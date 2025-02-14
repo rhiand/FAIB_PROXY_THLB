@@ -1,5 +1,5 @@
-DROP TABLE IF EXISTS whse.man_unit_gr_skey2;
-CREATE TABLE whse.man_unit_gr_skey2 AS
+DROP TABLE IF EXISTS whse.man_unit_gr_skey;
+CREATE TABLE whse.man_unit_gr_skey AS
 	SELECT
 	 	a.gr_skey,
 		CASE 
@@ -49,4 +49,7 @@ CREATE TABLE whse.man_unit_gr_skey2 AS
 
 	left join whse.mu_lookup_table_im mu_look on tsa.tsa_number::integer = mu_look.tsa_number::integer;
 
-ALTER TABLE whse.man_unit_gr_skey2 ADD PRIMARY KEY (gr_skey);
+ALTER TABLE whse.man_unit_gr_skey ADD PRIMARY KEY (gr_skey);
+
+COMMENT ON TABLE whse.man_unit_gr_skey
+    IS 'Last ran 2025-02-06';

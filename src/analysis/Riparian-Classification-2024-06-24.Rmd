@@ -4,8 +4,13 @@ author: "Hailey Eckstrand, FAIB"
 date: "2024-06-19"
 output: 
   html_document:
+    code_folding: hide
     css: custom.css
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -135,10 +140,6 @@ __Restrictions in a riparian management zones__
 
 The following tables were copied from Riparian Management area Guidebook. The second last column (Maximum Overall Retention in the Riparian Management Zone (%). is The last column (I.e. Applied Riparian Buffer width (metres)) has been derived and is the result of (reserve zone + (management zone (m) * Maximum Overall Retention in the Riparian Management Zone (%))) / 2.
 
-This analysis applies a riparian buffer with 100% retention to the entire Applied Riparian Buffer width, rather than following the recommended approach of retaining 100% in the Riparian Reserve Zone and applying a maximum overall retention in the Riparian Management Zone.
-
-For example, an S2 stream would receive a single 40m buffer with 100% retention, instead of a two-tiered approach: a 30m buffer with 100% retention immediately around the stream, followed by an additional 20m buffer with 50% retention extending outward from the first buffer.
-
 ```{r echo = FALSE, results = 'asis'}
 library(knitr)
 ## streams
@@ -198,9 +199,11 @@ lake_riparian_df <- data.frame(
   check.names = FALSE # to preserve column names with spaces
 )
 kable(lake_riparian_df, caption='Lake Riparian Riparian Buffer Guidelines')
-
-
 ```
+
+This analysis applies a riparian buffer with 100% retention to the entire Applied Riparian Buffer width, rather than retaining 100% in the Riparian Reserve Zone and applying a maximum overall retention in the Riparian Management Zone.
+
+For example, an S2 stream would receive a single 40m buffer with 100% retention, instead of a two-tiered approach: a 30m buffer with 100% retention immediately around the stream, followed by an additional 20m buffer with 50% retention extending outward from the first buffer.
 
 The buffered areas were converted into a numeric raster, where each cell represents the proportion of the cell covered by the buffer.
 
@@ -299,58 +302,9 @@ As such, W5's were assigned using the following workflow:
 </details>
 
 
-
-#### QA/QC
+### QA/QC comparison with Kootenay Lake (TSA13)
 <details>
-  <summary> Expand for QA/QC </summary>
-  <br>
-
-Compare the modeled stream width with FREP data
-```{r eval = FALSE}
-query <- "SELECT
-min(frep.distance_to_line),
-avg(frep.distance_to_line),
-stddev(frep.distance_to_line),
-max(frep.distance_to_line)
-FROM
-thlb_proxy.modelled_habitat_potential stream
-JOIN
-thlb_proxy.june13_riparian_data_for_faib frep
-ON
-frep.modelled_habitat_potential_fid = stream.fid
-WHERE stream.channel_width is not null
-and
-stream.riparian_class != frep.stream_class_in_field   -- count = 904, min = 0.004, avg = 97, stddev = 169, max = 1151
--- stream.riparian_class = frep.stream_class_in_field -- count = 880, min = 0.009, avg = 37, stddev = 83,  max = 716"
-
-
-query <- "SELECT
-	stream.fid,
-	frep.objectid,
-	stream.slope,
-	stream.channel_width,
-	frep.channel_width as width_in_field,
-	frep.channel_gradient_pct,
-	stream.riparian_class,
-	frep.stream_class_in_field
-FROM
-	thlb_proxy.modelled_habitat_potential stream
-JOIN
-		thlb_proxy.june13_riparian_data_for_faib frep
-ON
-frep.modelled_habitat_potential_fid = stream.fid
-WHERE 
-	stream.channel_width is not null
-AND
-stream.riparian_class != frep.stream_class_in_field -- count = 904
---stream.riparian_class = frep.stream_class_in_field -- count = 880"
-```
-
-</details>
-
-#### QA/QC
-<details>
-  <summary> Expand for QA/QC review </summary>
+  <summary> Expand for QA/QC comparison with Kootenay Lake (TSA13)</summary>
   <br>
   
 __Wetland QA/QC__
@@ -367,7 +321,176 @@ __Stream QA/QC__
 Visually compared the above output with Rhian's layer for Kootenay Lakes TSA (TSA13) - there were many differences as Rhian used a stream order based approach and this analysis used modeled channel width. 
 
 
-### Rasterize the buffers
+### QA/QC Comparison with FREP
 <details>
-  <summary> Convert the rasters into a gr_skey lookup table </summary>
+  <summary> Expand for Comparison with FREP </summary>
   <br>
+
+Code snippet to associate FREP points with nearest modeled riparian classes. 
+```{r eval = FALSE}
+library(dadmtools)
+library(dplyr)
+
+conn_list <- dadmtools::get_pg_conn_list()
+
+## Add geometry field to the FREP monitoring data
+## one time
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS geom;"
+run_sql_r(query, conn_list)
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN IF NOT EXISTS geom Geometry(Point, 3005);"
+run_sql_r(query, conn_list)
+query <- "UPDATE thlb_proxy.june13_riparian_data_for_faib SET geom = ST_SetSRID(ST_Point(bcalbers_easting, bcalbers_northing), 3005);"
+run_sql_r(query, conn_list)
+
+## Compare the modeled stream width with FREP data
+## Add a linking key (Ie. `modelled_habitat_potential_fid`) to `thlb_proxy.june13_riparian_data_for_faib` with the fid of the nearest linestring of `thlb_proxy.modelled_habitat_potential`
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS modelled_habitat_potential_fid;"
+run_sql_r(query, conn_list)
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN modelled_habitat_potential_fid INTEGER;"
+run_sql_r(query, conn_list)
+
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_line;"
+run_sql_r(query, conn_list)
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN distance_to_line real;"
+run_sql_r(query, conn_list)
+
+## Associate FREP points with modeled stream with by distance
+query <- "WITH nearest_lines AS (
+    SELECT
+        r.objectid AS point_fid,
+        l.fid AS line_fid,
+		l.distance
+    FROM
+        thlb_proxy.june13_riparian_data_for_faib r
+    CROSS JOIN LATERAL (
+        SELECT
+		fid,
+		ST_Distance(r.geom, l.geom) as distance
+        FROM thlb_proxy.modelled_habitat_potential l
+        ORDER BY r.geom <-> l.geom
+        LIMIT 1
+    ) l
+)
+UPDATE thlb_proxy.june13_riparian_data_for_faib r
+SET
+	modelled_habitat_potential_fid = nl.line_fid,
+	distance_to_line= nl.distance
+FROM
+	nearest_lines nl
+WHERE
+	r.objectid = nl.point_fid;"
+run_sql_r(query, conn_list)
+
+
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS fwa_rivers_poly_waterbody_poly_id;"
+run_sql_r(query, conn_list)
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN fwa_rivers_poly_waterbody_poly_id INTEGER;"
+run_sql_r(query, conn_list)
+
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_poly;"
+run_sql_r(query, conn_list)
+query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN distance_to_poly real;"
+run_sql_r(query, conn_list)
+
+## update FREP points that have been associated to a stream nearest river
+query <- "WITH nearest_lines AS (
+    SELECT
+        r.objectid AS point_fid,
+        l.waterbody_poly_id AS line_fid,
+		l.distance
+    FROM
+        thlb_proxy.june13_riparian_data_for_faib r
+    CROSS JOIN LATERAL (
+        SELECT
+          waterbody_poly_id,
+          ST_Distance(r.geom, l.geom) as distance
+        FROM thlb_proxy.fwa_rivers_poly l
+        ORDER BY r.geom <-> l.geom
+        LIMIT 1
+    ) l
+)
+UPDATE thlb_proxy.june13_riparian_data_for_faib r
+SET
+	fwa_rivers_poly_waterbody_poly_id = nl.line_fid,
+	distance_to_poly= nl.distance
+FROM
+	nearest_lines nl
+WHERE
+	r.objectid = nl.point_fid;"
+run_sql_r(query, conn_list)
+```
+
+
+Look at the results of the confusion matrix. Accuracy of 0.42.. not very good. Advised to review accuracy over different regions like BEC zones etc. Didn't complete that work and carried on with THLB proxy.
+
+```{r eval = TRUE, message=FALSE, warning=FALSE}
+library(dadmtools)
+library(dplyr)
+library(caret)
+conn_list <- dadmtools::get_pg_conn_list()
+
+## assciate rivers with FREP points if in a certain class and if distance is closer that to stream
+query <- "SELECT
+	frep.stream_class_in_field,
+	CASE
+		-- when observed class in field is either S1, S2, or S5, get the closest river distance, otherwise, get the closest stream distance
+		WHEN frep.stream_class_in_field IN ('S1', 'S2', 'S5') THEN
+			CASE
+				WHEN frep.distance_to_poly < frep.distance_to_line THEN 'rivers'
+				ELSE 'streams'
+			END
+		ELSE 'streams'
+	END as data_source,
+	CASE
+		-- when observed class in field is either S1, S2, or S5, get the closest river distance, otherwise, get the closest stream distance
+		WHEN frep.stream_class_in_field IN ('S1', 'S2', 'S5') THEN
+			CASE
+				WHEN frep.distance_to_poly < frep.distance_to_line THEN riv.riparian_class
+				ELSE stream.riparian_class
+			END
+		ELSE stream.riparian_class
+	END as riparian_class,
+	CASE
+		-- when observed class in field is either S1, S2, or S5, get the closest river distance, otherwise, get the closest stream distance
+		WHEN frep.stream_class_in_field IN ('S1', 'S2', 'S5') THEN
+			CASE
+				WHEN frep.distance_to_poly < frep.distance_to_line THEN frep.distance_to_poly
+				ELSE frep.distance_to_line 
+			END
+		ELSE frep.distance_to_line
+	END as distance,
+	frep.channel_width as frep_channel_width,
+	stream.channel_width as modelled_channel_width,
+	CASE WHEN 
+			CASE
+			WHEN frep.stream_class_in_field IN ('S1', 'S2', 'S5') THEN
+				CASE
+					WHEN frep.distance_to_poly < frep.distance_to_line THEN riv.riparian_class
+					ELSE stream.riparian_class
+				END
+			ELSE stream.riparian_class
+			END
+			= frep.stream_class_in_field THEN 1
+	ELSE 0
+	END as match
+FROM
+thlb_proxy.june13_riparian_data_for_faib frep
+LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, channel_width, fid FROM thlb_proxy.modelled_habitat_potential) stream ON frep.modelled_habitat_potential_fid = stream.fid
+LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, waterbody_poly_id from thlb_proxy.fwa_rivers_poly) riv ON riv.waterbody_poly_id = frep.fwa_rivers_poly_waterbody_poly_id
+WHERE 
+	stream_class_in_field in ('S1', 'S2', 'S3', 'S4', 'S5', 'S6')
+ORDER BY distance desc"
+mod_order_based_v1_frep_comparison <- sql_to_df(query, conn_list)
+conf_matrix2 <- confusionMatrix(factor(mod_order_based_v1_frep_comparison$riparian_class), 
+                               factor(mod_order_based_v1_frep_comparison$stream_class_in_field))
+
+print(conf_matrix2)
+## work with Peter
+##foo <- glm(match ~ distance, data = mod_order_based_v1_frep_comparison, family = binomial)
+
+##plot(mod_order_based_v1_frep_comparison$distance, 
+##mod_order_based_v1_frep_comparison$match)
+##lines(mod_order_based_v1_frep_comparison$distance, predict(foo, type="response"))
+```
+
+</details>

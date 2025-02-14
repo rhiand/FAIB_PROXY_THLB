@@ -25,7 +25,7 @@ query <- "SELECT
 WHERE 
 	silv_reserve_code = 'G'
 AND
-	(silv_reserve_objective_code NOT IN ('TIM', 'RMA'))
+	(silv_reserve_objective_code NOT IN ('TIM'))
 AND
 	man_unit is not null
 AND 
@@ -46,10 +46,10 @@ percentiles <- ret %>%
   unnest_wider(percentiles, names_sep = "_p") %>%
   rename_with(~ paste0("p", c(seq(0, 10, 1), seq(88, 100, 1))), starts_with("percentiles_p"))
 
-write.csv(percentiles, '/projects/THLB_Proxy/data/analysis/retention_explore_percentiles.csv', row.names=F)
+write.csv(percentiles, '/projects/THLB_Proxy/data/analysis/retention/retention_explore_percentiles.csv', row.names=F)
 
 
-output_pdf <- "/projects/THLB_Proxy/data/analysis/man_unit_retention_histograms_2024_12_12.pdf"
+output_pdf <- "/projects/THLB_Proxy/data/analysis/retention/man_unit_retention_histograms_2024_12_12.pdf"
 pdf(output_pdf, width = 11, height = 8.5)  # Landscape PDF
 
 # Get unique man_units

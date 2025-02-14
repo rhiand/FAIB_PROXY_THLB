@@ -107,8 +107,14 @@ for (i in 1:nrow(tsas)){
 		-- merchantability
 		merch.merchantability,
 
-		-- RESULTS OPENINGS
-		CASE WHEN res_inv.forest_cover_when_updated >= '2012-01-01' AND opening.DISTURBANCE_START_DATE > '2012-01-01' THEN opening.opening_id ELSE NULL END AS res_opening_id,
+		CASE 
+			WHEN res.silv_reserve_code = 'G' AND res.silv_reserve_objective_code not in ('TIM') 
+			-- res_inv has filters applied to the subquery
+			-- opening is NOT NULL where forest_cover_when_updated >= '2012-01-01' AND DISTURBANCE_START_DATE > '2012-01-01' AND timber_mark is not null
+			AND res_inv.opening_id IS NOT NULL 
+			THEN 'retention: ' || res.silv_reserve_objective_code
+			ELSE NULL
+		END as current_retention,
 
 		 -- FMLB 
 		 CASE 
@@ -153,24 +159,21 @@ for (i in 1:nrow(tsas)){
 		 coalesce(lin.fact,0) as p05_linear_features,
 		 CASE WHEN fown.own_sched IN ('60N', '81U') THEN own_sched_desc ELSE NULL END AS n06_parks,
 		 CASE WHEN wha.timber_harvest_code IN ('NO HARVEST ZONE', 'NO HARVEST') THEN wha.timber_harvest_code ELSE NULL END AS n07_wha,
-		 CASE WHEN fown.own_sched IN ('68U', '66N') THEN own_sched_desc ELSE NULL END AS n08_rec,
-		 CASE WHEN fown.own_sched IN ('69U', '99N') THEN own_sched_desc ELSE NULL END AS n09_misc,
-		 coalesce(rip.fact,0) as p10_riparian,
+		 -- CASE WHEN fown.own_sched IN ('68U', '66N') THEN own_sched_desc ELSE NULL END AS n08_rec,
+		 CASE WHEN fown.own_sched IN ('69U', '99N') THEN own_sched_desc ELSE NULL END AS n08_misc,
+		 coalesce(rip.fact,0) as p09_riparian,
 		 CASE 
 		 	WHEN arch.pgid IS NOT NULL THEN 'arch sites' 
 			ELSE NULL
-		END AS n11_arch,
+		END AS n10_arch,
 		 CASE 
 		 	WHEN rr.land_designation_type_code = 'ogma_nonlegal' THEN NULL
 		 	WHEN rr.harvest_restriction_class_name IN ('Prohibited', 'Protected') THEN harvest_restriction_class_name || ' - ' || land_designation_type_code
 		 	ELSE NULL
-		 END AS n12_harvest_restrictions,
-		 coalesce(inop.inop_fact,0) as p13_phys_inop,
-		 CASE WHEN merch.merchantability = 0 THEN 'non_merchantable' ELSE NULL END as n14_merchantability,
-		 non_com.non_commercial as n15_non_commercial,
-		 CASE WHEN res.silv_reserve_code = 'G' AND res.silv_reserve_objective_code not in ('TIM') AND res_inv.forest_cover_when_updated >= '2012-01-01' THEN 'retention: ' || res.silv_reserve_objective_code
-		 ELSE NULL
-		 END as n16_current_retention
+		 END AS n11_harvest_restrictions,
+		 coalesce(inop.inop_fact,0) as p12_phys_inop,
+		 CASE WHEN merch.merchantability = 0 THEN 'non_merchantable' ELSE NULL END as n13_merchantability,
+		 non_com.non_commercial as n14_non_commercial
 
 	FROM
 	whse.all_bc_gr_skey bc
@@ -200,11 +203,9 @@ for (i in 1:nrow(tsas)){
 	LEFT JOIN thlb_proxy.wcp_wildlife_habitat_area_poly wha ON wha.pgid = wha_key.pgid
 	LEFT JOIN thlb_proxy.raad_tfm_sites_svw_gr_skey arch_key on bc.gr_skey = arch_key.gr_skey
 	LEFT JOIN thlb_proxy.raad_tfm_sites_svw arch ON arch.pgid = arch_key.pgid
-	LEFT JOIN thlb_proxy.rslt_opening_svw_20250110_gr_skey opening_key ON opening_key.gr_skey = bc.gr_skey
-	LEFT JOIN (SELECT pgid, opening_id, DISTURBANCE_START_DATE FROM thlb_proxy.rslt_opening_svw_20250110 WHERE timber_mark is not null) opening ON opening.pgid = opening_key.pgid
 	LEFT JOIN thlb_proxy.rslt_forest_cover_reserve_svw_20250110_gr_skey res_key ON res_key.gr_skey = bc.gr_skey
 	LEFT JOIN thlb_proxy.rslt_forest_cover_reserve_svw_20250110 res ON res.pgid = res_key.pgid
-	LEFT JOIN (SELECT distinct on (opening_id) opening_id, forest_cover_when_updated from thlb_proxy.rslt_forest_cover_inv_svw WHERE forest_cover_when_updated >= '2012-01-01' ORDER BY opening_id, forest_cover_when_updated desc) res_inv ON opening.opening_id = res_inv.opening_id ")
+	LEFT JOIN (SELECT distinct on (opening_id) opening_id FROM thlb_proxy.rslt_forest_cover_inv_svw cov JOIN thlb_proxy.rslt_opening_svw opening USING (opening_id) WHERE forest_cover_when_updated >= '2012-01-01' AND DISTURBANCE_START_DATE > '2012-01-01' AND timber_mark is not null ORDER BY opening_id, forest_cover_when_updated desc) res_inv ON res.opening_id = res_inv.opening_id") ## TODO join with opening id so can filter on disturbance date
 	run_sql_r(query, conn_list)
 }
 
@@ -221,6 +222,10 @@ query <- "CREATE INDEX prov_netdown_geom_idx ON thlb_proxy.prov_netdown USING gi
 run_sql_r(query, conn_list)
 
 query <- "ANALYZE thlb_proxy.prov_netdown;"
+run_sql_r(query, conn_list)
+
+todays_date <- format(Sys.time(), "%Y-%m-%d %I:%M:%S %p")
+query <- glue("COMMENT ON TABLE thlb_proxy.prov_netdown IS 'Table created at {todays_date}.'")
 run_sql_r(query, conn_list)
 
 end_time <- Sys.time()

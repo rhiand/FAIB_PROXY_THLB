@@ -93,4 +93,24 @@ src_lyr <- "integratedRoadsBuffers"
 ogr_cmd <- glue('ogr2ogr -overwrite -a_srs EPSG:3005 -nln {src_lyr} -lco SCHEMA=thlb_proxy -nlt MULTIPOLYGON -sql "SELECT SHAPE as geom, INTEGRATED_ROADS_ID, DRA_ROAD_CLASS, Integrated_Road_Class_Num, Integrated_Road_Class_Descr, CEF_Road_Buffer_Width_m, BUFF_DIST FROM {src_lyr}" -lco OVERWRITE=YES --config PG_USE_COPY YES -f PostgreSQL PG:dbname=prov_data {src_path}')
 system(ogr_cmd)
 
+## JAN 2025 UNFINISHED WORK
+## instead of importing all the rights of way etc layers as above - instead only import CE HD data.. 
+## Rationale: Lisa Gibbons imported the BC Cumulative Effects Framework Human Disturbance to represent other non road linear features
+## FGDB import
+## Jan 23, 2025 - HDE: didn't use this approach for first THLB proxy
+# src_path <- "C:\\projects\\THLB_Proxy\\data\\input\\BC_CEF_Human_Disturbance_2023\\BC_CEF_Human_Disturbance_2023.gdb"
+# src_lyr <- "CEF_Human_Disturbance_2023"
+# ## import the CEF_Human_Disturbance_2023 using ogr2ogr
+# ogr_cmd <- glue(
+#   "ogr2ogr -overwrite -a_srs EPSG:3005 -nln {src_lyr} -lco SCHEMA=thlb_proxy -nlt MULTIPOLYGON -lco OVERWRITE=YES --config PG_USE_COPY YES ",
+#   "-where \"CEF_DISTURB_GROUP IN ('Mining_and_Extraction','Rail_and_Infrastructure','OGC_Infrastructure','Power','ROW')\" ",
+#   "-f PostgreSQL PG:dbname=prov_data {src_path}"
+# )
+# system(ogr_cmd)
 
+## 2024 dataset 
+## Jan 23, 2025 - HDE: couldn't import into PG - ran into geometry type errors.. 
+src_path <- "S:\\FOR\\VIC\\HTS\\ANA\\workarea\\AR2024\\local_inputs\\BC_CE_Integrated_Roads_2024_with_buffers_2.gdb"
+src_lyr <- "integratedRoadsBuffers"
+ogr_cmd <- glue("ogr2ogr -overwrite -a_srs EPSG:3005 -nln {src_lyr} -lco SCHEMA=public -nlt MULTIPOLYGON -lco OVERWRITE=YES --config PG_USE_COPY YES -f PostgreSQL PG:dbname=prov_data {src_path}")
+system(ogr_cmd)

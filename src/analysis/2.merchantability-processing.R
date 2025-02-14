@@ -235,3 +235,12 @@ SELECT * FROM final_tbl order by man_unit")
 run_sql_r(query, conn_list)
 query <- glue("DROP TABLE IF EXISTS {dst_schema}.tsa_5p_site_index_cc")
 run_sql_r(query, conn_list)
+
+query <- "UPDATE thlb_proxy.tsa_tfl_abt_5p_site_index_cc SET notes = 'Used adjacent 40 - Fort St. John TSA threshold', tsa = '40 - Fort St. John TSA'
+WHERE man_unit = '8 - Fort Nelson TSA'"
+run_sql_r(query, conn_list)
+
+
+query <- "UPDATE thlb_proxy.tsa_tfl_abt_5p_site_index_cc SET notes = 'Used adjacent 43 - Nass TSA threshold', tsa = '43 - Nass TSA'
+WHERE man_unit = '4 - Cassiar TSA'"
+run_sql_r(query, conn_list)

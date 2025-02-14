@@ -416,8 +416,8 @@ get_stability<-function(db, stab_query, ras_template_25m, field){ # extract stab
   # db = database connection
   # q = SQL query to the data. for example, blk_query<-"select cc_harvest_year, wkb_geometry from tsa02_ar_table join tsa02_skey using (ogc_fid) where cc_harvest_year > 0;"
 
-create_sampler <- function(db, q){ 
-  blks <- st_read(db, query = q) 
+create_sampler <- function(db, q){
+  blks <- st_read(db, query = q)
   return(vect(blks))
 }
 
@@ -432,7 +432,7 @@ get_raster_99th_perc <- function(in_raster, sampler) {
 # The elev_inop() function determines the 99 percentile of elevation within blocks ('sampler' output)
 # function arguments:
   # elevation: the 25m elevation raster
-  # sampler: the spatial vector of blks 
+  # sampler: the spatial vector of blks
   # unit: The spatial vector of the boundary of interest (e.g., unit<-create_unit(bnd_path))
 
 calc_inop <- function(in_raster, unit, mgmt_unit, clip_99th, threshold_type, conn_list){
@@ -477,7 +477,7 @@ slp_inop <- function(slope, sampler, unit, mgmt_unit, clip_99th, conn_list){
 	return(terra::classify(slope, slp_matrix))
 }
 
-# The aggregate function combines the area that is inoperable due to elevation, stability and slope and aggregates to 100m resolution. 
+# The aggregate function combines the area that is inoperable due to elevation, stability and slope and aggregates to 100m resolution.
 # function arguments:
   # stability: binary raster where 1 = unstable (inoperable); 0 = stable (operable)
   # inoperable_elevation: binary raster where 1 = high elevation > 99th percentile (inoperable); 0 = elevation within practice limits (operable)
@@ -491,10 +491,10 @@ aggregate <- function(stability, inoperable_elevation, inoperable_slope, out_ras
 	res25m <- stability + inoperable_slope + inoperable_elevation
 	# writeRaster(res25m, "data\\analysis\\res25m.tif", overwrite=TRUE)
 
-	### reclassify the raster values: 
-	## if the value in the res25m raster cell is between -Inf and 0, the new value is 0; 
-	## between 1 and 3, the new value is 1; 
-	## between 3 and Inf, value is 0. 
+	### reclassify the raster values:
+	## if the value in the res25m raster cell is between -Inf and 0, the new value is 0;
+	## between 1 and 3, the new value is 1;
+	## between 3 and Inf, value is 0.
 	## Essentially any cell where at least one factor is 'inoperable' gets a value of 1.
 	res_cutoff <- c(-Inf, 0, 0, 1, 3, 1, 3, Inf, 0)
 	res_matrix <- matrix(res_cutoff, ncol = 3, byrow = TRUE)
@@ -541,13 +541,13 @@ aggregate <- function(stability, inoperable_elevation, inoperable_slope, out_ras
 # tsa_num = TSA number for filtering.
 
 # the function returns a list containing the 1st percentile minimum harvest volume (mhv) and the filtered data frame "tcas_df".
-# 
+#
 get_ecas <- function(ecas_interior_path_2023, ecas_interior_path_2016, tsa_num=27){
 	message("Executing get_ecas function which cleans and combines stone queries: ignore warnings")
 
 	# Read data from CSV files:
 	ecas2023 <- read_csv(ecas_interior_path_2023,
-						show_col_types = FALSE) %>% 
+						show_col_types = FALSE) %>%
 	rename_all(~ str_replace(., "^\\S* ", "")) %>% # Strip any leading non-whitespace characters and spaces
 	clean_names() %>% # make labels snake_case (each space is replaced with an underscore)
 	mutate_if(is.numeric, ~ replace_na(., 0)) # if numeric replace NAs with zeros
@@ -563,7 +563,7 @@ get_ecas <- function(ecas_interior_path_2023, ecas_interior_path_2016, tsa_num=2
 		clean_names() %>%
 		# Convert variables from character to numeric
 		mutate(
-			man_unit = as.numeric(man_unit), 
+			man_unit = as.numeric(man_unit),
 			indicated_rate = as.numeric(indicated_rate),
 			total_toa_amount = as.numeric(total_toa_amount)
 		) %>%
@@ -575,14 +575,14 @@ get_ecas <- function(ecas_interior_path_2023, ecas_interior_path_2016, tsa_num=2
                               return = "mismatch") %>%
     select(column_name) %>%
     pull()
-  
+
 	#   ecas2016 <- ecas2016 %>% select(all_of(-col_list)) # removes columns from ecas2016 that are not in ecas 2023
 	ecas2016 <- ecas2016 %>%
 		select(-one_of(col_list))  # Use -one_of() to drop the columns
 
-	
+
   # combine the clean data:
-  ecas <- bind_rows(   
+  ecas <- bind_rows(
     list(
       e2023 = ecas2023,
       e2016 = ecas2016
@@ -596,31 +596,31 @@ get_ecas <- function(ecas_interior_path_2023, ecas_interior_path_2016, tsa_num=2
     arrange(desc(app_eff_date)) %>%
     slice(1) %>%
     ungroup()
-  
+
   # Filter data based on TSA number and licence types (limit the sample to major licensees and BCTS):
-  tsa <- ecas %>% 
+  tsa <- ecas %>%
     filter(man_unit == tsa_num) %>%
     filter(!str_detect(licence, "T|L|W")) # filter to records where the licence does not contain "T", "L", or "W".
-  
-  # calculate the volume per hectare based on harvest system. 
+
+  # calculate the volume per hectare based on harvest system.
   # gscc = ground skidding clear cut
   # chgcc = cable/highlead volume
   tsa <- tsa %>% mutate(tvph = case_when( # assign system values to TVPH variable
-    gscc_vol_ha > 0 & chgcc_vol_ha == 0 ~ gscc_vol_ha, 
+    gscc_vol_ha > 0 & chgcc_vol_ha == 0 ~ gscc_vol_ha,
     chgcc_vol_ha > 0 & gscc_vol_ha == 0 ~ chgcc_vol_ha,
     TRUE ~ ncv / tot_merch_area
   ))
-  
+
   # filter to ground skid clear cut timber marks.
   sub <- tsa %>% filter(gscc_vol > 0 & chgcc_vol_ha == 0)
-  
-  mhv01<-quantile(sub$gscc_vol_ha, 
+
+  mhv01<-quantile(sub$gscc_vol_ha,
            probs = .01)
   message(" The 1 percentile minimum harvest volume is ", mhv01 )
-  
+
   # store/return as a list with the mhv variable (1st percentile of observed min vol/ha) and the combined/cleaned ecas data frame.
   # minimum vol/ha is for ground_skid only and includes all species.
-  return(list(mhv = mhv01, tcas_df = tsa)) 
+  return(list(mhv = mhv01, tcas_df = tsa))
 }
 
 #netdown functions
@@ -631,7 +631,7 @@ pretty_table<-function(x){
   kable(x,
         booktabs = T,
         format.args = list(big.mark = ","),
-        caption =  "Netdown Summary Table" ) %>% 
+        caption =  "Netdown Summary Table" ) %>%
     kable_styling(bootstrap_options = "striped",
                   font_size = 10)
 }
@@ -647,12 +647,12 @@ setup_tracking_variable<-function(netdown_tab){
   total <- nrow(netdown_tab)
   unit <- nrow(netdown_tab)
   percent <- 100
-  excluded <- 0
+  net_excluded <- 0
   running_total <- 0
   netdown<-unit - running_total
-  
-  netdown_summary <- data.frame(landclass, total, percent, excluded, running_total,netdown)
-  
+
+  netdown_summary <- data.frame(landclass, total, percent, net_excluded, running_total, netdown)
+
 }
 
 # function to pul the 'running_total' value from the netdown summary for a given landclass. RUnning total is the cumulative area removed at a given landclass.
@@ -662,7 +662,7 @@ get_running_total<-function(netdown_summary,lc){
   netdown_summary%>%
     filter(landclass == lc)%>%
     select(running_total)%>%
-    # pull out the running total 
+    # pull out the running total
     pull()
 }
 
@@ -683,9 +683,8 @@ update_areas_fmlb <- function(netdown_tab,var_name) {
     mutate(fmlb = if_else(is.na(get(var_name)), fmlb, 0),
            falb = if_else(is.na(get(var_name)), falb, 0),
 		   aflb = if_else(is.na(get(var_name)), aflb, 0),
-		   thlb_pre_ret = if_else(is.na(get(var_name)), thlb_pre_ret, 0),
            thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
-  
+
 }
 
 update_areas_falb <- function(netdown_tab,var_name) {
@@ -693,7 +692,6 @@ update_areas_falb <- function(netdown_tab,var_name) {
     # update the aflb, thlb_net and gthlb_net variables. If the variable specified is NA, then leave aflb, thlb_net, and gthlb as is. If the variable is NA then update aflb, thlb_net and gthlb to 0.
     mutate(falb = if_else(is.na(get(var_name)), falb, 0),
 		   aflb = if_else(is.na(get(var_name)), aflb, 0),
-		   thlb_pre_ret = if_else(is.na(get(var_name)), thlb_pre_ret, 0),
            thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
 }
 
@@ -701,16 +699,9 @@ update_areas_aflb <- function(netdown_tab,var_name) {
   netdown_tab%>%
     # update the aflb, thlb_net and gthlb_net variables. If the variable specified is NA, then leave aflb, thlb_net, and gthlb as is. If the variable is NA then update aflb, thlb_net and gthlb to 0.
     mutate(aflb = if_else(is.na(get(var_name)), aflb, 0),
-		   thlb_pre_ret = if_else(is.na(get(var_name)), thlb_pre_ret, 0),
            thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
 }
 
-# see comments for update_areas1
-update_areas_thlb_pre_ret <- function(netdown_tab,var_name) {
-  netdown_tab%>%
-	mutate(thlb_pre_ret = if_else(is.na(get(var_name)), thlb_pre_ret, 0),
-    thlb_net = if_else(is.na(get(var_name)), thlb_net, 0))
-}
 
 # see comments for update_areas1
 update_areas_thlb <- function(netdown_tab,var_name) {
@@ -724,84 +715,84 @@ update_areas_thlb <- function(netdown_tab,var_name) {
 # function arguments: netdown table, netdown summary, running_total, land class, netdown step
 netdown100pct<-function(netdown_tab, net_summary, running_total, lclass, n_step){
   landclass <- lclass
-  
+
   # determine the area of the unit (i.e. number of rows in netdown table)
   unit <- nrow(netdown_tab)
-  
+
   # determine the total area in the netdown step, where n_step is one of the netdown steps (e.g., n01_ownership)
   total <- netdown_tab %>%
     filter(!is.na(get(n_step))) %>% # filter to where netdown step is NOT NA.
     # count number of rows (i.e. area as 1 row = 1 ha)
-    count()%>% 
+    count()%>%
     # pull the count value
     pull()
-  
+
   # determine the percent of TSA area (total of netdown class / total of TSA * 100)
   percent <- total / nrow(netdown_tab) * 100
-  
+
   # determine the area excluded:
-  excluded <- netdown_tab %>%
+  net_excluded  <- netdown_tab %>%
     # filter to where netdown step variable is NOT NA.
     filter(!is.na(get(n_step))) %>%
     # calculate thlb_net area
     summarise(x = sum(thlb_net)) %>%
     pull() # pull value
-  
+
   # calculate new running total value
-  running_total <- running_total+excluded
-  
+  running_total <- running_total+net_excluded
+
   # determine new netdown.
   netdown <- unit - running_total
-  
+
   # create a one-row data frame with each of the netdown summary variables determined for the netdown step.
-  netdown_step <- data.frame(landclass, total, percent, excluded, running_total, netdown)
-  
+  netdown_step <- data.frame(landclass, total, percent, net_excluded, running_total, netdown)
+
   # add the new netdown step to the netdown summary table.
   netdown_summary <- bind_rows(netdown_summary, netdown_step)
-  
+
 }
 
 # function for determining the proportional netdown factors.
-# ONLY works if landclasses are named "Lineal_Features" or "Retention". 
-netdown_prop<-function(netdown_tab, netdown_summary, running_total, lclass, n_step, ret_prop){
+# ONLY works if landclasses are named "Lineal_Features" or "Retention".
+netdown_prop<-function(netdown_tab, netdown_summary, running_total, lclass, n_step){
   landclass <- lclass
   unit <- nrow(netdown_tab)
   # conditional statement - slightly different calculation depending on whether landclass is lineal features or retention.
-  ifelse(landclass %in% c("Linear_Features", "Physical_Inoperable"),
-  total <- netdown_tab %>%
-    summarise(x = sum(get(n_step), na.rm=T)) %>% 
-    pull(),
-  ifelse(landclass == "dont_do_Future_Retention",
-         total<- netdown_tab %>%
-           # multiply included by retention proportion (last step in netdown)
-           summarise(x = sum(included * ret_prop))%>%
-           pull(),
-  total <- netdown_tab %>%
-    filter(get(n_step) > 0)%>%
-    count()%>%
-    pull()))
-  
+	if (landclass %in% c("Linear_Features", "Physical_Inoperable", "Riparian_Buffers")) {
+	total <- netdown_tab %>%
+		summarise(x = sum(get(n_step), na.rm = TRUE)) %>%
+		pull()
+	} else if (landclass == "Future Retention") {
+	total <- netdown_tab %>%
+		summarise(x = sum(get(n_step), na.rm = TRUE)) %>%
+		pull()
+	} else {
+	total <- netdown_tab %>%
+		filter(get(n_step) > 0) %>%
+		count() %>%
+		pull()
+	}
+
   # calculate percent of total area removed
   percent <- total / unit * 100
-
   # determine the area excluded
-  excluded <- netdown_tab %>%
+  net_excluded  <- netdown_tab %>%
     filter(thlb_net > 0) %>%
     summarise(x = sum(thlb_net * get(n_step), na.rm=T)) %>%
     pull()
-  
+
   # calculate running total
-  running_total <- running_total + excluded
-  
+  running_total <- running_total + net_excluded
+
   # calculate netdown
   netdown<-unit - running_total
-  
+
   # create data frame with netdown summary information for given landclass
-  netdown_prop <- data.frame(landclass, total, percent, excluded, running_total,netdown)
-  
+  netdown_prop <- data.frame(landclass, total, percent, net_excluded, running_total,netdown)
+
   # add to netdown summary table:
   netdown_summary <- bind_rows(netdown_summary, netdown_prop)
-  
+
 }
 
 # this function is used when a landbase summary is needed. I.e., AFLB, grossTHLB, THLB:
@@ -811,10 +802,35 @@ landbase_sum <- function(netdown_tab,net_summary,running_total,lclass,netdown,wh
     summarise(x = sum({{ which_landbase }})) %>%
     pull()
   percent <- total / nrow(netdown_tab) * 100
-  excluded<-running_total
-  
-  
-  netdown_landbase <- data.frame(landclass, total, percent, excluded, running_total,netdown)
+  net_excluded <-running_total
+
+
+  netdown_landbase <- data.frame(landclass, total, percent, net_excluded , running_total,netdown)
   netdown_summary <- bind_rows(netdown_summary, netdown_landbase)
-  
+
 }
+
+
+
+
+#### ### recreation
+#### Below is a specific list of ownership classes excluded:
+#### 
+#### + 66N, Crown - Recreation Area 
+#### + 68U, Crown - Forest Recreation 
+#### 
+#### **Data sources:** BCGW file: WHSE_FOREST_VEGETATION.F_OWN
+#### 
+#### Forest Recreation sites were not excluded from the THLB as there are no harvesting restrictions. 
+#### 
+#### ```{r thlb_rec, eval= FALSE}
+#### ## NOT RAN
+#### lclass<-"Recreation_Features"
+#### n_step<-"n08_rec"
+#### 
+#### netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
+#### netdown_tab<-update_areas_thlb(netdown_tab,n_step)
+#### running_total<-get_running_total(netdown_summary,lclass)
+#### netdown<-get_netdown(netdown_summary,lclass)
+#### pretty_table(netdown_summary)
+#### ```
