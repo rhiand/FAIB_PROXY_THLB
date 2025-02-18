@@ -135,7 +135,7 @@ query <- "SELECT
 	p.n13_merchantability,
 	p.n14_non_commercial
 FROM thlb_proxy.prov_netdown p
-WHERE man_unit IN ('Robson Valley TSA')
+WHERE man_unit IN ('Robson Valley TSA', 'Fort St. John TSA', 'Fort Nelson TSA')
 "
 netdown_tab <- sql_to_df(query, conn_list)
 netdown_summary <- setup_tracking_variable(netdown_tab)
@@ -273,6 +273,8 @@ Below is a SQL snippet illustrating the logic used to build the newly adjusted F
 
 **Data sources:** BCGW files: WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_BASEMAPPING.BTM_PRESENT_LAND_USE_V1_SVW, WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY
 
+__R Scripts__
+
 The following scripts were used to perform the pre-processing: 
 
 ```
@@ -330,6 +332,8 @@ The FALB excludes private, municipal and first nation reserve lands. A specific 
 
 **Data sources:** BCGW file: WHSE_FOREST_VEGETATION.F_OWN
 
+__R Scripts__
+
 No pre-processing was performed on the ownership layer. The dadmtools library was used to import the ownership layers:
 
 ```
@@ -376,6 +380,8 @@ Some areas within the province do not contribute to timber supply for the purpos
 + 54N, Federal - Dominion government Block/Federal Parcels
 
 **Data sources:** BCGW file: WHSE_FOREST_VEGETATION.F_OWN
+
+__R Scripts__
 
 No pre-processing was performed on the ownership layer. The dadmtools library was used to import the ownership layers:
 
@@ -436,6 +442,7 @@ Below is a SQL snippet illustrating the logic used to build non-productive and n
 		 END as n04_nonfor
 ```
 
+__R Scripts__
 
 No pre-processing was performed on the layers used to derive this netdown factor. The dadmtools library was used to import the required layers:
 
@@ -474,14 +481,18 @@ The linear features table was created in July 2024 and is based on the 2021 CE I
  - Oil and Gas Pipeline Right of Way 15m
  - Rights of Way (no buffer)
  
+ __Application in Land Base Classification:__
+ 
 For linear features, the AFLB, and THLB are multiplied by one minus the proportion linear features:
 
  - AFLB = AFLB * (1- proportion linear features),
- - THLB = THLB * (1-proportion linear features)
+ - THLB = THLB * (1- proportion linear features)
  
-In the netdown table, each record contains is assigned the proportion of rhw cell covered by linear features, represented by the variable p05_linear_features.
+In the netdown table, each record contains is assigned the proportion of the cell covered by linear features, represented by the variable p05_linear_features.
 
 **Data source:** BC cumulative effects framework 2021 integrated roads dataset, WHSE_TANTALIS.TA_CROWN_RIGHTS_OF_WAY_SVW, WHSE_MINERAL_TENURE.OG_PIPELINE_AREA_PERMIT_SP, WHSE_IMAGERY_AND_BASE_MAPS.DRP_OIL_GAS_PIPELINES_BC_SP, WHSE_BASEMAPPING.GBA_TRANSMISSION_LINES_SP, WHSE_BASEMAPPING.GBA_RAILWAY_TRACKS_SP
+
+__R Scripts__
 
 The following scripts were used to perform pre-processing:
 
@@ -538,6 +549,8 @@ Below is a specific list of ownership classes excluded:
 
 **Data sources:** BCGW file: WHSE_FOREST_VEGETATION.F_OWN
 
+__R Scripts__
+
 No pre-processing was performed on the ownership layer. The dadmtools library was used to import the ownership layers:
 
 ```
@@ -562,6 +575,8 @@ pretty_table(netdown_summary)
 In British Columbia, wildlife habitat requirements are managed through several tools, including wildlife habitat areas (WHAs). WHAs are mapped areas that are necessary to meet the habitat requirements of an Identified Wildlife element. WHAs designate critical habitats in which activities are managed to limit their impact on the identified wildlife element for which the area was established. The purpose of WHAs is to conserve those habitats considered most limiting to a given Identified Wildlife element. The WHAs that prohibit timber harvesting are excluded from the THLB.
 
 **Data sources:** BCGW file: WHSE_WILDLIFE_MANAGEMENT.WCP_WILDLIFE_HABITAT_AREA_POLY
+
+__R Scripts__
 
 No pre-processing was performed on the ownership layer. The dadmtools library was used to import the wildlife habitat layer. Please note that the layer was filtered for to only include where timber_harvest_code IN ('NO HARVEST ZONE', 'NO HARVEST'):
 
@@ -593,6 +608,7 @@ Miscellaneous tenures including the following ownership classes:
 
 **Data sources:** BCGW file: WHSE_FOREST_VEGETATION.F_OWN
 
+__R Scripts__
 
 No pre-processing was performed on the ownership layer. The dadmtools library was used to import the ownership layers:
 
@@ -619,7 +635,23 @@ Riparian areas occur next to the banks or edges of streams, lakes, and wetlands.
 
 Management requirements for riparian areas are specified in the Forest Planning and Practices Regulation (FPPR). The intent of these requirements is to minimize or prevent impacts of forestry and range activity on aquatic resource values (e.g., water quality, aquatic ecosystems) and on the values within the surrounding area (e.g., wildlife habitat).
 
-The FPPR specifies riparian classes for streams, wetlands and lakes.  See here for classification FPPR [guidelines](https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829). In order to determined the riparian buffer to apply to the different classes, the the [Riparian management area guidebook](https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/silviculture/silvicultural-systems/silviculture-guidebooks/riparian-management-area-guidebook) was used. The riparian area is excluded similar to other proportional netdown steps - the thlb_net is multiplied by 1-proportion identified as riparian retention. For example, if thlb_net is 0.9 prior to excluding riparian retention and the riparian retention is 0.3, the updated thlb_net for that cell becomes 0.9*(1-.3) = 0.63.
+The FPPR specifies riparian classes for streams, wetlands and lakes.  See here for classification FPPR [guidelines](https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829). In order to determined the riparian buffer to apply to the different classes, the the [Riparian management area guidebook](https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/silviculture/silvicultural-systems/silviculture-guidebooks/riparian-management-area-guidebook) was used. 
+
+__R Scripts__
+
+The following R scripts were used to import all needed data sources, post process imported datasets, perform riparian classification and buffer the riparian classifications.
+
+```
+src\analysis\1.riparian-import-layers.R
+src\analysis\2.riparian-fwapg-pre-processing.R
+src\analysis\3.riparian-classification.R
+```
+
+__Application in Land Base Classification:__
+
+Similar to other proportional netdown factors, the THLB is multiplied by 1-proportion identified as riparian retention. For example, if thlb_net is 0.9 prior to excluding riparian retention and the riparian retention is 0.3, the updated thlb_net for that cell becomes 0.9*(1-.3) = 0.63.
+
+In the netdown table, each record is assigned the proportion of the cell considered riparian retention, represented by the variable p09_riparian.
 
 <details>
   <summary> Expand for a detailed breakdown of the riparian analysis, including the data sources, methodology, buffers widths for each riparian class.</summary>
@@ -809,19 +841,6 @@ This analysis applies a riparian buffer with 100% retention to the entire Applie
 For example, an S2 stream would receive a single 40m buffer with 100% retention, instead of a two-tiered approach: a 30m buffer with 100% retention immediately around the stream, followed by an additional 20m buffer with 50% retention extending outward from the first buffer.
 
 The buffered areas were converted into a numeric raster, where each cell represents the proportion of the cell covered by the riparian buffer polygons.
-
-
-__R Scripts__
-
-The methodology used an integrated approach using R and PostGIS. R scripts were used to construct and execute SQL queries on the PostGIS database. The heavy spatial operations were performed directly within the PostGIS database, leveraging its robust spatial functions and indexes. 
-
-The following R scripts were used to import all needed data sources, post process imported datasets, perform riparian classification and buffer the riparian classifications.
-
-```
-src\analysis\1.riparian-import-layers.R
-src\analysis\2.riparian-fwapg-pre-processing.R
-src\analysis\3.riparian-classification.R
-```
 
 
 __Known Limitations__
@@ -1128,6 +1147,8 @@ The Heritage Conservation Act provides for the protection of British Columbia’
 **Data source:** BCGW file (restricted) WHSE_ARCHAEOLOGY.RAAD_TFM_SITES_SVW
 Access date: Jan 7, 2025
 
+__R Scripts__
+
 No pre-processing was performed for this netdown factor. The layer was imported using the dadmtools:
 
 ```
@@ -1156,6 +1177,8 @@ For this analysis, areas classified as **Prohibited or Protected** are excluded 
 
 **Data source:** BC Data Catalogue layer: https://catalogue.data.gov.bc.ca/dataset/generalized-forest-harvesting-restrictions
 
+__R Scripts__
+
 No pre-processing was performed for this netdown factor. The layer was imported using the dadmtools:
 
 ```
@@ -1180,13 +1203,14 @@ For each TSA and TFL, binary rasters at 25-meter resolution were created to iden
 
 **Note:** When creating the 99th percentile threshold, a minimum sample population of 30 was required (I.e., a minimum of 30 harvested openings per TSA/TFL). If the unit did not have more than 30 harvested openings, the thresholds from the TSA with the most overlap was used. For example, TFL 43 had less than 30 harvested openings, thus the overlapping Sunshine Coast TSA threshold was used for TFL 43.
 
-**Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the THLB due to being physically inoperable.
 
 **Data sources:** BCGW layer: WHSE_TERRESTRIAL_ECOLOGY.STE_TER_ATTRIBUTE_POLYS_SVW, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP
 
 Shared drive layer: 
 
 + R:\\dem\\elevation\\trim_25m\\bcalbers\\tif\\bc_elevation_25m_bcalb.tif
+
+__R Scripts__
 
 The following scripts were used to perform pre-processing:
 
@@ -1195,6 +1219,16 @@ src\analysis\1.physical-inoperability-import-layers.R
 src\analysis\2.physical-inoperability-processing.R
 src\analysis\3.physical-inoperability-classification.R
 ```
+
+__Application in Land Base Classification:__
+
+**Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the THLB due to being physically inoperable.
+
+Similar to other proportion netdown factors, the THLB is multiplied by one minus the physically inoperable proportion:
+
+ - THLB = THLB * (1- p12_phys_inop)
+ 
+In the netdown table, each record is assigned the proportion of the cell considered physically inoperable, represented by the variable p12_phys_inop.
 
 #### Physically Inoperable Areas Summary
 
@@ -1259,6 +1293,8 @@ Shared drive layers:
   + `\\spatialfiles2.bcgov\work\FOR\VIC\HTS\DAM\Data\VRI\TFL_Integrated\TFL_integrated_2016_delivery_final.gdb`
   
 
+__R Scripts__
+
 The following scripts were used to perform pre-processing:
 
 ```
@@ -1291,6 +1327,8 @@ pretty_table(netdown_summary)
 
 
 **Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the THLB due to being non-merchantable.
+
+__R Scripts__
 
 The following scripts were used to perform pre-processing:
 
@@ -1342,13 +1380,15 @@ __Data Cleaning__
 
 The distribution of percent retention across openings was analyzed along the exterior ring of each TSA (i.e., area-based tenures are considered retained within the TSA boundary). It is recognized that the RESULTS dataset contains potential data entry errors. To address this, lower and upper cutoffs were established to clean the data and remove outliers.
 
-The lower cutoff was set at the 1st percentile. The upper cutoff was initially intended to be the 99th percentile; however, upon reviewing the distributions and conducting spot checks on unusually high retention percentages, it became evident that a more flexible upper cutoff was necessary. Ultimately, the upper cutoff was defined as the maximum percentile exceeding a subjective threshold of 0.5. The weighted mean of the cleaned RESULTS dataset for each TSA was calculated as the preliminary stand level retention factor. The table below provides the lower and upper cutoffs applied in this analysis for each TSA. The distributions of the retention percentage per result can be found within the github repo here: 
+The lower cutoff was set at the 1st percentile. The upper cutoff was initially intended to be the 99th percentile; however, upon reviewing the distributions and conducting spot checks on unusually high retention percentages, it became evident that a more flexible upper cutoff was necessary. Ultimately, the upper cutoff was defined as the maximum percentile exceeding a subjective threshold of 0.5. The weighted mean of the cleaned RESULTS dataset for each TSA was calculated as the preliminary stand level retention factor. The table below provides the lower and upper cutoffs applied in this analysis for each TSA. The distributions of the retention percentage per result can be found within the THLB Proxy github repo here: 
 ```
 data\analysis\retention\man_unit_retention_histograms_2024_12_12.pdf
 ```
 
 **Note** Fort Nelson TSA did not have any any RESULTS reserves data. As such, the retention results from the adjacent Fort St. John TSA will be used to represent retention in Fort Nelson TSA.
 **Data sources:** BCGW layer: WHSE_FOREST_VEGETATION.RSLT_OPENING_SVW, WHSE_FOREST_VEGETATION.RSLT_FOREST_COVER_INV_SVW, WHSE_FOREST_VEGETATION.RSLT_FOREST_COVER_RESERVE_SVW
+
+__R Scripts__
 
 The following scripts were used to perform pre-processing:
 
@@ -1357,7 +1397,6 @@ src\analysis\1.retention-import-layers.R
 src\analysis\2.retention-processing.R
 
 ```
-
 
 #### Long Term Stand-Level Retention over all TSAs
 
@@ -1389,11 +1428,11 @@ kable(ltr_df,
 
 ```
 
-#### Observed retention in THLB
+#### Stand-Level Retention Adjustment Process
 
-The retention area within openings may include forest that is non-THLB, such as non-merchantable forest. In the timber supply model, spatial retention is not inherently integrated into block design when creating blocks. Consequently, a non-spatial reduction is applied to the THLB to accommodate in-block retention. Since the timber supply model exclusively harvests in the THLB, it is necessary to ascertain the proportion retained within this specific land base.
+Retention areas within openings may include non-THLB forest, such as non-merchantable stands. In the timber supply model, spatial retention is not explicitly incorporated into block design when generating cutblocks. Instead, a non-spatial reduction is applied to the THLB to account for stand-level (in-block) retention. Since the timber supply model only harvests within the THLB, it is necessary to determine the proportion of retention occurring within the THLB.
 
-In the netdown process for stand-level retention, the percentage of retention is adjusted to reflect the observed proportion within the THLB.
+During the netdown process for stand-level retention, the percentage of retention is adjusted to reflect the proportion that overlaps the THLB.
 
 To determine the proportion of retention in THLB the following process was used:
 
@@ -1401,15 +1440,28 @@ To determine the proportion of retention in THLB the following process was used:
 + Add rasterized binary retention value as a land base category into netdown table
 + Iterate through the TSA's
   - Determine the gross area that is the total retention area per TSA
-  - For each netdown category (e.g., lineal features, non-forest, non-merchantable fores, etc.), the amount of retention that is excluded is summarized)
-  - The area remaining is the stand-level retention that does not overlap other land base categories.
-  - The remaining stand-level retention area is divided by the total stand-level retention area to determine the adjustment factor to apply to the overall stand-level retention amount.
+  - Summarize retention area excluded by each netdown category (e.g., linear features, non-forest, non-merchantable forest, etc.).
+  - Calculate the remaining retention area that does not overlap other land base exclusions.
+  - Divide the remaining retention area by the gross retention area to derive an adjustment factor, representing the proportion of retention occurring within the THLB.
 
-Once the adjustment factor is determined, adjust the weighted mean stand-level retention as follows:
 
-(weighted mean long term stand-level retention) * (adjustment factor)
+Graphs illustrating the distribution of stand-level retention area by land base category for each TSA can be found in the THLB Proxy GitHub repository at the following path: 
 
-The adjusted stand-level retention proportion is then applied in the land base classification as a reduction across the THLB (at 1-ha scale).
+```
+data\analysis\retention\<TSA> TSA_retention_adjustment_per_landclass.jpeg
+```
+
+The adjustment factor is then applied to the weighted mean long-term stand-level retention as follows:
+
+Adjusted Stand-Level Retention = Weighted Mean Long-Term Stand-Level Retention x Adjustment Factor
+
+A summary table below presents the weighted mean stand-level retention and corresponding adjustment factor for each TSA.
+
+__Application in Land Base Classification:__
+
+The adjusted stand-level retention proportion is applied as a non-spatial reduction across the THLB for each TSA. The THLB is adjusted as follows:
+
+ - THLB = THLB * (1-TSA specific adjusted stand-level retention factor)
 
 
 ```{r thlb_ltr, eval= TRUE}
@@ -1558,9 +1610,8 @@ SELECT '8 - Fort Nelson TSA', lower_bound_percentile, upper_bound_percentile, lo
 SELECT
 	adj.tsa,
 	ltr.weighted_mean_ltr,
-	adj.percent,
-	ltr.weighted_mean_ltr * adj.percent/100.0 as adjusted_retention,
-	1-(ltr.weighted_mean_ltr * adj.percent/100.0) as retention_fact
+	adj.percent/100 as percent,
+	ltr.weighted_mean_ltr * adj.percent/100.0 as adjusted_retention
 FROM 
 ltr
 JOIN thlb_proxy.retention_adjustment_man_unit adj
@@ -1570,15 +1621,35 @@ WHERE
   adj.landclass = 'Remaining stand-level retention'"
 retention_adjustment_df <- sql_to_df(query, conn_list)
 
+retention_adjustment_df <- retention_adjustment_df %>%
+  mutate(across(c(weighted_mean_ltr, percent, adjusted_retention), ~ round(.x * 100, 2)))
+
+retention_adjustment_df <- retention_adjustment_df %>%
+  rename(
+    `TSA` = `tsa`,
+    `Long Term Retention` = `weighted_mean_ltr`,
+    `Remaining Stand Level Retention (%)` = `percent`,
+    `Adjustment Factor (%)` = `adjusted_retention`
+  )
+
 kable(retention_adjustment_df,
       booktabs = T,
       format.args = list(big.mark = ","),
       caption =  "Adjusted stand-level retention" ) %>% 
   kable_styling(bootstrap_options = "striped",
                 font_size = 10)
+
+
+retention_adjustment_df <- retention_adjustment_df %>%
+  rename(
+    `tsa` = `TSA`,
+    `weighted_mean_ltr` = `Long Term Retention`,
+    `percent` = `Remaining Stand Level Retention (%)`,
+    `adjusted_retention` = `Adjustment Factor (%)`
+  )
 ```
 
-
+#### Stand-level Retention Summary
 
 ```{r thlb_ltr_adj, eval= TRUE}
 ## add in the adjusted retention as a column in the netdown dataframe
