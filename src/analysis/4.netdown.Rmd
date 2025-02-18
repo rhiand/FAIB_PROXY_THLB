@@ -132,7 +132,7 @@ query <- "SELECT
   p.n10_arch,
 	p.n11_harvest_restrictions,
 	p.p12_phys_inop,
-	p.n13_merchantability,
+	p.n13_non_merchantable,
 	p.n14_non_commercial
 FROM thlb_proxy.prov_netdown p
 WHERE man_unit IN ('Robson Valley TSA', 'Fort St. John TSA', 'Fort Nelson TSA')
@@ -149,22 +149,36 @@ pretty_table(netdown_summary)
 
 ### n01_fmlb
 
-The FMLB (Forest Management Land Base) is the forested area within the province as defined by the Old Growth Technical Advisory Panel (TAP). It is primarily based on the VRI attribute `for_mgmt_land_base_ind`, with some adjustments. A plain text and code definition of how the `for_mgmt_land_base_ind` attribute is populated is found below. The attribute is a text field composed of either:
+The FMLB (Forest Management Land Base) represents the forested area within the province that is considered available for potential forest management activities. It was developed by FAIB and provided to the Old Growth Technical Advisory Panel (TAP) in 2021 to support their work in identifying and assessing old growth forests.
+
+The FMLB is primarily derived from the Vegetation Resources Inventory (VRI) attribute `for_mgmt_land_base_ind`, which indicates areas considered part of the forest management land base. However, FAIB refined this definition through review with satellite imagery, consultation with inventory specialists and guidance from the Biodiversity Guidebook to better align with the practical interpretation of forest cover, particularly in the context of assessing old growth and biodiversity.
+
+The resulting FMLB provides a standardized spatial representation of forested lands available for management, serving as a foundation for further analysis and decision-making related to old growth and broader forest management.
+
+The `for_mgmt_land_base_ind` attribute is a text field indicating whether an area is classified as forested or non-forested. It is populated based on the following logic:
 
 - 'N': non forested 
 - 'Y': forested 
 
-Description:
+Rules for populating `for_mgmt_land_base_ind`:
 
-+ 'N' if stand has never been harvested AND inventory code = Forest Inventory Planning (FIP) AND is non productive or unreported 
-+ 'N' if inventory code != Forest Inventory Planning (FIP) AND land cover classification either non-vegetated or unreported
-+ 'N' if site_index < 5
-+ 'Y' doesn't meet either above condition
-+ 'Y' project = fire update and inventory code = FULL VRI AND earliest non logging disturbance type is burn/fire AND crown closure < 5 AND site index >= 5 and bclcs_level_1 = non vegetated AND bclcs_level_2 = non treed AND bclcs_level_3 = upland
+'N' is assigned if:
+
+- 'The stand has never been harvested, and the inventory source is Forest Inventory Planning (FIP), and the area is either non-productive or unreported; OR
+- The inventory source is not FIP, and the land cover classification is either non-vegetated or unreported; OR
+- The site index is less than 5.
+
+'Y' is assigned if:
+
+- None of the above conditions apply; OR
+- The project type is a fire update, and the inventory source is FULL VRI, and the earliest non-logging disturbance type is burn/fire, and the crown closure is less than 5, and the site index is 5 or greater, and the BC Land Cover Classification System (BCLCS) values are as follows:
+  - Level 1: Non-vegetated
+  - Level 2: Non-treed
+  - Level 3: Upland
 
 VRI field definitions were found [here](https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/data-management/standards/vegcomp_poly_rank1_data_dictionaryv5_2019.pdf).
 
-As part of this project, an exercise was conducted to replicate the `for_mgmt_land_base_ind` VRI attribute in order to better understand it. This effort was successful. The SQL used is provided below for reference.
+As part of this project, an exercise was conducted to replicate the `for_mgmt_land_base_ind` VRI attribute in order to better understand it. This effort was successful. The SQL used to recreate `for_mgmt_land_base_ind` is provided below for reference.
 
 
 ```{sql fmlb_sql, eval= FALSE}
@@ -243,14 +257,21 @@ FROM
 recreate_for_mgmt_land_base_ind;
 ```
 
-Upon expert review, the definition OF FMLB was adjusted in the following ways: 
+The following adjustments were made based on a review of satellite imagery, consultation with inventory specialists, and guidance from the Biodiversity Guidebook. These changes were intended to better align the classification of forest cover with practical interpretations, particularly for assessing old growth and biodiversity:
 
-+ 'N' if BEC.natural_disturbance = 'NDT5'
-+ 'Y' if harvest IS TRUE, (harvest is defined as: harvest is TRUE if vri.harvest_date is not null OR consolidated cutblocks exist OR vri.opening_id or vri.opening_number IS NOT NULL or '0' otherwise 'N')
-+ 'Y' if (vri.bclcs_level_1 IN ('U', '') AND btm.present_land_use_label in ('Old Forest', 'Recently Logged', 'Selectively Logged', 'Young Forest'))
-+ 'N' if bclcs_level_1 = 'V' AND bclcs_level_2 <> 'T' and vri.project NOT LIKE 'FIRE_UPDATE%'
-+ 'N' if URBAN is true AND vri.for_mgmt_land_base_ind = 'Y', (URBAN defined as: URBAN IS TRUE if vri.non_productive_descriptor_cd = 'U' OR vri.bclcs_level_5 = 'UR' OR vri.land_cover_class_cd_1 = 'UR' OR vri.land_cover_class_cd_2 = 'UR' vri.OR land_cover_class_cd_3 = 'UR')
-+ OTHERWISE vri.for_mgmt_land_base_ind
+'N' is assigned if:
+
+- if BEC.natural_disturbance = 'NDT5'
+- if bclcs_level_1 = 'V' AND bclcs_level_2 <> 'T' and vri.project NOT LIKE 'FIRE_UPDATE%'
+- if URBAN is true AND vri.for_mgmt_land_base_ind = 'Y', (URBAN defined as: URBAN IS TRUE if vri.non_productive_descriptor_cd = 'U' OR vri.bclcs_level_5 = 'UR' OR vri.land_cover_class_cd_1 = 'UR' OR vri.land_cover_class_cd_2 = 'UR' vri.OR land_cover_class_cd_3 = 'UR')
+
+'Y' is assigned if:
+
++ if harvest IS TRUE, (harvest is defined as: harvest is TRUE if vri.harvest_date is not null OR consolidated cutblocks exist OR vri.opening_id or vri.opening_number IS NOT NULL or '0' otherwise 'N')
++ if (vri.bclcs_level_1 IN ('U', '') AND btm.present_land_use_label in ('Old Forest', 'Recently Logged', 'Selectively Logged', 'Young Forest'))
+
+
+OTHERWISE retain vri.for_mgmt_land_base_ind
 
 
 Below is a SQL snippet illustrating the logic used to build the newly adjusted FMLB. It is done using a long 'case when' statement. In the netdown table, each adjustment is assigned it's own descriptive label under the variable n01_fmlb.
@@ -275,7 +296,7 @@ Below is a SQL snippet illustrating the logic used to build the newly adjusted F
 
 __R Scripts__
 
-The following scripts were used to perform the pre-processing: 
+The following scripts were used to perform this netdown factor's pre-processing: 
 
 ```
 src\analysis\1.fmlb-import-layers.R
@@ -334,7 +355,7 @@ The FALB excludes private, municipal and first nation reserve lands. A specific 
 
 __R Scripts__
 
-No pre-processing was performed on the ownership layer. The dadmtools library was used to import the ownership layers:
+No pre-processing was performed on the ownership layer. The dadmtools library was used to import the ownership layer:
 
 ```
 src\analysis\dadm-import-layers.R
@@ -383,7 +404,7 @@ Some areas within the province do not contribute to timber supply for the purpos
 
 __R Scripts__
 
-No pre-processing was performed on the ownership layer. The dadmtools library was used to import the ownership layers:
+No pre-processing was performed on the ownership layer. The dadmtools library was used to import the ownership layer:
 
 ```
 src\analysis\dadm-import-layers.R
@@ -648,6 +669,9 @@ src\analysis\3.riparian-classification.R
 ```
 
 __Application in Land Base Classification:__
+
+
+__Note: The riparian netdown inclusion factor also includes the area of the lakes, wetlands and rivers in addition to the buffered areas. As such, the total 'riparian area' will seem larger than expected. As lakes, rivers and wetlands were all netted out in a previous step, the net_excluded value will be accurate.__
 
 Similar to other proportional netdown factors, the THLB is multiplied by 1-proportion identified as riparian retention. For example, if thlb_net is 0.9 prior to excluding riparian retention and the riparian retention is 0.3, the updated thlb_net for that cell becomes 0.9*(1-.3) = 0.63.
 
@@ -1197,12 +1221,176 @@ pretty_table(netdown_summary)
 ```
 
 ### p12_phys_inop
-To determine physically inoperable areas, elevation, slope and terrain stability mapping were assessed related to historic practice since 2014. 
+Physically inoperable areas were identified based on an assessment of elevation, slope, and terrain stability mapping, with reference to harvesting practices observed over the past decade (2014–2024). This 10-year period was selected to reflect recent operational behavior.
 
-For each TSA and TFL, binary rasters at 25-meter resolution were created to identify areas with slopes exceeding the 99th percentile within harvested openings since 2014, areas with elevations exceeding 99th percentile within harvested openings since 2014 and areas with unstable or potentially unstable slopes. These rasters were then combined to produce a single "physically inoperable" variable. Finally, the data was aggregated to a 1-hectare resolution to form a proportional inoperable variable.
+__Methodology__
+For each TSA and TFL:
 
-**Note:** When creating the 99th percentile threshold, a minimum sample population of 30 was required (I.e., a minimum of 30 harvested openings per TSA/TFL). If the unit did not have more than 30 harvested openings, the thresholds from the TSA with the most overlap was used. For example, TFL 43 had less than 30 harvested openings, thus the overlapping Sunshine Coast TSA threshold was used for TFL 43.
+ - Binary rasters with a 25-meter resolution were created to identify areas meeting the following criteria:
+   - Slopes exceeding the 99th percentile within harvested openings (2014–2024).
+   - Elevations exceeding the 99th percentile within harvested openings (2014–2024).
+   - Areas classified as unstable or potentially unstable terrain based on terrain stability mapping.
+ - These rasters were combined into a single “physically inoperable” layer.
+ - The combined data was then aggregated to a 1-hectare resolution, resulting in a proportional inoperable variable representing the fraction of each hectare classified as physically inoperable.
 
+__Minimum Sample Requirement__
+ - A minimum of 30 harvested openings per TSA or TFL was required to establish the 99th percentile thresholds for slope and elevation.
+ - If a unit had fewer than 30 harvested openings, the thresholds from the neighboring TSA with the greatest geographic overlap were applied.
+   - Example: TFL 43 had fewer than 30 harvested openings; therefore, thresholds from the Sunshine Coast TSA were used.
+
+Note:
+
+A table containing the calculated 99th percentile elevation and slope values, along with the number of harvested openings per TSA and TFL, is provided below.
+
+<details>
+  <summary> Expand to view the table of percentile thresholds and sample sizes used in the analysis. </summary>
+  <br>
+
+```{r thlb_phys_thresh, eval= TRUE}
+query <- "WITH a AS (
+SELECT 
+	inop_cc.mgmt_unit,
+	 CASE 
+	 	WHEN inop_cc.mgmt_unit = 'TFL 43' THEN '39 - Sunshine Coast TSA'
+	 	ELSE 'Same'
+	 END AS mgmt_unit_threshold_used,
+	 inop_cc.number_of_cutblocks,
+	round(elev_threshold.elev_99th::numeric, 1) as elev_threshold,
+	round(slope_threshold.slope_99th::numeric, 1) as slope_threshold
+	
+FROM 
+thlb_proxy.inoperable_cutblock_summary inop_cc
+JOIN
+	(
+		SELECT 
+			DISTINCT ON (cutblock_percentile_99, split_part(inop.man_unit, '-sub-', 1))			 
+			cutblock_percentile_99 as elev_99th,
+			split_part(inop.man_unit, '-sub-', 1) as man_unit
+		FROM 
+			thlb_proxy.inoperable_thresholds inop
+		WHERE grid = 'elevation'
+		ORDER BY
+			cutblock_percentile_99,
+			split_part(inop.man_unit, '-sub-', 1)
+	) elev_threshold
+ON split_part(inop_cc.mgmt_unit, '-sub-', 1) = elev_threshold.man_unit
+JOIN
+	(
+		SELECT 
+			DISTINCT ON (cutblock_percentile_99, split_part(inop.man_unit, '-sub-', 1))			 
+			cutblock_percentile_99 as slope_99th,
+			split_part(inop.man_unit, '-sub-', 1) as man_unit
+		FROM 
+		thlb_proxy.inoperable_thresholds inop
+		WHERE grid = 'slope'
+		ORDER BY
+			cutblock_percentile_99,
+			split_part(inop.man_unit, '-sub-', 1)
+	) slope_threshold
+ON split_part(inop_cc.mgmt_unit, '-sub-', 1) = slope_threshold.man_unit
+WHERE 
+-- 	inop_cc.number_of_cutblocks >= 30
+-- AND
+	inop_cc.mgmt_unit ilike 'TFL%'
+ORDER BY split_part(mgmt_unit, ' ', 2)::int
+)
+SELECT * FROM a
+UNION ALL
+(SELECT 
+	inop_cc.mgmt_unit,
+	 CASE 
+	 	WHEN inop_cc.mgmt_unit = 'TFL 43' THEN '39 - Sunshine Coast TSA'
+	 	ELSE 'Same'
+	 END AS mgmt_unit_threshold_used,
+	 inop_cc.number_of_cutblocks,
+	round(elev_threshold.elev_99th::numeric, 1) as elev_threshold,
+	round(slope_threshold.slope_99th::numeric, 1) as slope_threshold
+	
+FROM 
+thlb_proxy.inoperable_cutblock_summary inop_cc
+JOIN
+	(
+		SELECT 
+			DISTINCT ON (cutblock_percentile_99, split_part(inop.man_unit, '-sub-', 1))			 
+			cutblock_percentile_99 as elev_99th,
+			split_part(inop.man_unit, '-sub-', 1) as man_unit
+		FROM 
+			thlb_proxy.inoperable_thresholds inop
+		WHERE grid = 'elevation'
+		ORDER BY
+			cutblock_percentile_99,
+			split_part(inop.man_unit, '-sub-', 1)
+	) elev_threshold
+ON split_part(inop_cc.mgmt_unit, '-sub-', 1) = elev_threshold.man_unit
+JOIN
+	(
+		SELECT 
+			DISTINCT ON (cutblock_percentile_99, split_part(inop.man_unit, '-sub-', 1))			 
+			cutblock_percentile_99 as slope_99th,
+			split_part(inop.man_unit, '-sub-', 1) as man_unit
+		FROM 
+		thlb_proxy.inoperable_thresholds inop
+		WHERE grid = 'slope'
+		ORDER BY
+			cutblock_percentile_99,
+			split_part(inop.man_unit, '-sub-', 1)
+	) slope_threshold
+ON split_part(inop_cc.mgmt_unit, '-sub-', 1) = slope_threshold.man_unit
+WHERE 
+	inop_cc.mgmt_unit ilike '%TSA'
+ORDER BY split_part(mgmt_unit, ' - ', 1)::int
+)
+
+-- WITH tfl AS (
+-- 	-- join inoperable table with man unit table to determine where a TFL exists but uses a different management unit threshold
+-- 	select
+-- 		mu.tfl_rank1,
+-- 		inop.man_unit
+-- 	from
+-- 	thlb_proxy.bc_inoperable_gr_skey inop
+-- 	join
+-- 	whse.man_unit_gr_skey mu USING (gr_skey)
+-- 	WHERE tfl_rank1 IS NOT NULL
+-- 	GROUP BY 
+-- 		inop.man_unit,
+-- 		mu.tfl_rank1
+-- 	HAVING count(*) > 500
+-- ), TSA AS (
+-- 	-- join inoperable table with man unit table to determine where a TSA exists but uses a different management unit threshold
+-- 	select
+-- 		mu.tsa_rank1,
+-- 		inop.man_unit,
+-- 		count(*)
+-- 	from
+-- 	thlb_proxy.bc_inoperable_gr_skey inop
+-- 	join
+-- 	whse.man_unit_gr_skey mu USING (gr_skey)
+-- 	WHERE tsa_rank1 IS NOT NULL
+-- 	GROUP BY 
+-- 		inop.man_unit,
+-- 		mu.tsa_rank1
+-- 	HAVING count(*) > 5000
+-- )"
+
+phys_inop_thresholds_df <- sql_to_df(query, conn_list)
+
+phys_inop_thresholds_df <- phys_inop_thresholds_df %>%
+  rename(
+    `Mgmt Unit` = `mgmt_unit`,
+    `Mgmt Unit Threshold Used` = `mgmt_unit_threshold_used`,
+    `No. Harvested Openings since 2014` = `number_of_cutblocks`,
+    `Elev 99th Percentile (m)` = `elev_threshold`,
+    `Slope 99th Percentile (%)` = `slope_threshold`
+  )
+
+kable(phys_inop_thresholds_df,
+      booktabs = T,
+      format.args = list(big.mark = ","),
+      caption =  "Physically Inoperable Thresholds Used" ) %>% 
+  kable_styling(bootstrap_options = "striped",
+                font_size = 10)
+```
+</details>
 
 **Data sources:** BCGW layer: WHSE_TERRESTRIAL_ECOLOGY.STE_TER_ATTRIBUTE_POLYS_SVW, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP
 
@@ -1255,17 +1443,21 @@ netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
 ```
 
-### n13_merchantability
-Stands are considered not merchantable if their characteristics (low volumes, low value or high cost of harvest [primarily excessive haul distance]) deviate significantly from the characteristics that have defined historic harvest preference and practice. 
+### n13_non_merchantable
+Stands are considered not merchantable if their characteristics (e.g., low volumes, low value or high cost of harvest, primarily excessive haul distance) deviate significantly from the attributes that have historically defined preferred harvest practices.
 
-To determine non-merchantability, a threshold was calculated based on the 2016 site index within previously harvested openings. The year 2016 was chosen as that was the earliest year when TFL site index was available. This threshold was then applied to recent site index values to assess merchantability. The following steps were performed for each TSA and TFL:
+Based on expert guidance, the determination of non-merchantable stands involved summarizing the site index from the 2016 Vegetation Resource Inventory (VRI) within all harvested openings from 2017 onward, across each TSA and TFL. Selecting the site index from the year preceding the harvest activity (e.g., 2016 for openings harvested in 2017 or later) was intended to reflect site productivity before recent harvesting, providing a more accurate representation of stand potential.
+
+The 2016 VRI dataset was selected as it is the earliest available year with TFL site index data, ensuring the largest possible sample size of harvested openings. A key objective of the THLB proxy approach is to model THLB within TFLs and other area-based tenures (e.g., community forests, woodlots). Therefore, ensuring the inclusion of TFL site index data was a priority. 
+
+Following expert advice, the 5th percentile of the site index distribution was chosen as the threshold for non-merchantability. VRI stands in 2023 falling below this threshold were classified as 'non-merchantable.' To recap, the following steps were performed for each TSA and TFL:
 
 1. Identify all openings where harvest year ≥ 2017.
   - Exclude openings with incomplete data (i.e., < 75% of site index values are NOT NULL).
   - Exclude TSAs/TFLs with fewer than 30 openings.
 
 2. Calculate the site index threshold (5th percentile) for the remaining openings.
-3. Exclude areas from the THLB if the 2023 VRI site index is below this threshold.
+3. Exclude stands from the THLB if the 2023 VRI site index is below site index threshold (i.e. 5th percentile) calculated for that TSA/TFL.
 
 **For TSAs/TFLs with fewer than 30 openings:**
 
@@ -1280,6 +1472,101 @@ To determine non-merchantability, a threshold was calculated based on the 2016 s
 
 **Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the THLB due to being non-merchantable.
 
+
+Note:
+
+A table containing the calculated 5th percentile site index is provided below.
+
+<details>
+  <summary> Expand to view the table of 5th percentile thresholds used in the analysis. </summary>
+  <br>
+
+```{r thlb_mer_thresh, eval= TRUE}
+query <- "	WITH a AS (
+	SELECT
+		CASE 
+			WHEN si_manlic.man_unit IS NOT null THEN si_manlic.man_unit
+			WHEN si_tfl.man_unit IS NOT NULL THEN si_tfl.man_unit
+			WHEN si_tsa.man_unit IS NOT NULL THEN si_tsa.man_unit
+		END AS man_unit
+		, CASE 
+			WHEN si_manlic.man_unit IS NOT null THEN si_manlic.tfl_integrated_p5
+			WHEN si_tfl.man_unit IS NOT NULL THEN si_tfl.tfl_integrated_p5
+			WHEN si_tsa.man_unit IS NOT NULL THEN si_tsa.tfl_integrated_p5
+		END AS p5
+	FROM
+	whse.veg_comp_lyr_r1_poly_internal_2023_gr_skey vri_key
+	LEFT JOIN (SELECT pgid, CASE WHEN site_index = 0 THEN NULL ELSE site_index END AS site_index FROM whse.veg_comp_lyr_r1_poly_internal_2023) vri USING (pgid)
+	LEFT JOIN whse.tsa_boundaries_gr_skey tsa_key on tsa_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN whse.tsa_boundaries tsa on tsa.pgid = tsa_key.pgid 
+	LEFT JOIN thlb_proxy.tsa_tfl_abt_5p_site_index_cc si_tsa ON si_tsa.forest_file_id = tsa.tsa_number
+	LEFT JOIN whse.fadm_tfl_all_sp_gr_skey tfl_key ON tfl_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN whse.fadm_tfl_all_sp tfl ON tfl.pgid = tfl_key.pgid 
+	LEFT JOIN thlb_proxy.tsa_tfl_abt_5p_site_index_cc si_tfl ON tfl.forest_file_id = si_tfl.forest_file_id
+	LEFT JOIN whse.ften_managed_licence_poly_svw_gr_skey manlic_key ON manlic_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN whse.ften_managed_licence_poly_svw manlic ON manlic.pgid = manlic_key.pgid 
+	LEFT JOIN thlb_proxy.tsa_tfl_abt_5p_site_index_cc si_manlic ON manlic.forest_file_id = si_manlic.forest_file_id
+	GROUP BY 
+	CASE 
+		WHEN si_manlic.man_unit IS NOT null THEN si_manlic.man_unit
+		WHEN si_tfl.man_unit IS NOT NULL THEN si_tfl.man_unit
+		WHEN si_tsa.man_unit IS NOT NULL THEN si_tsa.man_unit
+	END, 
+	CASE 
+		WHEN si_manlic.man_unit IS NOT null THEN si_manlic.tfl_integrated_p5
+		WHEN si_tfl.man_unit IS NOT NULL THEN si_tfl.tfl_integrated_p5
+		WHEN si_tsa.man_unit IS NOT NULL THEN si_tsa.tfl_integrated_p5
+	END
+)
+(
+		SELECT man_unit, 
+		case 
+			when man_unit = 'Fort Nelson TSA' THEN 'Fort St. John TSA Used'
+			when man_unit = 'Cassiar TSA' THEN 'Nass TSA Used'
+			when man_unit = 'TFL 41' THEN 'Kalum TSA Used'
+			when man_unit = 'TFL 43' THEN 'Sunshine Coast TSA Used'
+			when man_unit = 'TFL 58' THEN 'Haida Gwaii TSA Used'
+			when man_unit = 'TFL 54' THEN 'Arrowsmith TSA Used'
+			when man_unit = 'TFL 8' THEN 'Boundary TSA Used'
+			ELSE 'Same'
+		end as man_unit_threshold_used,
+		p5
+		FROM a WHERE man_unit IS NOT NULL AND man_unit ilike 'tfl%' ORDER BY split_part(man_unit, ' ', 2)::int)
+UNION ALL
+(
+		SELECT man_unit, 
+		case 
+			when man_unit = 'Fort Nelson TSA' THEN 'Fort St. John TSA Used'
+			when man_unit = 'Cassiar TSA' THEN 'Nass TSA Used'
+			when man_unit = 'TFL 41' THEN 'Kalum TSA Used'
+			when man_unit = 'TFL 43' THEN 'Sunshine Coast TSA Used'
+			when man_unit = 'TFL 58' THEN 'Haida Gwaii TSA Used'
+			when man_unit = 'TFL 54' THEN 'Arrowsmith TSA Used'
+			when man_unit = 'TFL 8' THEN 'Boundary TSA Used'
+			ELSE 'Same'
+		end as man_unit_threshold_used,
+		p5
+		FROM a WHERE man_unit IS NOT NULL AND man_unit ilike  '%tsa' ORDER BY split_part(man_unit, ' ', 1)::int)
+"
+
+mer_thresholds_df <- sql_to_df(query, conn_list)
+
+mer_thresholds_df <- mer_thresholds_df %>%
+  rename(
+    `Mgmt Unit` = `man_unit`,
+    `Mgmt Unit Threshold Used` = `man_unit_threshold_used`,
+    `Site Index 5th Percentile` = `p5`
+  )
+
+kable(mer_thresholds_df,
+      booktabs = T,
+      format.args = list(big.mark = ","),
+      caption =  "Non-Merchantable Site Index Thresholds Used" ) %>% 
+  kable_styling(bootstrap_options = "striped",
+                font_size = 10)
+```
+</details>
+<br>
 **Data sources:** BCGW layer: WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY
 
 BC Data Catalogue layer: 
@@ -1307,13 +1594,13 @@ src\analysis\3.merchantability-classification.R
 
 
 ```{r thlb_merch, eval= TRUE}
-lclass<-"Merchantability"
-n_step<-"n13_merchantability"
+lclass<-"Non-Merchantable"
+n_step<-"n13_non_merchantable"
 
 netdown_tab <- netdown_tab %>%
-  mutate(n13_merchantability = case_when(
+  mutate(n13_non_merchantable = case_when(
     (!is.na(cc_year)) ~ NA, ##adjust non-merchantable value to NA if cell was ever previously a cutblock (I.e., consolidated cutblock year exists)
-    is.na(cc_year) ~ n13_merchantability
+    is.na(cc_year) ~ n13_non_merchantable
     )
   )
 netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
@@ -1324,6 +1611,19 @@ pretty_table(netdown_summary)
 ```
 
 ### n14_non_commercial
+
+Stand types dominated (leading) by species with no or little harvest history are considered non-commercial and are excluded from the THLB during the netdown process. 
+Based on expert guidance, an analysis was performed summarizing the dominant species type from the 2016 Vegetation Resource Inventory (VRI) within all harvested openings from 2017 onward, across each TSA. Selecting the species from the year preceding the harvest activity (e.g., 2016 for openings harvested in 2017 or later) was intended to reflect species before recent harvesting, providing a more accurate representation of species harvested.
+
+The 2016 VRI dataset was selected as it is the earliest available year with TFL site index data, ensuring the largest possible sample size of harvested openings. A key objective of the THLB proxy approach is to model THLB within TFLs and other area-based tenures (e.g., community forests, woodlots). Therefore, ensuring the inclusion of TFL species data was a priority. 
+
+The analysis looked at, for each TSA, comparing the percent species harvested since 2017, relative to all area harvested since 2017 with percent existance on the landbase, relative to the area of the whole landbase (i.e. TSA area). A barchart was created illustrating the breakdown and can be found within the github repository here: 
+```
+data\analysis\non_commercial_species_TSA_bar_graphs_percent_occurrence_2024_12_12.pdf
+```
+
+
+reviewing the harvest history since 2017 of all species within each TSA. Non-commercial species are leading species  tree species An analysis was performed to 
 
 
 **Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the THLB due to being non-merchantable.
@@ -1490,7 +1790,7 @@ for (tsa in tsas) {
   netdown_tab_ret <- transform(netdown_tab_ret, ret_overlap = 1)
   
   # List of columns to check
-  columns <- c("n01_fmlb", "n02_ownership", "n03_ownership", "n04_nonfor", "p05_linear_features", "n06_parks", "n07_wha", "n08_misc", "p09_riparian", "n10_arch", "n11_harvest_restrictions", "p12_phys_inop", "n13_merchantability", "n14_non_commercial")
+  columns <- c("n01_fmlb", "n02_ownership", "n03_ownership", "n04_nonfor", "p05_linear_features", "n06_parks", "n07_wha", "n08_misc", "p09_riparian", "n10_arch", "n11_harvest_restrictions", "p12_phys_inop", "n13_non_merchantable", "n14_non_commercial")
 
   
   # Total number of rows in the dataset
@@ -1640,13 +1940,7 @@ kable(retention_adjustment_df,
                 font_size = 10)
 
 
-retention_adjustment_df <- retention_adjustment_df %>%
-  rename(
-    `tsa` = `TSA`,
-    `weighted_mean_ltr` = `Long Term Retention`,
-    `percent` = `Remaining Stand Level Retention (%)`,
-    `adjusted_retention` = `Adjustment Factor (%)`
-  )
+retention_adjustment_df <- sql_to_df(query, conn_list)
 ```
 
 #### Stand-level Retention Summary
@@ -1689,6 +1983,9 @@ pretty_table(netdown_summary)
 
 df_to_pg(Id(schema = 'thlb_proxy', table = 'prov_netdown_jan20'), netdown_tab[,c('gr_skey', 'fmlb', 'falb', 'aflb', 'thlb_net', 'p15_future_retention')], conn_list, overwrite=TRUE)
 
+```
+
+```{r aflb_to_pgs, eval= FALSE}
 query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS p15_future_retention double precision;"
 run_sql_r(query, conn_list)
 query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS fmlb double precision;"

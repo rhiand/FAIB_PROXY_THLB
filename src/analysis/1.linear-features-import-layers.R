@@ -114,3 +114,11 @@ src_path <- "S:\\FOR\\VIC\\HTS\\ANA\\workarea\\AR2024\\local_inputs\\BC_CE_Integ
 src_lyr <- "integratedRoadsBuffers"
 ogr_cmd <- glue("ogr2ogr -overwrite -a_srs EPSG:3005 -nln {src_lyr} -lco SCHEMA=public -nlt MULTIPOLYGON -lco OVERWRITE=YES --config PG_USE_COPY YES -f PostgreSQL PG:dbname=prov_data {src_path}")
 system(ogr_cmd)
+
+
+## 2024 dataset 
+## Jan 23, 2025 - HDE: couldn't import into PG - ran into geometry type errors.. 
+src_path <- "W:\\FOR\\VIC\\HTS\\ANA\\Workarea\\PROVINCIAL\\provincial.gdb"
+src_lyr <- "tsa_boundaries_2020"
+ogr_cmd <- glue("ogr2ogr -overwrite -a_srs EPSG:3005 -nln {src_lyr} -lco SCHEMA=whse -nlt MULTIPOLYGON -lco OVERWRITE=YES --config PG_USE_COPY YES -f PostgreSQL PG:dbname=prov_data {src_path}")
+system(ogr_cmd)

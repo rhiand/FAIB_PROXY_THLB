@@ -172,7 +172,7 @@ for (i in 1:nrow(tsas)){
 		 	ELSE NULL
 		 END AS n11_harvest_restrictions,
 		 coalesce(inop.inop_fact,0) as p12_phys_inop,
-		 CASE WHEN merch.merchantability = 0 THEN 'non_merchantable' ELSE NULL END as n13_merchantability,
+		 CASE WHEN merch.merchantability = 0 THEN 'non_merchantable' ELSE NULL END as n13_non_merchantable,
 		 non_com.non_commercial as n14_non_commercial
 
 	FROM

@@ -1,4 +1,6 @@
 library(dadmtools)
+library(cowplot)
+library(tidyverse)
 source('src/utils/functions.R')
 
 conn_list <- dadmtools::get_pg_conn_list()
@@ -7,6 +9,8 @@ dst_schema <- "thlb_proxy"
 query <- "DROP TABLE IF EXISTS thlb_proxy.non_commercial_tsa_species_1_cc_ha;"
 run_sql_r(query, conn_list)
 
+## create a table of all species_cd_1 within recently harvested openings since 2017 and where fmlb exists (i.e. is forested)
+## the VRI data is a combination of two tables: 2016 VRI and 2016 TFL integrated VRI
 query <- "CREATE TABLE thlb_proxy.non_commercial_tsa_species_1_cc_ha AS
 SELECT
 tsa_rank1
@@ -27,8 +31,6 @@ LEFT JOIN thlb_proxy.tfl_integrated2016_gr_skey vritfl_key ON vritfl_key.gr_skey
 LEFT JOIN thlb_proxy.tfl_integrated2016 vritfl ON vritfl_key.pgid = vritfl.pgid
 LEFT JOIN whse.man_unit_gr_skey man_unit on man_unit.gr_skey = bc.gr_skey
 LEFT JOIN thlb_proxy.seral_2023_tap_method fmlb on fmlb.gr_skey = bc.gr_skey
--- LEFT JOIN whse.north_south_coast_gr_skey area_key on area_key.gr_skey = bc.gr_skey
--- LEFT JOIN whse.north_south_coast area on area.fid = area_key.fid
 WHERE
 	fmlb.fmlb_adj = 1
 GROUP BY
@@ -42,7 +44,9 @@ run_sql_r(query, conn_list)
 query <- "DROP TABLE IF EXISTS thlb_proxy.non_commercial_lu_table;"
 run_sql_r(query, conn_list)
 
+## 
 query <- "CREATE TABLE thlb_proxy.non_commercial_lu_table AS
+-- create groupings of species from the data dictionary of all species created in previous script
 WITH vri_species_cd_datadict AS (
 	SELECT
 		CASE 
@@ -67,11 +71,12 @@ WITH vri_species_cd_datadict AS (
 	FROM
 		thlb_proxy.vri_species_cd_datadict			   
 ), species_grouping AS (
+-- join groupings of species with table of all species_cd_1 and all species within recently harvested openings since 2017 - group on TSA
 SELECT 
 	tsa_rank1,
 	species_grouping,
-	sum(species_cd_1_ha) as species_ha,
-	sum(harvested_ha) as harvested_ha
+	sum(species_cd_1_ha) as species_ha, -- sum of all species
+	sum(harvested_ha) as harvested_ha -- sum of all species in harvested openings
 FROM
 thlb_proxy.non_commercial_tsa_species_1_cc_ha tbl
 JOIN vri_species_cd_datadict dict on tbl.species_cd_1 = dict.species_cd
@@ -80,8 +85,10 @@ GROUP BY
 	species_grouping
 ), species_breakdown as (
 SELECT
-	CASE WHEN tsa_rank1 IN ('Arrowsmith TSA','Fraser TSA','GBR North TSA','GBR South TSA','Haida Gwaii TSA','North Island TSA','Soo TSA','Sunshine Coast TSA', 'Pacific TSA', 'Kalum TSA') THEN 'coast'
-	ELSE 'interior'
+	CASE 
+		-- manually classify coastal TSA's
+		WHEN tsa_rank1 IN ('Arrowsmith TSA','Fraser TSA','GBR North TSA','GBR South TSA','Haida Gwaii TSA','North Island TSA','Soo TSA','Sunshine Coast TSA', 'Pacific TSA', 'Kalum TSA') THEN 'coast'
+		ELSE 'interior'
 	END AS area,
 	tsa_rank1 as tsa,
 	species_grouping,
@@ -106,7 +113,10 @@ ORDER BY
 SELECT
 	*,
 	CASE
+		-- when the following is the dominant species - assign non-commercial label
 		WHEN species_grouping in ('black spruce', 'other', 'whitebark pine') THEN species_grouping
+		-- when the following species are the dominant species AND EITHER 0 hectares were harvested since 2017 0 OR % that species was harvested within TSA was less than half of its existance in the TSA
+		-- ie. if 1.9% of trembling aspen was harvested, relative to all harvest since 2017, and trembling aspen occurs 6.6% in the TSA, AKA 1.9% < (6.6/2) - it is identified as a non-commercial species in that TSA
 		WHEN species_grouping in ('decid', 'trembling aspen', 'alder') THEN 
 			CASE
 				WHEN pct_occurrence_in_harvested_fmlb < (pct_occurrence_in_landbase_fmlb/2) OR harvested_ha = 0 THEN species_grouping || ' species, < 50% occurrence harvested'
@@ -118,9 +128,11 @@ FROM
 	species_breakdown;"
 run_sql_r(query, conn_list)
 
+query <- "SELECT * FROM thlb_proxy.non_commercial_lu_table"
+data <- sql_to_df(query, conn_list)
 
 ## exploration of non-commercial species
-output_pdf <- "final/charts/species_TSA_BarGraphs_percent_occurrence_for_non_commercial_exploration_2024_12_12.pdf"
+output_pdf <- "data/analysis/non_commercial_species_TSA_bar_graphs_percent_occurrence_2024_12_12.pdf"
 pdf(output_pdf, width = 10, height = 8)
 
 # Unique TSAs

@@ -6,6 +6,7 @@ conn_list <- dadmtools::get_pg_conn_list()
 query <- "DROP TABLE IF EXISTS thlb_proxy.vri_species_cd_datadict;"
 run_sql_r(query, conn_list)
 
+## create a table in postgres of all species and species full_name in the VRI species_cd_1 field
 query <- 'CREATE TABLE thlb_proxy.vri_species_cd_datadict (
 	species_cd varchar(10),
 	species_full_name text
@@ -72,7 +73,7 @@ LEFT JOIN thlb_proxy.vri_species_cd_datadict known_species USING (species_cd)
 WHERE known_species.species_cd IS NULL AND new_species.species_cd is not null"
 run_sql_r(query, conn_list)
 
-
+## update species full name manually 
 query <- "UPDATE thlb_proxy.vri_species_cd_datadict SET species_full_name = 'Larch' WHERE species_cd = 'L';"
 run_sql_r(query, conn_list)
 query <- "UPDATE thlb_proxy.vri_species_cd_datadict SET species_full_name = 'True Fir' WHERE species_cd = 'B';"
@@ -142,7 +143,7 @@ run_sql_r(query, conn_list)
 query <- "UPDATE thlb_proxy.vri_species_cd_datadict SET species_full_name = 'Unknown hardwood' WHERE species_cd = 'XH';"
 run_sql_r(query, conn_list)
 
-### add coniferous/deciduous/unknow
+### add coniferous/deciduous/unknown types
 query <- "alter table thlb_proxy.vri_species_cd_datadict add column type text;"
 run_sql_r(query, conn_list)
 query <- "update thlb_proxy.vri_species_cd_datadict set type = 'Deciduous' where species_full_name = 'Alaska Paper Birch';"
