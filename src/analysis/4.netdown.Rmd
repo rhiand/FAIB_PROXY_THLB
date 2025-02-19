@@ -20,7 +20,7 @@ This report describes the data and methodology used to classify the Provincial T
 
 ### Document setup
 
-```{r r-version}
+```{r r-version, eval=TRUE}
 r_version <- R.version.string
 ```
 
@@ -63,20 +63,20 @@ The netdown process is a progressive exclusion algorithm where the BC land base 
 ![](C:/projects/THLB_Proxy/images/land_classification_diagram.png){width="656"}
 
 
-To delineate the four land base categories, several deductions occur, each of which is described in detail in this document. The FMLB, FALB, AFLB and THLB variables are updated with each landclass area deduction, also known as netdown inclusion factor. Initially, the FMLB, FALB, AFLB and THLB all have a value of one. The values are updated accordingly with each netdown inclusion factor. 
+To delineate the four land base categories, several deductions occur, each of which is described in detail in this document. The FMLB, FALB, AFLB and THLB variables are updated with each landclass area deduction, also known as netdown inclusion factors. Initially, the FMLB, FALB, AFLB and THLB all have a value of one. The values are updated accordingly with each netdown inclusion factor. 
 
 The area deductions are then presented in a netdown summary table - the table summarizes area information for each netdown inclusion factor and land base:
 
 - The **total** area is the gross area for the landclass area deduction OR land base,
-- The **percent** is the percent of total landbase,
-- The **net_excluded** value is the area that is excluded from the final THLB - the areas are excluded in the order they appear in the netdown summary table and account for areas excluded in previous deductions.
+- The **percent** is the percent of total netdown factor or landbase relative to the provincial landbase (first row Total),
+- The **net_excluded** value is the net area that is excluded from the final FMLB, FALB, AFLB and/or THLB (depending on which inclusion factor) - the areas are excluded in the order they appear in the netdown summary table and account for areas excluded in previous deductions.
 - The **running total** value is the combined total of excluded area for the landclass and each previous landclass identified in the table,
-- The **netdown** is the remaining area after excluded area is removed. The final value (bottom row) is the THLB.
+- The **netdown** is the remaining area after the net excluded area is removed. The final value (bottom row) is the THLB.
 
 
 ### Categorical vs. numerical area deduction variables
 
-**Categorical** variables are nominal variables that describe the type of area being excluded - there is no intrinsic ordering or ranking within each categorical netdown variable. For example, the ownership description variable classifies each hectare by the excluded ownership type (e.g., private land, federal land, etc.). In the netdown dataframe, categorical variables are prefixed with "n" followed by the order in which they occur in the netdown process (e.g., n01_fmlb occurs first)
+**Categorical** variables are nominal variables that describe the type of area being excluded - there is no intrinsic ordering or ranking within each categorical netdown variable. For example, the ownership description variable classifies each hectare by the excluded ownership type (e.g., private land, federal land, etc.). In the netdown dataframe, categorical variables are prefixed with "n" followed by the order in which they occur in the netdown process (e.g., n01_fmlb occurs first).
 
 **Numerical** variables capture finer resolution (i.e. less than 100-meter resolution) area deductions and contain numeric values that define the proportion of a given hectare that will be excluded from the AFLB and THLB (e.g., 10% of a 1-hectare grid cell may be occupied by road). Numeric variable names are prefixed with "p" followed by the order in which they occur (e.g., p05_linear_features occurs 5th in the netdown process).
 
@@ -135,7 +135,7 @@ query <- "SELECT
 	p.n13_non_merchantable,
 	p.n14_non_commercial
 FROM thlb_proxy.prov_netdown p
-WHERE man_unit IN ('Robson Valley TSA', 'Fort St. John TSA', 'Fort Nelson TSA')
+--WHERE man_unit IN ('Robson Valley TSA', 'Fort St. John TSA', 'Fort Nelson TSA')
 "
 netdown_tab <- sql_to_df(query, conn_list)
 netdown_summary <- setup_tracking_variable(netdown_tab)
@@ -155,7 +155,7 @@ The FMLB is primarily derived from the Vegetation Resources Inventory (VRI) attr
 
 The resulting FMLB provides a standardized spatial representation of forested lands available for management, serving as a foundation for further analysis and decision-making related to old growth and broader forest management.
 
-The `for_mgmt_land_base_ind` attribute is a text field indicating whether an area is classified as forested or non-forested. It is populated based on the following logic:
+Since the field `for_mgmt_land_base_ind` plays a key role in the definition of the FMLB, the field definition and the SQL used to populate this field is provided for transparency. The `for_mgmt_land_base_ind` attribute is a text field indicating whether an area is classified as forested or non-forested. It is populated based on the following logic:
 
 - 'N': non forested 
 - 'Y': forested 
@@ -671,7 +671,7 @@ src\analysis\3.riparian-classification.R
 __Application in Land Base Classification:__
 
 
-__Note: The riparian netdown inclusion factor also includes the area of the lakes, wetlands and rivers in addition to the buffered areas. As such, the total 'riparian area' will seem larger than expected. As lakes, rivers and wetlands were all netted out in a previous step, the net_excluded value will be accurate.__
+__Note: The riparian netdown inclusion factor also includes the area of the lakes, wetlands and rivers in addition to the buffered areas. As such, the total 'riparian area' will seem larger than expected. As lakes, rivers and wetlands were all netted out in a previous step, the net_excluded value will reflect only the buffered areas and not the area of the lakes, wetlands and rivers.__
 
 Similar to other proportional netdown factors, the THLB is multiplied by 1-proportion identified as riparian retention. For example, if thlb_net is 0.9 prior to excluding riparian retention and the riparian retention is 0.3, the updated thlb_net for that cell becomes 0.9*(1-.3) = 0.63.
 
@@ -1446,11 +1446,11 @@ pretty_table(netdown_summary)
 ### n13_non_merchantable
 Stands are considered not merchantable if their characteristics (e.g., low volumes, low value or high cost of harvest, primarily excessive haul distance) deviate significantly from the attributes that have historically defined preferred harvest practices.
 
-Based on expert guidance, the determination of non-merchantable stands involved summarizing the site index from the 2016 Vegetation Resource Inventory (VRI) within all harvested openings from 2017 onward, across each TSA and TFL. Selecting the site index from the year preceding the harvest activity (e.g., 2016 for openings harvested in 2017 or later) was intended to reflect site productivity before recent harvesting, providing a more accurate representation of stand potential.
+Based on expert guidance, the determination of non-merchantable stands for the provincial THLB proxy involved summarizing the site index from the 2016 Vegetation Resource Inventory (VRI) within all harvested openings from 2017 onward, across each TSA and TFL. Selecting the site index from the year preceding the harvest activity (e.g., 2016 for openings harvested in 2017 or later) was intended to reflect site productivity before recent harvesting, providing a more accurate representation of stand potential.
 
-The 2016 VRI dataset was selected as it is the earliest available year with TFL site index data, ensuring the largest possible sample size of harvested openings. A key objective of the THLB proxy approach is to model THLB within TFLs and other area-based tenures (e.g., community forests, woodlots). Therefore, ensuring the inclusion of TFL site index data was a priority. 
+The 2016 VRI dataset was selected as it is the earliest available year with TFL site index data, ensuring the largest possible sample size of harvested openings and TFL site index data. A key objective of the THLB proxy approach is to model THLB within TFLs and other area-based tenures (e.g., community forests, woodlots). Therefore, ensuring the inclusion of TFL site index data was a priority. 
 
-Following expert advice, the 5th percentile of the site index distribution was chosen as the threshold for non-merchantability. VRI stands in 2023 falling below this threshold were classified as 'non-merchantable.' To recap, the following steps were performed for each TSA and TFL:
+Following expert advice, the 5th percentile of the site index distribution was chosen as the threshold for non-merchantability. VRI stands from the 2023 dataset falling below this threshold were classified as 'non-merchantable.' To recap, the following steps were performed for each TSA and TFL:
 
 1. Identify all openings where harvest year ≥ 2017.
   - Exclude openings with incomplete data (i.e., < 75% of site index values are NOT NULL).
@@ -1459,15 +1459,15 @@ Following expert advice, the 5th percentile of the site index distribution was c
 2. Calculate the site index threshold (5th percentile) for the remaining openings.
 3. Exclude stands from the THLB if the 2023 VRI site index is below site index threshold (i.e. 5th percentile) calculated for that TSA/TFL.
 
-**For TSAs/TFLs with fewer than 30 openings:**
+As mentioned above, a threshold for a TSA or TFL was not calculated if there were less than 30 openings. The complete list of TSAs and TFLs were this occurred and the substitute region's threshold that was used, is provided below:
 
-+ Fort Nelson TSA used thresholds from the adjacent Fort St. John TSA.
-+ Cassiar TSA used thresholds from the adjacent Nass TSA.
-+ TFL 41 used thresholds from the overlapping Kalum TSA.
-+ TFL 43 used thresholds from the overlapping Sunshine Coast TSA.
-+ TFL 58 used thresholds from the overlapping Haida Gwaii TSA.
-+ TFL 54 used thresholds from the overlapping Arrowsmith TSA.
-+ TFL 8 used thresholds from the overlapping Boundary TSA.
++ Fort Nelson TSA used the threshold from the adjacent Fort St. John TSA.
++ Cassiar TSA used the threshold from the adjacent Nass TSA.
++ TFL 41 used the threshold from the overlapping Kalum TSA.
++ TFL 43 used the threshold from the overlapping Sunshine Coast TSA.
++ TFL 58 used the threshold from the overlapping Haida Gwaii TSA.
++ TFL 54 used the threshold from the overlapping Arrowsmith TSA.
++ TFL 8 used the threshold from the overlapping Boundary TSA.
 
 
 **Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the THLB due to being non-merchantable.
@@ -1521,13 +1521,13 @@ query <- "	WITH a AS (
 (
 		SELECT man_unit, 
 		case 
-			when man_unit = 'Fort Nelson TSA' THEN 'Fort St. John TSA Used'
-			when man_unit = 'Cassiar TSA' THEN 'Nass TSA Used'
-			when man_unit = 'TFL 41' THEN 'Kalum TSA Used'
-			when man_unit = 'TFL 43' THEN 'Sunshine Coast TSA Used'
-			when man_unit = 'TFL 58' THEN 'Haida Gwaii TSA Used'
-			when man_unit = 'TFL 54' THEN 'Arrowsmith TSA Used'
-			when man_unit = 'TFL 8' THEN 'Boundary TSA Used'
+			when man_unit = '8 - Fort Nelson TSA' THEN '40 - Fort St. John TSA Used'
+			when man_unit = '4 - Cassiar TSA' THEN '43 - Nass TSA Used'
+			when man_unit = 'TFL 41' THEN '10 - Kalum TSA Used'
+			when man_unit = 'TFL 43' THEN '39 - Sunshine Coast TSA Used'
+			when man_unit = 'TFL 58' THEN '25 - Haida Gwaii TSA Used'
+			when man_unit = 'TFL 54' THEN '38 - Arrowsmith TSA Used'
+			when man_unit = 'TFL 8' THEN '2 - Boundary TSA Used'
 			ELSE 'Same'
 		end as man_unit_threshold_used,
 		p5
@@ -1536,13 +1536,13 @@ UNION ALL
 (
 		SELECT man_unit, 
 		case 
-			when man_unit = 'Fort Nelson TSA' THEN 'Fort St. John TSA Used'
-			when man_unit = 'Cassiar TSA' THEN 'Nass TSA Used'
-			when man_unit = 'TFL 41' THEN 'Kalum TSA Used'
-			when man_unit = 'TFL 43' THEN 'Sunshine Coast TSA Used'
-			when man_unit = 'TFL 58' THEN 'Haida Gwaii TSA Used'
-			when man_unit = 'TFL 54' THEN 'Arrowsmith TSA Used'
-			when man_unit = 'TFL 8' THEN 'Boundary TSA Used'
+			when man_unit = '8 - Fort Nelson TSA' THEN '40 - Fort St. John TSA Used'
+			when man_unit = '4 - Cassiar TSA' THEN '43 - Nass TSA Used'
+			when man_unit = 'TFL 41' THEN '10 - Kalum TSA Used'
+			when man_unit = 'TFL 43' THEN '39 - Sunshine Coast TSA Used'
+			when man_unit = 'TFL 58' THEN '25 - Haida Gwaii TSA Used'
+			when man_unit = 'TFL 54' THEN '38 - Arrowsmith TSA Used'
+			when man_unit = 'TFL 8' THEN '2 - Boundary TSA Used'
 			ELSE 'Same'
 		end as man_unit_threshold_used,
 		p5
@@ -1615,15 +1615,37 @@ pretty_table(netdown_summary)
 Stand types dominated (leading) by species with no or little harvest history are considered non-commercial and are excluded from the THLB during the netdown process. 
 Based on expert guidance, an analysis was performed summarizing the dominant species type from the 2016 Vegetation Resource Inventory (VRI) within all harvested openings from 2017 onward, across each TSA. Selecting the species from the year preceding the harvest activity (e.g., 2016 for openings harvested in 2017 or later) was intended to reflect species before recent harvesting, providing a more accurate representation of species harvested.
 
-The 2016 VRI dataset was selected as it is the earliest available year with TFL site index data, ensuring the largest possible sample size of harvested openings. A key objective of the THLB proxy approach is to model THLB within TFLs and other area-based tenures (e.g., community forests, woodlots). Therefore, ensuring the inclusion of TFL species data was a priority. 
+The 2016 VRI dataset was selected as it is the earliest available year with TFL species data, ensuring the largest possible sample size of harvested openings. A key objective of the THLB proxy approach is to model THLB within TFLs and other area-based tenures (e.g., community forests, woodlots). Therefore, ensuring the inclusion of TFL species data was a priority. 
 
-The analysis looked at, for each TSA, comparing the percent species harvested since 2017, relative to all area harvested since 2017 with percent existance on the landbase, relative to the area of the whole landbase (i.e. TSA area). A barchart was created illustrating the breakdown and can be found within the github repository here: 
+The analysis examined, for each TSA, the proportion of each species harvested since 2017, relative to the total area harvested since 2017, compared to the proportion of that species' occurrence across the total TSA forested landbase during the same time period. A bar chart illustrating this breakdown is available in the GitHub repository at the following location:
 ```
 data\analysis\non_commercial_species_TSA_bar_graphs_percent_occurrence_2024_12_12.pdf
 ```
 
+The bar charts were reviewed and combined with expert advice from FAIB staff, two rules were developed to classify non-merchantable stands. The rules are listed below. Though the thresholds were developed using VRI 2016 data, they were applied to the most recent VRI dataset available, which, at the time of analysis was the 2023 VRI dataset.
 
-reviewing the harvest history since 2017 of all species within each TSA. Non-commercial species are leading species  tree species An analysis was performed to 
+1. Stands with the following dominant species were classified as non-commercial:
+  - Black Spruce
+    - Species code: SB
+  - Whitebark Pine
+    - Species code: PA
+  - Other Species
+    - Species codes: PICEABI, Z, PR, JR, PINUSYL, X, XC, T
+  
+2. Stands with identified dominant species were classified as non-commercial if one of the following conditions was met:
+ + No harvested hectares were recorded since 2017; or
+ + The proportion of the species harvested since 2017, relative to the total harvested area since 2017, was less than 50% of the proportion of that species' occurrence across the total TSA landbase during the same period.
+
+Example: If trembling aspen accounted for 1.9% of the harvested area since 2017, but trembling aspen comprised 6.6% of the TSA landbase, the species would be classified as non-commercial because 1.9% is less than half of 6.6% (i.e., 3.3%).
+
+The above rules were applied to stands with the following dominant species:
+
+  - Deciduous Species
+    - Species codes: EA, RA, ACB, MB, E, VB, ACT, QG, DG, MN, ZH, EP, AC, AX, WS, ES, XH, W
+  - Trembling Aspen
+    - Species code: AT
+  - Alder
+    - Species codes: D, DR
 
 
 **Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the THLB due to being non-merchantable.
@@ -1664,9 +1686,9 @@ pretty_table(netdown_summary)
 
 Stand level retention refers to unharvested areas associated with individual harvested openings. An analysis of retention practices derived from RESULTS spatial data collected from 2012 to 2024 were utilized to estimate total stand level retention for the province.
 
-The retention estimate includes areas occupied by biodiveristy, riparian retention, wildlife tree retention (grouped retention), as well as retention for the protection of forest values including archaeological features, site specific habitat features, and/or blue listed species or ecosystems. Stand level retention in the netdown process is modelled as an aspatial adjustment factor and applied to each hectare in the THLB, based on the geometric mean stand level retention for the TSA.
+The retention estimate includes areas occupied by biodiversity, riparian retention, wildlife tree retention (grouped retention), as well as retention for the protection of forest values including archaeological features, site specific habitat features, and/or blue listed species or ecosystems. Stand level retention in the netdown process is modelled as an aspatial adjustment factor and applied to each hectare in the THLB, based on the adjusted area weighted mean stand level retention for the TSA.
 
-This approach recognises that although retention is not dispersed evenly across the land base the spatial variation in retention levels can be generalized across the land base without undue risk to yield estimation and forms a reasonable approximation for modelling timber supply in a TSA.
+This approach recognizes that although retention is not dispersed evenly across the land base the spatial variation in retention levels can be generalized across the land base without undue risk to yield estimation and forms a reasonable approximation for modelling timber supply in a TSA.
 
 To calculate long-term retention, the percentage of coverage by RESULTS reserves relative to the total opening area was determined. Reserves with the Reserve Objective Code "TIM" (Timber Objective) were excluded from this calculation. The "TIM" objective does not represent long-term retention.
 
