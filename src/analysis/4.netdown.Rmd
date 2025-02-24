@@ -16,7 +16,7 @@ output:
 
 ## Background
 
-This report describes the data and methodology used to classify the Provincial THLB Proxy land base into four nested categories: Forest Management Land Base (FMLB), Forest Assessment Land Base (FALB), Analysis Forested Land Base (AFLB) and Timber Harvesting Land Base (THLB).
+This report describes the data and methodology used to classify the Provincial Proxy THLB into four nested categories: Forest Management Land Base (FMLB), Forest Assessment Land Base (FALB), Proxy Analysis Forested Land Base (pAFLB) and Proxy Timber Harvesting Land Base (pTHLB).
 
 ### Document setup
 
@@ -57,28 +57,30 @@ knitr::opts_chunk$set(fig.width = 8.5, fig.height = 7, collapse = TRUE)
 
 ### Netdown process overview
 
-The netdown process is a progressive exclusion algorithm where the BC land base is classified into four nested categories: FMLB (Forest Management Land Base), FALB (Forest Assessment Land Base), AFLB (Analysis Forest Land Base), and THLB (Timber Harvesting Land Base):
+The netdown process is a progressive exclusion algorithm where the BC land base is classified into four nested categories: FMLB (Forest Management Land Base), FALB (Forest Assessment Land Base), pAFLB (Proxy Analysis Forest Land Base), and pTHLB (Proxy Timber Harvesting Land Base):
 
 
 ![](C:/projects/THLB_Proxy/images/land_classification_diagram.png){width="656"}
 
 
-To delineate the four land base categories, several deductions occur, each of which is described in detail in this document. The FMLB, FALB, AFLB and THLB variables are updated with each landclass area deduction, also known as netdown inclusion factors. Initially, the FMLB, FALB, AFLB and THLB all have a value of one. The values are updated accordingly with each netdown inclusion factor. 
+To delineate the four land base categories, several deductions occur, each of which is described in detail in this document. The FMLB, FALB, pAFLB and pTHLB variables are updated with each landclass area deduction, also known as netdown inclusion factors. Initially, the FMLB, FALB, pAFLB and pTHLB all have a value of one. The values are updated accordingly with each netdown inclusion factor. 
 
 The area deductions are then presented in a netdown summary table - the table summarizes area information for each netdown inclusion factor and land base:
 
 - The **total** area is the gross area for the landclass area deduction OR land base,
-- The **percent** is the percent of total netdown factor or landbase relative to the provincial landbase (first row Total),
-- The **net_excluded** value is the net area that is excluded from the final FMLB, FALB, AFLB and/or THLB (depending on which inclusion factor) - the areas are excluded in the order they appear in the netdown summary table and account for areas excluded in previous deductions.
+- The **percent** is the percent of total netdown factor or land base relative to the provincial land base (first row Total),
+- The **net_excluded** value is the net area that is excluded from the final FMLB, FALB, pAFLB and/or pTHLB (depending on which inclusion factor) - the areas are excluded in the order they appear in the netdown summary table and account for areas excluded in previous deductions.
 - The **running total** value is the combined total of excluded area for the landclass and each previous landclass identified in the table,
-- The **netdown** is the remaining area after the net excluded area is removed. The final value (bottom row) is the THLB.
+- The **netdown** is the remaining area after the net excluded area is removed. The final value (bottom row) is the pTHLB.
 
+For example:
+![](C:/projects/THLB_Proxy/images/netdown_explanation.png){width="656"}
 
 ### Categorical vs. numerical area deduction variables
 
 **Categorical** variables are nominal variables that describe the type of area being excluded - there is no intrinsic ordering or ranking within each categorical netdown variable. For example, the ownership description variable classifies each hectare by the excluded ownership type (e.g., private land, federal land, etc.). In the netdown dataframe, categorical variables are prefixed with "n" followed by the order in which they occur in the netdown process (e.g., n01_fmlb occurs first).
 
-**Numerical** variables capture finer resolution (i.e. less than 100-meter resolution) area deductions and contain numeric values that define the proportion of a given hectare that will be excluded from the AFLB and THLB (e.g., 10% of a 1-hectare grid cell may be occupied by road). Numeric variable names are prefixed with "p" followed by the order in which they occur (e.g., p05_linear_features occurs 5th in the netdown process).
+**Numerical** variables capture finer resolution (i.e. less than 100-meter resolution) area deductions and contain numeric values that define the proportion of a given hectare that will be excluded from the pAFLB and pTHLB (e.g., 10% of a 1-hectare grid cell may be occupied by road). Numeric variable names are prefixed with "p" followed by the order in which they occur (e.g., p05_linear_features occurs 5th in the netdown process). Note, the "p" refers to proxy within these land base variables: pAFLB and pTHLB
 
 
 ## Data assembly
@@ -87,7 +89,7 @@ Prior to completing the netdown process that creates the netdown dataframe, pre-
 
 ### Netdown dataframe
 
-In a pre-processing step, the table: `thlb_proxy.prov_netdown` was created which includes all landclass related fields (E.g. bclcs_level_1) required to calculate the landclass area deduction variables (e.g. n01_fmlb) as well as the calculated netdown inclusion factors themselves. This was done in a pre-processing step as memory limitations were encountered when calculating landclass area deduction variables within this R netdown script. As the netdown process continues, these pre-calculated netdown inclusion factors are used update the FMLB, FALB, AFLB, and THLB values as needed. The following script is used to create the table: `thlb_proxy.prov_netdown`:
+In a pre-processing step, the table: `thlb_proxy.prov_netdown` was created which includes all landclass related fields (E.g. bclcs_level_1) required to calculate the landclass area deduction variables (e.g. n01_fmlb) as well as the calculated netdown inclusion factors themselves. This was done in a pre-processing step as memory limitations were encountered when calculating landclass area deduction variables within this R netdown script. As the netdown process continues, these pre-calculated netdown inclusion factors are used update the FMLB, FALB, pAFLB, and pTHLB values as needed. The following script is used to create the table: `thlb_proxy.prov_netdown`:
 
 ```
 src\analysis\3.netdown-create-table.R
@@ -149,7 +151,7 @@ pretty_table(netdown_summary)
 
 ### n01_fmlb
 
-The FMLB (Forest Management Land Base) represents the forested area within the province that is considered available for potential forest management activities. It was developed by FAIB and provided to the Old Growth Technical Advisory Panel (TAP) in 2021 to support their work in identifying and assessing old growth forests.
+The FMLB (Forest Management Land Base) represents the forested area within the province that is considered available for potential forest management activities. It was developed by the Ministry of Forests Forest Analysis and Inventory Branch (FAIB) and provided to the Old Growth Technical Advisory Panel (TAP) in 2021 to support their work in identifying and assessing old growth forests.
 
 The FMLB is primarily derived from the Vegetation Resources Inventory (VRI) attribute `for_mgmt_land_base_ind`, which indicates areas considered part of the forest management land base. However, FAIB refined this definition through review with satellite imagery, consultation with inventory specialists and guidance from the Biodiversity Guidebook to better align with the practical interpretation of forest cover, particularly in the context of assessing old growth and biodiversity.
 
@@ -304,7 +306,7 @@ src\analysis\2.fmlb-processing.R
 ```
 
 #### Non-Forest Summary
-The FMLB, FALB, AFLB and THLB variables are updated in the netdown dataframe and the netdown summary is updated to show the areas excluded from the province.
+The FMLB, FALB, pAFLB and pTHLB variables are updated in the netdown dataframe and the netdown summary is updated to show the areas excluded from the province.
 
 ```{r fmlb, eval= TRUE}
 netdown_tab <- netdown_tab %>%
@@ -327,10 +329,10 @@ pretty_table(netdown_summary)
 ``` 
 
 
-### FMLB Landbase Summary
+### FMLB Land base Summary
 
 ```{r fmlb_landbase, eval= TRUE}
-lclass<-"LANDBASE SUMMARY - FMLB"
+lclass<-"LAND BASE SUMMARY - FMLB"
 
 netdown_summary <- landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=fmlb)
 
@@ -340,7 +342,7 @@ pretty_table(netdown_summary)
 
 ## Delineating the FALB
 
-The FALB (Forest Assessment Land Base) is the portion of the FMLB that is on either provincial or federal publicly managed lands.  It specifically excludes private, municipal, and first nation reserve lands.  It was originally conceived during the work conducted, in consultation with ministry staff, by the Old Growth Technical Advisory Panel (TAP) in 2021. The following area deductions are removed from the FMLB to classify the FALB.
+The FALB (Forest Assessment Land Base) is the portion of the FMLB that is on either provincial publicly managed lands or federal publicly managed lands.  It specifically excludes private, municipal, and first nation reserve lands.  It was originally conceived during the work conducted by the Old Growth Technical Advisory Panel (TAP) in 2021 and in consultation with ministry staff. The following area deductions are removed from the FMLB to classify the FALB.
 
 ### n02_ownership
 
@@ -362,7 +364,7 @@ src\analysis\dadm-import-layers.R
 ```
 
 #### Ownership Summary
-The FALB, AFLB and THLB variables are updated in the netdown dataframe and the netdown summary is updated to show the areas excluded from the province.
+The FALB, pAFLB and pTHLB variables are updated in the netdown dataframe and the netdown summary is updated to show the areas excluded from the province.
 
 ```{r falb, eval= TRUE}
 
@@ -376,20 +378,20 @@ netdown <- get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
 ```
 
-### FALB Landbase Summary
+### FALB Land base Summary
 
 ```{r falb_landbase, eval= TRUE}
 
-lclass<-"LANDBASE SUMMARY - FALB"
+lclass<-"LAND BASE SUMMARY - FALB"
 
 netdown_summary <- landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=falb)
 
 pretty_table(netdown_summary)
 ```
 
-## Delineating the AFLB
+## Delineating the pAFLB
 
-The next phase of the netdown process delineates the AFLB from the FALB. The following area deductions are removed from the FALB to classify the AFLB.
+The next phase of the netdown process delineates the pAFLB from the FALB. The following area deductions are removed from the FALB to classify the pAFLB.
 
 ### n03_ownership
 
@@ -411,11 +413,11 @@ src\analysis\dadm-import-layers.R
 ```
 
 #### Ownership Summary
-The AFLB and THLB variables are updated in the netdown dataframe and the netdown summary is updated to show the areas excluded from the province.
+The pAFLB and pTHLB variables are updated in the netdown dataframe and the netdown summary is updated to show the areas excluded from the province.
 
 ```{r aflb_own, eval= TRUE}
 
-lclass<-"Ownership_Areas_Excluded_from_AFLB"
+lclass<-"Ownership_Areas_Excluded_from_pAFLB"
 n_step<-"n03_ownership"
 
 netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
@@ -429,7 +431,7 @@ pretty_table(netdown_summary)
 
 ### n04_nonfor
 
-The FALB land base is further excluded to create a 'not forested or non productive forest'.  These land cover types are not expected to contribute to either timber supply or non-timber management objectives that are based on forested conditions. Attributes that identify non-vegetated and various classes of vegetated areas are classified based on the BC land classification system (BCLCS), the Freshwater Atlas and the Biogeoclimatic Ecosystem Classification (BEC). Areas within historic harvested openings are considered forested and contribute to the THLB except where noted below.
+The FALB land base is further excluded to create a 'not forested or non productive forest'.  These land cover types are not expected to contribute to either timber supply or non-timber management objectives that are based on forested conditions. Attributes that identify non-vegetated and various classes of vegetated areas are classified based on the BC land classification system (BCLCS), the Freshwater Atlas (FWA) and the Biogeoclimatic Ecosystem Classification (BEC). Areas within historic harvested openings are considered forested and contribute to the pTHLB except where noted below.
 
 Identifying non-forest/non-productive is done using a long 'case when' statement in a previous postgres table creation. In the netdown table each non-productive class is assigned it’s own descriptive label under the variable n04_nonfor.
 
@@ -472,7 +474,7 @@ src\analysis\dadm-import-layers.R
 ```
 
 #### Non-Forest and Non-Productive Summary
-The AFLB and THLB variables are updated in the netdown dataframe and the netdown summary is updated to show the areas excluded from the province.
+The pAFLB and pTHLB variables are updated in the netdown dataframe and the netdown summary is updated to show the areas excluded from the province.
 
 
 ```{r aflb_nonfor, eval= TRUE}
@@ -494,7 +496,7 @@ Productive forest land is permanently lost due to the development of roads, trai
 
 Existing estimates of the area affected by linear features are derived by applying standardized buffer widths to the identified features.
 
-The linear features table was created in July 2024 and is based on the 2021 CE Integrated Roads Dataset, incorporating the Analysis Ready Dataset (ARD) buffer standards. Additional linear features such as railways, transmission lines, pipelines, and rights-of-way are also included, with the following buffer widths applied:
+The linear features table was created in July 2024 and is based on the 2021 Cumulative Effects (CE) Integrated Roads Dataset, incorporating the FAIB Analysis Ready Dataset (ARD) buffer standards. Additional linear features such as railways, transmission lines, pipelines, and rights-of-way are also included, with the following buffer widths applied:
 
  - Railways: 15m
  - Transmission Lines: 25m
@@ -504,12 +506,12 @@ The linear features table was created in July 2024 and is based on the 2021 CE I
  
  __Application in Land Base Classification:__
  
-For linear features, the AFLB, and THLB are multiplied by one minus the proportion linear features:
+For linear features, the pAFLB, and pTHLB are multiplied by one minus the proportion linear features:
 
- - AFLB = AFLB * (1- proportion linear features),
- - THLB = THLB * (1- proportion linear features)
+ - pAFLB = pAFLB * (1- proportion linear features),
+ - pTHLB = pTHLB * (1- proportion linear features)
  
-In the netdown table, each record contains is assigned the proportion of the cell covered by linear features, represented by the variable p05_linear_features.
+In the netdown table, each record is assigned the proportion of the cell covered by linear features, represented by the variable p05_linear_features.
 
 **Data source:** BC cumulative effects framework 2021 integrated roads dataset, WHSE_TANTALIS.TA_CROWN_RIGHTS_OF_WAY_SVW, WHSE_MINERAL_TENURE.OG_PIPELINE_AREA_PERMIT_SP, WHSE_IMAGERY_AND_BASE_MAPS.DRP_OIL_GAS_PIPELINES_BC_SP, WHSE_BASEMAPPING.GBA_TRANSMISSION_LINES_SP, WHSE_BASEMAPPING.GBA_RAILWAY_TRACKS_SP
 
@@ -542,10 +544,10 @@ netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
 ```
 
-### AFLB Landbase Summary
+### pAFLB Land base Summary
 
 ```{r aflb_landbase, eval= TRUE}
-lclass<-"LANDBASE SUMMARY - AFLB"
+lclass<-"LAND BASE SUMMARY - pAFLB"
 
 netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=aflb)
 
@@ -553,12 +555,12 @@ pretty_table(netdown_summary)
 ```
 
 
-## Delineating the THLB
+## Delineating the pTHLB
 
-The next phase of the netdown process delineates the THLB from the AFLB. 
+The next phase of the netdown process delineates the pTHLB from the pAFLB. 
 
 ### n06_park
-BC has an extensive protected areas strategy that was developed to protect natural, cultural and recreational values. Protection is afforded under several Acts including the Ecological Reserves Act, Park Act, Protected Areas Act and Environment and Land Use Act. These types of protected areas within the province will be considered part of the AFLB and contribute to objectives for biodiversity and wildlife. However, these areas are not administered by the MOF for timber supply and thus are excluded from the THLB. Once again the ownership code is used to identify protected areas to be excluded during the netdown process.
+BC has an extensive protected areas strategy that was developed to protect natural, cultural and recreational values. Protection is afforded under several Acts including the Ecological Reserves Act, Park Act, Protected Areas Act and Environment and Land Use Act. These types of protected areas within the province will be considered part of the pAFLB and contribute to objectives for biodiversity and wildlife. However, these areas are not administered by the Ministry of Forests (MOF) for timber supply and thus are excluded from the pTHLB. Once again the ownership code is used to identify protected areas to be excluded during the netdown process.
 
 Below is a specific list of ownership classes excluded:
 
@@ -593,7 +595,7 @@ pretty_table(netdown_summary)
 
 
 ### n07_wha
-In British Columbia, wildlife habitat requirements are managed through several tools, including wildlife habitat areas (WHAs). WHAs are mapped areas that are necessary to meet the habitat requirements of an Identified Wildlife element. WHAs designate critical habitats in which activities are managed to limit their impact on the identified wildlife element for which the area was established. The purpose of WHAs is to conserve those habitats considered most limiting to a given Identified Wildlife element. The WHAs that prohibit timber harvesting are excluded from the THLB.
+In British Columbia, wildlife habitat requirements are managed through several tools, including wildlife habitat areas (WHAs). WHAs are mapped areas that are necessary to meet the habitat requirements of an Identified Wildlife element. WHAs designate critical habitats in which activities are managed to limit their impact on the identified wildlife element for which the area was established. The purpose of WHAs is to conserve those habitats considered most limiting to a given Identified Wildlife element. The WHAs that prohibit timber harvesting are excluded from the pTHLB.
 
 **Data sources:** BCGW file: WHSE_WILDLIFE_MANAGEMENT.WCP_WILDLIFE_HABITAT_AREA_POLY
 
@@ -673,7 +675,7 @@ __Application in Land Base Classification:__
 
 __Note: The riparian netdown inclusion factor also includes the area of the lakes, wetlands and rivers in addition to the buffered areas. As such, the total 'riparian area' will seem larger than expected. As lakes, rivers and wetlands were all netted out in a previous step, the net_excluded value will reflect only the buffered areas and not the area of the lakes, wetlands and rivers.__
 
-Similar to other proportional netdown factors, the THLB is multiplied by 1-proportion identified as riparian retention. For example, if thlb_net is 0.9 prior to excluding riparian retention and the riparian retention is 0.3, the updated thlb_net for that cell becomes 0.9*(1-.3) = 0.63.
+Similar to other proportional netdown factors, the pTHLB is multiplied by 1-proportion identified as riparian retention. For example, if pthlb_net is 0.9 prior to excluding riparian retention and the riparian retention is 0.3, the updated pthlb_net for that cell becomes 0.9*(1-.3) = 0.63.
 
 In the netdown table, each record is assigned the proportion of the cell considered riparian retention, represented by the variable p09_riparian.
 
@@ -751,7 +753,7 @@ Stream classification was divided by administrative areas, following advice from
 
 __North and South Admin Areas__
 
-Approach taken from 2024 Boundary TSA for North and South Admin Areas. 
+Approach taken from 2024 Boundary Timber Supply Area (TSA) for North and South Admin Areas. 
 Source: `file:///G:/!Workgrp/Analysts/!Project/TSA_Projects/active/KootenayLake_TSA13/TSR4/AnalysisReport/TSA13_TSR4_AnalysisReport/03-data-analysis.html#riparian-analysis`
 
 
@@ -1166,7 +1168,7 @@ pretty_table(netdown_summary)
 
 A cultural heritage resource is defined in the Forest Act as, “an object, site, or location of a traditional societal practice that is of historical, cultural or archaeological significance to the province, a community, or an aboriginal people”. Cultural heritage resources include archaeological sites structural features, heritage landscape features, and traditional use sites.
 
-The Heritage Conservation Act provides for the protection of British Columbia’s archaeological sites predating 1846. In accordance with the Act (Section 13(2)), archaeological sites may not be damaged, excavated or altered without a permit issued by the Minister or designate.The BC Provincial Heritage Register database is the basis for records on archaeological sites and provides a polygon layer. For this timber supply review, all identified buffered archaeological sites within the provincial application Remote Access to Archaeological Data (RAAD) are excluded from the timber harvesting land base.
+The Heritage Conservation Act provides for the protection of British Columbia’s archaeological sites predating 1846. In accordance with the Act (Section 13(2)), archaeological sites may not be damaged, excavated or altered without a permit issued by the Minister or designate.The BC Provincial Heritage Register database is the basis for records on archaeological sites and provides a polygon layer. For this timber supply review, all identified buffered archaeological sites within the provincial application Remote Access to Archaeological Data (RAAD) are excluded from the proxy timber harvesting land base.
 
 **Data source:** BCGW file (restricted) WHSE_ARCHAEOLOGY.RAAD_TFM_SITES_SVW
 Access date: Jan 7, 2025
@@ -1194,9 +1196,9 @@ pretty_table(netdown_summary)
 ### n11_harvest_restrictions
 The Generalized Forest Harvesting Restrictions dataset provides a spatial representation of various land designations that impose varying levels of restrictions on forest harvesting. These designations include parks, ecological reserves, conservancies, ungulate winter ranges, wildlife management areas, old growth management areas, and visual quality objective areas.
 
-The dataset assigns a ranking to forest harvesting restrictions, which determines the priority of spatial layers and attributes when overlaps occur. Each ranked dataset is classified into one of five harvest restriction categories; Prohibited, Protected, High Restricted, Moderate Restricted, and Low Restricted.
+The dataset assigns a ranking to forest harvesting restrictions, which determines the priority of spatial layers and attributes when overlaps occur. Each ranked dataset is classified into one of five harvest restriction categories; Protected, Prohibited, High Restricted, Moderate Restricted, and Low Restricted.
 
-For this analysis, areas classified as **Prohibited or Protected** are excluded from the Timber Harvesting Land Base (THLB), with one exception—Nonlegal Old Growth Management Areas (OGMAs), despite being classified as Prohibited, are not excluded since they do not carry legal harvesting restrictions.
+For this analysis, areas classified as **Protected or Prohibited** are excluded from the Proxy Timber Harvesting Land Base (pTHLB), with one exception—Nonlegal Old Growth Management Areas (OGMAs), despite being classified as Prohibited, are not excluded since they do not carry legal harvesting restrictions.
 
 
 **Data source:** BC Data Catalogue layer: https://catalogue.data.gov.bc.ca/dataset/generalized-forest-harvesting-restrictions
@@ -1224,7 +1226,8 @@ pretty_table(netdown_summary)
 Physically inoperable areas were identified based on an assessment of elevation, slope, and terrain stability mapping, with reference to harvesting practices observed over the past decade (2014–2024). This 10-year period was selected to reflect recent operational behavior.
 
 __Methodology__
-For each TSA and TFL:
+
+For each Timber Supply Area (TSA) and Tree Farm Licence (TFL):
 
  - Binary rasters with a 25-meter resolution were created to identify areas meeting the following criteria:
    - Slopes exceeding the 99th percentile within harvested openings (2014–2024).
@@ -1234,6 +1237,7 @@ For each TSA and TFL:
  - The combined data was then aggregated to a 1-hectare resolution, resulting in a proportional inoperable variable representing the fraction of each hectare classified as physically inoperable.
 
 __Minimum Sample Requirement__
+
  - A minimum of 30 harvested openings per TSA or TFL was required to establish the 99th percentile thresholds for slope and elevation.
  - If a unit had fewer than 30 harvested openings, the thresholds from the neighboring TSA with the greatest geographic overlap were applied.
    - Example: TFL 43 had fewer than 30 harvested openings; therefore, thresholds from the Sunshine Coast TSA were used.
@@ -1410,11 +1414,11 @@ src\analysis\3.physical-inoperability-classification.R
 
 __Application in Land Base Classification:__
 
-**Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the THLB due to being physically inoperable.
+**Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the pTHLB due to being physically inoperable.
 
 Similar to other proportion netdown factors, the THLB is multiplied by one minus the physically inoperable proportion:
 
- - THLB = THLB * (1- p12_phys_inop)
+ - pthlb_net = pthlb_net * (1- p12_phys_inop)
  
 In the netdown table, each record is assigned the proportion of the cell considered physically inoperable, represented by the variable p12_phys_inop.
 
@@ -1446,9 +1450,9 @@ pretty_table(netdown_summary)
 ### n13_non_merchantable
 Stands are considered not merchantable if their characteristics (e.g., low volumes, low value or high cost of harvest, primarily excessive haul distance) deviate significantly from the attributes that have historically defined preferred harvest practices.
 
-Based on expert guidance, the determination of non-merchantable stands for the provincial THLB proxy involved summarizing the site index from the 2016 Vegetation Resource Inventory (VRI) within all harvested openings from 2017 onward, across each TSA and TFL. Selecting the site index from the year preceding the harvest activity (e.g., 2016 for openings harvested in 2017 or later) was intended to reflect site productivity before recent harvesting, providing a more accurate representation of stand potential.
+Based on expert guidance, the determination of non-merchantable stands for the provincial proxy THLB involved summarizing the site index from the 2016 Vegetation Resource Inventory (VRI) within all harvested openings from 2017 onward, across each TSA and TFL. Selecting the site index from the year preceding the harvest activity (e.g., 2016 for openings harvested in 2017 or later) was intended to reflect site productivity before recent harvesting, providing a more accurate representation of stand potential.
 
-The 2016 VRI dataset was selected as it is the earliest available year with TFL site index data, ensuring the largest possible sample size of harvested openings and TFL site index data. A key objective of the THLB proxy approach is to model THLB within TFLs and other area-based tenures (e.g., community forests, woodlots). Therefore, ensuring the inclusion of TFL site index data was a priority. 
+The 2016 VRI dataset was selected as it is the earliest available year with TFL site index data, ensuring the largest possible sample size of harvested openings and TFL site index data. A key objective of the proxy THLB approach is to model THLB within TFLs and other area-based tenures (e.g., community forests, woodlots). Therefore, ensuring the inclusion of TFL site index data was a priority. 
 
 Following expert advice, the 5th percentile of the site index distribution was chosen as the threshold for non-merchantability. VRI stands from the 2023 dataset falling below this threshold were classified as 'non-merchantable.' To recap, the following steps were performed for each TSA and TFL:
 
@@ -1457,7 +1461,7 @@ Following expert advice, the 5th percentile of the site index distribution was c
   - Exclude TSAs/TFLs with fewer than 30 openings.
 
 2. Calculate the site index threshold (5th percentile) for the remaining openings.
-3. Exclude stands from the THLB if the 2023 VRI site index is below site index threshold (i.e. 5th percentile) calculated for that TSA/TFL.
+3. Exclude stands from the pTHLB if the 2023 VRI site index is below site index threshold (i.e. 5th percentile) calculated for that TSA/TFL.
 
 As mentioned above, a threshold for a TSA or TFL was not calculated if there were less than 30 openings. The complete list of TSAs and TFLs were this occurred and the substitute region's threshold that was used, is provided below:
 
@@ -1470,7 +1474,7 @@ As mentioned above, a threshold for a TSA or TFL was not calculated if there wer
 + TFL 8 used the threshold from the overlapping Boundary TSA.
 
 
-**Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the THLB due to being non-merchantable.
+**Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the pTHLB due to being non-merchantable.
 
 
 Note:
@@ -1612,12 +1616,12 @@ pretty_table(netdown_summary)
 
 ### n14_non_commercial
 
-Stand types dominated (leading) by species with no or little harvest history are considered non-commercial and are excluded from the THLB during the netdown process. 
+Stand types dominated (leading) by species with no or little harvest history are considered non-commercial and are excluded from the pTHLB during the netdown process. 
 Based on expert guidance, an analysis was performed summarizing the dominant species type from the 2016 Vegetation Resource Inventory (VRI) within all harvested openings from 2017 onward, across each TSA. Selecting the species from the year preceding the harvest activity (e.g., 2016 for openings harvested in 2017 or later) was intended to reflect species before recent harvesting, providing a more accurate representation of species harvested.
 
-The 2016 VRI dataset was selected as it is the earliest available year with TFL species data, ensuring the largest possible sample size of harvested openings. A key objective of the THLB proxy approach is to model THLB within TFLs and other area-based tenures (e.g., community forests, woodlots). Therefore, ensuring the inclusion of TFL species data was a priority. 
+The 2016 VRI dataset was selected as it is the earliest available year with TFL species data, ensuring the largest possible sample size of harvested openings. A key objective of the Provincial Proxy THLB approach is to model THLB within TFLs and other area-based tenures (e.g., community forests, woodlots). Therefore, ensuring the inclusion of TFL species data was a priority. 
 
-The analysis examined, for each TSA, the proportion of each species harvested since 2017, relative to the total area harvested since 2017, compared to the proportion of that species' occurrence across the total TSA forested landbase during the same time period. A bar chart illustrating this breakdown is available in the GitHub repository at the following location:
+The analysis examined, for each TSA, the proportion of each species harvested since 2017, relative to the total area harvested since 2017, compared to the proportion of that species' occurrence across the total TSA forested land base during the same time period. A bar chart illustrating this breakdown is available in the GitHub repository at the following location:
 ```
 data\analysis\non_commercial_species_TSA_bar_graphs_percent_occurrence_2024_12_12.pdf
 ```
@@ -1634,9 +1638,9 @@ The bar charts were reviewed and combined with expert advice from FAIB staff, tw
   
 2. Stands with identified dominant species were classified as non-commercial if one of the following conditions was met:
  + No harvested hectares were recorded since 2017; or
- + The proportion of the species harvested since 2017, relative to the total harvested area since 2017, was less than 50% of the proportion of that species' occurrence across the total TSA landbase during the same period.
+ + The proportion of the species harvested since 2017, relative to the total harvested area since 2017, was less than 50% of the proportion of that species' occurrence across the total TSA land base during the same period.
 
-Example: If trembling aspen accounted for 1.9% of the harvested area since 2017, but trembling aspen comprised 6.6% of the TSA landbase, the species would be classified as non-commercial because 1.9% is less than half of 6.6% (i.e., 3.3%).
+Example: If trembling aspen accounted for 1.9% of the harvested area since 2017, but trembling aspen comprised 6.6% of the TSA land base, the species would be classified as non-commercial because 1.9% is less than half of 6.6% (i.e., 3.3%).
 
 The above rules were applied to stands with the following dominant species:
 
@@ -1648,7 +1652,7 @@ The above rules were applied to stands with the following dominant species:
     - Species codes: D, DR
 
 
-**Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the THLB due to being non-merchantable.
+**Note:** All harvested openings were excluded from this netdown step. In other words, if the area was ever harvested, it was not excluded out of the pTHLB due to being non-merchantable.
 
 __R Scripts__
 
@@ -1686,7 +1690,7 @@ pretty_table(netdown_summary)
 
 Stand level retention refers to unharvested areas associated with individual harvested openings. An analysis of retention practices derived from RESULTS spatial data collected from 2012 to 2024 were utilized to estimate total stand level retention for the province.
 
-The retention estimate includes areas occupied by biodiversity, riparian retention, wildlife tree retention (grouped retention), as well as retention for the protection of forest values including archaeological features, site specific habitat features, and/or blue listed species or ecosystems. Stand level retention in the netdown process is modelled as an aspatial adjustment factor and applied to each hectare in the THLB, based on the adjusted area weighted mean stand level retention for the TSA.
+The retention estimate includes areas occupied by biodiversity, riparian retention, wildlife tree retention (grouped retention), as well as retention for the protection of forest values including archaeological features, site specific habitat features, and/or blue listed species or ecosystems. Stand level retention in the netdown process is modelled as an aspatial adjustment factor and applied to each hectare in the pTHLB, based on the adjusted area weighted mean stand level retention for the TSA.
 
 This approach recognizes that although retention is not dispersed evenly across the land base the spatial variation in retention levels can be generalized across the land base without undue risk to yield estimation and forms a reasonable approximation for modelling timber supply in a TSA.
 
@@ -1702,12 +1706,12 @@ __Data Cleaning__
 
 The distribution of percent retention across openings was analyzed along the exterior ring of each TSA (i.e., area-based tenures are considered retained within the TSA boundary). It is recognized that the RESULTS dataset contains potential data entry errors. To address this, lower and upper cutoffs were established to clean the data and remove outliers.
 
-The lower cutoff was set at the 1st percentile. The upper cutoff was initially intended to be the 99th percentile; however, upon reviewing the distributions and conducting spot checks on unusually high retention percentages, it became evident that a more flexible upper cutoff was necessary. Ultimately, the upper cutoff was defined as the maximum percentile exceeding a subjective threshold of 0.5. The weighted mean of the cleaned RESULTS dataset for each TSA was calculated as the preliminary stand level retention factor. The table below provides the lower and upper cutoffs applied in this analysis for each TSA. The distributions of the retention percentage per result can be found within the THLB Proxy github repo here: 
+The lower cutoff was set at the 1st percentile. The upper cutoff was initially intended to be the 99th percentile; however, upon reviewing the distributions and conducting spot checks on unusually high retention percentages, it became evident that a more flexible upper cutoff was necessary. Ultimately, the upper cutoff was defined as the maximum percentile exceeding a subjective threshold of 0.5. The weighted mean of the cleaned RESULTS dataset for each TSA was calculated as the preliminary stand level retention factor. The table below provides the lower and upper cutoffs applied in this analysis for each TSA. The distributions of the retention percentage per result can be found within the Proxy THLB github repo here: 
 ```
 data\analysis\retention\man_unit_retention_histograms_2024_12_12.pdf
 ```
 
-**Note** Fort Nelson TSA did not have any any RESULTS reserves data. As such, the retention results from the adjacent Fort St. John TSA will be used to represent retention in Fort Nelson TSA.
+**Note** Fort Nelson TSA did not have any RESULTS reserves data. As such, the retention results from the adjacent Fort St. John TSA will be used to represent retention in Fort Nelson TSA.
 **Data sources:** BCGW layer: WHSE_FOREST_VEGETATION.RSLT_OPENING_SVW, WHSE_FOREST_VEGETATION.RSLT_FOREST_COVER_INV_SVW, WHSE_FOREST_VEGETATION.RSLT_FOREST_COVER_RESERVE_SVW
 
 __R Scripts__
@@ -1754,9 +1758,9 @@ kable(ltr_df,
 
 Retention areas within openings may include non-THLB forest, such as non-merchantable stands. In the timber supply model, spatial retention is not explicitly incorporated into block design when generating cutblocks. Instead, a non-spatial reduction is applied to the THLB to account for stand-level (in-block) retention. Since the timber supply model only harvests within the THLB, it is necessary to determine the proportion of retention occurring within the THLB.
 
-During the netdown process for stand-level retention, the percentage of retention is adjusted to reflect the proportion that overlaps the THLB.
+During the netdown process for stand-level retention, the percentage of retention is adjusted to reflect the proportion that overlaps the pTHLB.
 
-To determine the proportion of retention in THLB the following process was used:
+To determine the proportion of retention in pTHLB the following process was used:
 
 + Rasterize stand-level retention to 1 hectare
 + Add rasterized binary retention value as a land base category into netdown table
@@ -1764,10 +1768,10 @@ To determine the proportion of retention in THLB the following process was used:
   - Determine the gross area that is the total retention area per TSA
   - Summarize retention area excluded by each netdown category (e.g., linear features, non-forest, non-merchantable forest, etc.).
   - Calculate the remaining retention area that does not overlap other land base exclusions.
-  - Divide the remaining retention area by the gross retention area to derive an adjustment factor, representing the proportion of retention occurring within the THLB.
+  - Divide the remaining retention area by the gross retention area to derive an adjustment factor, representing the proportion of retention occurring within the pTHLB.
 
 
-Graphs illustrating the distribution of stand-level retention area by land base category for each TSA can be found in the THLB Proxy GitHub repository at the following path: 
+Graphs illustrating the distribution of stand-level retention area by land base category for each TSA can be found in the Proxy THLB GitHub repository at the following path: 
 
 ```
 data\analysis\retention\<TSA> TSA_retention_adjustment_per_landclass.jpeg
@@ -1781,9 +1785,9 @@ A summary table below presents the weighted mean stand-level retention and corre
 
 __Application in Land Base Classification:__
 
-The adjusted stand-level retention proportion is applied as a non-spatial reduction across the THLB for each TSA. The THLB is adjusted as follows:
+The adjusted stand-level retention proportion is applied as a non-spatial reduction across the pTHLB for each TSA. The pTHLB is adjusted as follows:
 
- - THLB = THLB * (1-TSA specific adjusted stand-level retention factor)
+ - pthlb_net = pthlb_net * (1-TSA specific adjusted stand-level retention factor)
 
 
 ```{r thlb_ltr, eval= TRUE}
@@ -1990,10 +1994,10 @@ netdown<-get_netdown(netdown_summary,lclass)
 pretty_table(netdown_summary)
 ```
 
-### THLB Land Base Summary
+### pTHLB Land Base Summary
 
 ```{r thlb_landbase, eval= TRUE}
-lclass<-"LANDBASE SUMMARY - THLB"
+lclass<-"LAND BASE SUMMARY - pTHLB"
 
 netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=thlb_net)
 
@@ -2001,11 +2005,89 @@ pretty_table(netdown_summary)
 ```
 
 
+### pTHLB Land Base Modification
+In the event that modifications of the land bases or netdown factors are required, a few suggestions are provided. 
+
+ + Make a local copy of this git repository and modify this R markdown to include/exclude new or modified netdown factors. 
+ + SQL is provided below of how the land base columns can be recreated using SQL instead of R. This can be useful when wanting to skip the process of the netdown table in favor of quickly updating the THLB field
+ 
+```{sql, eval=FALSE}
+WITH harvest_netdown_adjustment AS (
+SELECT
+	gr_skey,
+	-- recreate what the R netdown does by adjusting physically inoperable to be 1 when a cutblocks exists (harvest start year is pulled from consolidated cutblocks layer)
+	CASE 
+		WHEN harvest_start_year_calendar IS NOT NULL THEN 0
+		ELSE p12_phys_inop
+	END AS p12_phys_inop,
+	-- recreate what the R netdown does by adjusting merchantability to be NULL when a cutblocks exists (harvest start year is pulled from consolidated cutblocks layer)
+	CASE 
+		WHEN harvest_start_year_calendar IS NOT NULL THEN NULL
+		ELSE n13_merchantability
+	END AS n13_merchantability,
+	-- recreate what the R netdown does by adjusting non commercial to be NULL when a cutblocks exists (harvest start year is pulled from consolidated cutblocks layer)
+	CASE 
+		WHEN harvest_start_year_calendar IS NOT NULL THEN NULL
+		ELSE n14_non_commercial
+	END AS n14_non_commercial	
+FROM
+<public.proxy_table> net -- <- edit with the imported proxy table from the SQL dump
+)
+select 	
+	sum(CASE
+			WHEN 
+				n01_fmlb IS NULL 
+				THEN 1 
+			ELSE 0 
+		END) as fmlb,
+	sum(CASE 
+			-- categorical netdowns
+			WHEN 
+				n01_fmlb IS NULL AND 
+				n02_ownership IS NULL 
+				THEN 1
+			ELSE 0 
+		END) as falb,
+	sum(CASE
+			WHEN 
+				n01_fmlb IS NULL AND 
+				n02_ownership IS NULL AND 
+				n03_ownership IS NULL AND 
+				n04_nonfor IS NULL 
+				THEN 1 * (1-p05_linear_features)
+			ELSE 0 
+		END) as paflb,
+	sum(CASE 
+			WHEN 
+				-- categorical netdowns
+				n01_fmlb IS NULL AND 
+				n02_ownership IS NULL AND 
+				n03_ownership IS NULL AND 
+				n04_nonfor IS NULL AND 
+				n06_parks IS NULL AND 
+				n07_wha IS NULL AND 
+				n08_misc IS NULL AND 
+				n10_arch IS NULL AND
+				n11_harvest_restrictions IS NULL AND
+				adj.n13_merchantability IS NULL AND
+				adj.n14_non_commercial IS NULL
+				-- proportional netdowns
+				THEN 1 * (1-p05_linear_features) * (1-p09_riparian) * (1-adj.p12_phys_inop) * (1-p15_future_retention)
+			ELSE 0 
+		END) as pthlb_net
+from
+<public.proxy_table> net -- <- edit with the imported proxy table from the SQL dump
+JOIN harvest_netdown_adjustment adj USING (gr_skey);
+```
+ 
+ 
 ```{r aflb_to_pg, eval= FALSE}
 
 df_to_pg(Id(schema = 'thlb_proxy', table = 'prov_netdown_jan20'), netdown_tab[,c('gr_skey', 'fmlb', 'falb', 'aflb', 'thlb_net', 'p15_future_retention')], conn_list, overwrite=TRUE)
 
 ```
+
+
 
 ```{r aflb_to_pgs, eval= FALSE}
 query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS p15_future_retention double precision;"
@@ -2014,15 +2096,15 @@ query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS fmlb doub
 run_sql_r(query, conn_list)
 query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS falb double precision;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS aflb double precision;"
+query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS paflb double precision;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS thlb_net double precision;"
+query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS pthlb_net double precision;"
 run_sql_r(query, conn_list)
 
 query <- "UPDATE thlb_proxy.prov_netdown set fmlb = a.fmlb,
 falb = a.falb,
-aflb = a.aflb,
-thlb_net = a.thlb_net,
+paflb = a.aflb,
+pthlb_net = a.thlb_net,
 p15_future_retention = a.p15_future_retention
 from
 thlb_proxy.prov_netdown_jan20 a
