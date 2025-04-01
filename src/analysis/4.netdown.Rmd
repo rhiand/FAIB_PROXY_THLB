@@ -89,7 +89,7 @@ Prior to completing the netdown process that creates the netdown dataframe, pre-
 
 ### Netdown dataframe
 
-In a pre-processing step, the table: `thlb_proxy.prov_netdown` was created which includes all landclass related fields (E.g. bclcs_level_1) required to calculate the landclass area deduction variables (e.g. n01_fmlb) as well as the calculated netdown inclusion factors themselves. This was done in a pre-processing step as memory limitations were encountered when calculating landclass area deduction variables within this R netdown script. As the netdown process continues, these pre-calculated netdown inclusion factors are used update the FMLB, FALB, pAFLB, and pTHLB values as needed. The following script is used to create the table: `thlb_proxy.prov_netdown`:
+In a pre-processing step, the resultant table: `thlb_proxy.prov_netdown` was created which includes all landclass related fields (E.g. bclcs_level_1) required to calculate the landclass area deduction variables (e.g. n01_fmlb) as well as the calculated netdown inclusion factors themselves. This was done in a pre-processing step as memory limitations were encountered when calculating landclass area deduction variables within this R netdown script. As the netdown process continues, these pre-calculated netdown inclusion factors are used update the FMLB, FALB, pAFLB, and pTHLB values as needed. The following script is used to create the resultant table: `thlb_proxy.prov_netdown`:
 
 ```
 src\analysis\3.netdown-create-table.R
@@ -137,7 +137,7 @@ query <- "SELECT
 	p.n13_non_merchantable,
 	p.n14_non_commercial
 FROM thlb_proxy.prov_netdown p
---WHERE man_unit IN ('Robson Valley TSA', 'Fort St. John TSA', 'Fort Nelson TSA')
+--WHERE tsa_rank1 IN ('Soo TSA')--, 'Fort St. John TSA', 'Fort Nelson TSA')
 "
 netdown_tab <- sql_to_df(query, conn_list)
 netdown_summary <- setup_tracking_variable(netdown_tab)
