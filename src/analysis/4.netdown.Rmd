@@ -137,7 +137,7 @@ query <- "SELECT
 	p.n13_non_merchantable,
 	p.n14_non_commercial
 FROM thlb_proxy.prov_netdown p
---WHERE tsa_rank1 IN ('Soo TSA')--, 'Fort St. John TSA', 'Fort Nelson TSA')
+--WHERE tsa_tfl IN ('Arrow TSA')--, 'Fort St. John TSA', 'Fort Nelson TSA')
 "
 netdown_tab <- sql_to_df(query, conn_list)
 netdown_summary <- setup_tracking_variable(netdown_tab)
@@ -1198,7 +1198,7 @@ The Generalized Forest Harvesting Restrictions dataset provides a spatial repres
 
 The dataset assigns a ranking to forest harvesting restrictions, which determines the priority of spatial layers and attributes when overlaps occur. Each ranked dataset is classified into one of five harvest restriction categories; Protected, Prohibited, High Restricted, Moderate Restricted, and Low Restricted.
 
-For this analysis, areas classified as **Protected or Prohibited** are excluded from the Proxy Timber Harvesting Land Base (pTHLB), with one exception—Nonlegal Old Growth Management Areas (OGMAs), despite being classified as Prohibited, are not excluded since they do not carry legal harvesting restrictions.
+For this analysis, areas classified as **Protected or Prohibited** are excluded from the Proxy Timber Harvesting Land Base (pTHLB).
 
 
 **Data source:** BC Data Catalogue layer: https://catalogue.data.gov.bc.ca/dataset/generalized-forest-harvesting-restrictions
@@ -2083,7 +2083,7 @@ JOIN harvest_netdown_adjustment adj USING (gr_skey);
  
 ```{r aflb_to_pg, eval= FALSE}
 
-df_to_pg(Id(schema = 'thlb_proxy', table = 'prov_netdown_jan20'), netdown_tab[,c('gr_skey', 'fmlb', 'falb', 'aflb', 'thlb_net', 'p15_future_retention')], conn_list, overwrite=TRUE)
+df_to_pg(Id(schema = 'thlb_proxy', table = 'prov_netdown_temp'), netdown_tab[,c('gr_skey', 'fmlb', 'falb', 'aflb', 'thlb_net', 'p15_future_retention')], conn_list, overwrite=TRUE)
 
 ```
 
@@ -2107,7 +2107,7 @@ paflb = a.aflb,
 pthlb_net = a.thlb_net,
 p15_future_retention = a.p15_future_retention
 from
-thlb_proxy.prov_netdown_jan20 a
+thlb_proxy.prov_netdown_temp a
 where a.gr_skey = thlb_proxy.prov_netdown.gr_skey;"
 run_sql_r(query, conn_list)
 ```
