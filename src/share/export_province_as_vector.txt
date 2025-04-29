@@ -1,0 +1,18 @@
+-- exported pthlb_net using generate_tiffs.R from Mike - them imported the raster back into postgres:
+
+raster2pgsql -s 3005 -I -C -M -t 100x100 pthlb_net.tif public.pthlb_net > pthlb_net.sql
+psql -U postgres -d prov_data -f pthlb_net.sql 
+
+
+drop table if exists public.pthlb_net_as_polygon;
+create table public.pthlb_net_as_polygon as
+select
+(ST_DumpAsPolygons(r.rast, 1)).val,
+(ST_DumpAsPolygons(r.rast, 1)).geom::geometry(Multipolygon, 3005) as geom
+from
+public.pthlb_net r;
+
+delete from public.pthlb_net_as_polygon where val = 0;
+
+
+Open up the table in qgis & export as fgdb
