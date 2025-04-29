@@ -7,21 +7,79 @@ print(glue("Script started at {format(start_time, '%Y-%m-%d %I:%M:%S %p')}"))
 
 query <- 'DROP TABLE IF EXISTS thlb_proxy.prov_netdown'
 run_sql_r(query, conn_list)
+
+query <- 'CREATE TABLE IF NOT EXISTS thlb_proxy.prov_netdown
+(
+    gr_skey integer NOT NULL,
+    geom geometry(Point,3005) NOT NULL,
+    man_unit character varying COLLATE pg_catalog."default" NOT NULL,
+    tsa_rank1 character varying(32) COLLATE pg_catalog."default",
+    own text COLLATE pg_catalog."default",
+    natural_disturbance character varying(12) COLLATE pg_catalog."default",
+    bgc_label character varying(27) COLLATE pg_catalog."default",
+    zone character varying(12) COLLATE pg_catalog."default",
+    subzone character varying(9) COLLATE pg_catalog."default",
+    harvest_start_year_calendar integer,
+    opening_id double precision,
+    opening_number character varying COLLATE pg_catalog."default",
+    bclcs_level_1 character varying COLLATE pg_catalog."default",
+    bclcs_level_2 character varying COLLATE pg_catalog."default",
+    bclcs_level_3 character varying COLLATE pg_catalog."default",
+    bclcs_level_4 character varying COLLATE pg_catalog."default",
+    bclcs_level_5 character varying COLLATE pg_catalog."default",
+    project character varying COLLATE pg_catalog."default",
+    non_productive_descriptor_cd character varying COLLATE pg_catalog."default",
+    land_cover_class_cd_1 character varying COLLATE pg_catalog."default",
+    land_cover_class_cd_2 character varying COLLATE pg_catalog."default",
+    land_cover_class_cd_3 character varying COLLATE pg_catalog."default",
+    non_veg_cover_type_1 character varying COLLATE pg_catalog."default",
+    for_mgmt_land_base_ind character varying COLLATE pg_catalog."default",
+    site_index double precision,
+    species_cd_1 character varying COLLATE pg_catalog."default",
+    present_land_use_label character varying(100) COLLATE pg_catalog."default",
+    waterbody_type character varying(1) COLLATE pg_catalog."default",
+    class2 integer,
+    number_of_cutblocks integer,
+    elev_99th double precision,
+    slope_99th double precision,
+    inop_fact numeric NOT NULL,
+    land_designation_type_code character varying COLLATE pg_catalog."default",
+    harvest_restriction_class_rank integer,
+    harvest_restriction_class_name character varying COLLATE pg_catalog."default",
+    wha_label character varying(50) COLLATE pg_catalog."default",
+    non_commercial text COLLATE pg_catalog."default",
+    merchantability integer,
+    current_retention text COLLATE pg_catalog."default",
+    n01_fmlb text COLLATE pg_catalog."default",
+    n02_ownership text COLLATE pg_catalog."default",
+    n03_ownership text COLLATE pg_catalog."default",
+    n04_nonfor text COLLATE pg_catalog."default",
+    p05_linear_features numeric,
+    n06_parks text COLLATE pg_catalog."default",
+    n07_wha character varying COLLATE pg_catalog."default",
+    n08_misc text COLLATE pg_catalog."default",
+    p09_riparian numeric,
+    n10_arch text COLLATE pg_catalog."default",
+    n11_harvest_restrictions text COLLATE pg_catalog."default",
+    p12_phys_inop numeric,
+    n13_non_merchantable text COLLATE pg_catalog."default",
+    n14_non_commercial text COLLATE pg_catalog."default",
+    CONSTRAINT prov_netdown_pkey PRIMARY KEY (gr_skey)
+);'
+run_sql_r(query, conn_list)
+
 query <- 'SELECT tsa_rank1 from whse.man_unit_gr_skey WHERE tsa_rank1 is not null group by tsa_rank1'
 tsas <- sql_to_df(query, conn_list)
+
+
 for (i in 1:nrow(tsas)){
 	tsa <- tsas$tsa_rank1[i]
-	if ( i == 1){
-		query_ddl <- "CREATE TABLE thlb_proxy.prov_netdown AS "
-	} else {
-		query_ddl <- "INSERT INTO thlb_proxy.prov_netdown "
-	}
 	print(glue("INSERTING {tsa} into thlb_proxy.prov_netdown {i}/{nrow(tsas)}"))
 
-	query <- glue("{query_ddl}
+	query <- glue("INSERT INTO thlb_proxy.prov_netdown
 	WITH vri_species_cd_datadict AS (
 		SELECT
-			CASE 
+			CASE
 				WHEN upper(species_cd) IN ('AC','ACB','ACT','AD','AX','DG', 'E','EA','EB','EP', 'ES', 'EW','M','MB','MN', 'MV', 'QG', 'RA', 'VB', 'W', 'WS', 'XH', 'ZH') then 'decid'
 				WHEN upper(species_cd) IN ('AT', 'SS', 'SB', 'PA') THEN lower(species_full_name)
 				WHEN upper(species_cd) IN ('D', 'DR') THEN 'alder'
@@ -41,7 +99,7 @@ for (i in 1:nrow(tsas)){
 			species_full_name,
 			type
 		FROM
-			thlb_proxy.vri_species_cd_datadict			   
+			thlb_proxy.vri_species_cd_datadict
 	)
 	SELECT
 		bc.gr_skey,
@@ -49,16 +107,16 @@ for (i in 1:nrow(tsas)){
 		man_unit.man_unit,
 		man_unit.tsa_rank1,
 		fown.own_sched as own,
-		
+
 		---- BEC
 		bec.natural_disturbance,
 		bec.bgc_label,
 		bec.zone,
 		bec.subzone,
-		
+
 		---- CONSOLIDATED CUTBLOCKS
 		cc.harvest_start_year_calendar,
-		
+
 		---- VRI
 		vri.opening_id,
 		vri.opening_number,
@@ -76,52 +134,52 @@ for (i in 1:nrow(tsas)){
 		vri.for_mgmt_land_base_ind,
 		vri.site_index,
 		vri.species_cd_1,
-		
+
 		---- BASE THEMATIC MAPPING
 		btm.present_land_use_label,
-		
+
 		---- FWA WETLANDS
 		wet.waterbody_type,
-		
+
 		--- INOPERABILITY
 		inop.class2,
 		inop.number_of_cutblocks,
 		inop.elev_99th,
 		inop.slope_99th,
-		CASE 
+		CASE
 			WHEN inop.class2 > 250 THEN inop.class2::numeric/1000
 			ELSE 0
 		END AS inop_fact,
-		
+
 		-- HARVEST RESTRICTIONS
 		rr.land_designation_type_code,
 		rr.harvest_restriction_class_rank,
 		rr.harvest_restriction_class_name,
-		
+
 		-- wildlife habitat area
 		wha.TIMBER_HARVEST_CODE as wha_label,
-		
+
 		-- non-commercial
 		non_com.non_commercial,
 
 		-- merchantability
 		merch.merchantability,
 
-		CASE 
-			WHEN res.silv_reserve_code = 'G' AND res.silv_reserve_objective_code not in ('TIM') 
+		CASE
+			WHEN res.silv_reserve_code = 'G' AND res.silv_reserve_objective_code not in ('TIM')
 			-- res_inv has filters applied to the subquery
 			-- opening is NOT NULL where forest_cover_when_updated >= '2012-01-01' AND DISTURBANCE_START_DATE > '2012-01-01' AND timber_mark is not null
-			AND res_inv.opening_id IS NOT NULL 
+			AND res_inv.opening_id IS NOT NULL
 			THEN 'retention: ' || res.silv_reserve_objective_code
 			ELSE NULL
 		END as current_retention,
 
-		 -- FMLB 
-		 CASE 
+		 -- FMLB
+		 CASE
 		 	WHEN bec.natural_disturbance = 'NDT5' THEN 'NDT5'
 		 	-- if its been harvested then its forested
 		 	WHEN (nullif(vri.opening_id::text,'0') is not null or nullif(vri.opening_number::text,'0') is not null or cc.harvest_start_year_calendar is not null or ccg.gr_skey is not null) THEN NULL
-		 	-- 
+		 	--
 		 	WHEN (coalesce(vri.bclcs_level_1,'') IN ('U', '') AND btm.present_land_use_label IN ('Old Forest', 'Recently Logged', 'Selectively Logged','Young Forest')) THEN NULL
 		 	---- WHEN upper(bec_zone || bec_subzone) IN ('SWBMKS', 'SWBUNS', 'SWBVKS') then 'N'
 		 	-- exclude where vegetated, not treed and not fire_update
@@ -162,12 +220,11 @@ for (i in 1:nrow(tsas)){
 		 -- CASE WHEN fown.own_sched IN ('68U', '66N') THEN own_sched_desc ELSE NULL END AS n08_rec,
 		 CASE WHEN fown.own_sched IN ('69U', '99N') THEN own_sched_desc ELSE NULL END AS n08_misc,
 		 coalesce(rip.fact,0) as p09_riparian,
-		 CASE 
-		 	WHEN arch.pgid IS NOT NULL THEN 'arch sites' 
+		 CASE
+		 	WHEN arch.pgid IS NOT NULL THEN 'arch sites'
 			ELSE NULL
 		END AS n10_arch,
-		 CASE 
-		 	WHEN rr.land_designation_type_code = 'ogma_nonlegal' THEN NULL
+		 CASE
 		 	WHEN rr.harvest_restriction_class_name IN ('Prohibited', 'Protected') THEN harvest_restriction_class_name || ' - ' || land_designation_type_code
 		 	ELSE NULL
 		 END AS n11_harvest_restrictions,
@@ -183,13 +240,13 @@ for (i in 1:nrow(tsas)){
 	LEFT JOIN (SELECT own || schedule as own_sched, own || schedule || ' - ' || ownership_description AS own_sched_desc, pgid FROM whse.f_own) fown USING (pgid)
 	LEFT JOIN whse.bec_biogeoclimatic_poly_gr_skey bec_key on bec_key.gr_skey = bc.gr_skey
 	LEFT JOIN whse.bec_biogeoclimatic_poly bec ON bec.pgid = bec_key.pgid
-	LEFT JOIN thlb_proxy.btm_present_land_use_v1_svw_gr_skey btmg on btmg.gr_skey = bc.gr_skey 
+	LEFT JOIN thlb_proxy.btm_present_land_use_v1_svw_gr_skey btmg on btmg.gr_skey = bc.gr_skey
 	LEFT JOIN thlb_proxy.btm_present_land_use_v1_svw btm on btm.pgid = btmg.pgid
-	LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023_gr_skey vri_key on vri_key.gr_skey = bc.gr_skey 
+	LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023_gr_skey vri_key on vri_key.gr_skey = bc.gr_skey
 	LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023 vri on vri.pgid = vri_key.pgid
 	LEFT JOIN vri_species_cd_datadict on vri.species_cd_1 = vri_species_cd_datadict.species_cd
-	LEFT JOIN whse.veg_consolidated_cut_blocks_sp_2024_gr_skey ccg on ccg.gr_skey = bc.gr_skey 
-	LEFT JOIN whse.veg_consolidated_cut_blocks_sp_2024 cc on cc.pgid = ccg.pgid 
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp_jan2025_gr_skey ccg on ccg.gr_skey = bc.gr_skey
+	LEFT JOIN whse.veg_consolidated_cut_blocks_sp_jan2025 cc on cc.pgid = ccg.pgid
 	LEFT JOIN whse.fwa_wetlands_gr_skey wet_key ON wet_key.gr_skey = bc.gr_skey
 	LEFT JOIN whse.fwa_wetlands wet ON wet.pgid = wet_key.pgid
 	LEFT JOIN thlb_proxy.bc_linear_features lin ON lin.gr_skey = bc.gr_skey
@@ -212,8 +269,21 @@ for (i in 1:nrow(tsas)){
 query <- "ALTER TABLE thlb_proxy.prov_netdown ADD PRIMARY KEY (gr_skey)"
 run_sql_r(query, conn_list)
 
+query <- "ALTER TABLE thlb_proxy.prov_netdown ALTER COLUMN fmlb SET NOT NULL"
+run_sql_r(query, conn_list)
+
+query <- "ALTER TABLE thlb_proxy.prov_netdown ALTER COLUMN falb SET NOT NULL"
+run_sql_r(query, conn_list)
+
+query <- "ALTER TABLE thlb_proxy.prov_netdown ALTER COLUMN paflb SET NOT NULL"
+run_sql_r(query, conn_list)
+
+query <- "ALTER TABLE thlb_proxy.prov_netdown ALTER COLUMN pthlb_net SET NOT NULL"
+run_sql_r(query, conn_list)
+
 query <- "CREATE INDEX prov_netdown_man_unit_idx ON thlb_proxy.prov_netdown USING btree(man_unit);"
 run_sql_r(query, conn_list)
+
 
 query <- "CREATE INDEX prov_netdown_tsa_rank1_idx ON thlb_proxy.prov_netdown USING btree(tsa_rank1);"
 run_sql_r(query, conn_list)
