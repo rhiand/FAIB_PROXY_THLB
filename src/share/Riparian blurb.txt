@@ -1,0 +1,31 @@
+Data Sources
+Data accessed June, 2024 BCGW Layers:
+•	FWA Wetlands, metadata link
+•	FWA Lakes, metadata link
+•	FWA Stream Network, metadata link
+•	FWA Rivers, metadata link
+•	Community Watersheds - Current, metadata link
+•	BEC map, metadata link
+•	Mapped Floodplains in BC (Historical), metadata link
+Externally provided data sources:
+•	Fish Habitat Accessibility MODEL to determine fish presence/absence (obtained from: Simon Norris via Craig Mount)
+•	Modeled channel width based on watershed area and precipitation (obtained from: Simon Norris via Craig Mount)
+•	FREP riparian 2006 - 2023 monitoring data
+Layers were classified according to this FRPA regulation guidelines.
+
+Wetlands Classification: The FWA Wetland polygons served as the primary spatial layer for deriving area-based classifications. For the W2, W3, and W4 classifications, Biogeoclimatic Ecosystem Classification (BEC) attributes were required. To assign BEC zones and subzones to each wetland, a spatial intersection was performed between the BEC layer and the wetlands polygons. If a wetland intersected multiple BEC zones or subzones, the zone or subzone covering the largest portion of the wetland was selected.
+
+Lakes Classification: The FWA Lake polygons served as the primary spatial layer for deriving area-based classifications. For the L2, L3, and L4 classifications, Biogeoclimatic Ecosystem Classification (BEC) attributes were required. To assign BEC zones and subzones to each lake, a spatial intersection was performed between the BEC layer and the lake polygons. If a lake intersected multiple BEC zones or subzones, the zone or subzone covering the largest portion of the lake was selected.
+
+Streams Classification: The primary data sources used to derive stream classifications were the Fish Habitat Accessibility Model, FWA Rivers, Community Watersheds, the Mapped Floodplains in BC, and modeled channel width. The FWA Rivers polygons and Fish Habitat Accessibility Model linestrings were used as the base spatial dataset. The linestrings for the Fish Habitat Model is identical to the FWA Stream Network but divided into smaller segments or reaches.
+
+Stream Linestring Classification: In order to assign stream riparian classes to the stream reaches within the Fish Habitat Accessibility Model, the following pre-processing steps were performed:
+•	Each stream reach is assigned a modeled channel width. See Data Sources for further description of the channel width model and its limitations. When channel width was unavailable, stream order was used as a proxy for channel width.
+•	Each stream network reach was assigned a value for community watershed presence: TRUE if the stream falls within a community watershed, and FALSE if it does not.
+•	Each stream network reach was assigned a value for active floodplain presence: TRUE if the stream falls within an active floodplain, and FALSE if it does not. All streams that fell within an active floodplain were manually inspected and assigned a Boolean value if the surrounding floodplain was >= 100m.
+•	Each stream is assigned a Natural Resource Area (ex. North, South, Coast)
+All streams reaches were assigned a riparian classification using the above added attributes and the FRPA regulation guidelines in the above link. Stream reaches that did not have a modelled channel width were assigned riparian classes based on stream order and natural resource area.
+
+FWA River Polygon Classification: To classify each FWA River polygon, the most common stream classification (i.e., the mode) from the overlapping stream reaches was assigned to the polygon. As river polygons are known to be large rivers, it was assumed erroneous if any were classified as S6 (channel width <= 3m), S3 (channel width >= 1.5m and < 5m) or S4 (< 1.5m). Any FWA rivers classified as S6 were altered to S5 and any classified as S3 or S4 were changed to S2.
+
+Buffer widths were provided by your team and implemented based on the riparian class. 

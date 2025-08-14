@@ -5,15 +5,16 @@ library(cowplot) # For arranging plots in a grid
 source('src/utils/functions.R')
 
 conn_list <- dadmtools::get_pg_conn_list()
-dst_schema <- "thlb_proxy"
+dst_schema <- "whse"
+vector_schema <- "whse_vector"
 
-query <- "DROP TABLE IF EXISTS thlb_proxy.bc_non_commercial_gr_skey;"
+query <- glue("DROP TABLE IF EXISTS {dst_schema}.bc_non_commercial_gr_skey;")
 run_sql_r(query, conn_list)
 
 
 ## Dec 13, 2024
 ## the table created here is not currently being used - instead its rebuilt in 3.netdown-create-table.R
-query <- "CREATE TABLE thlb_proxy.bc_non_commercial_gr_skey AS
+query <- glue("CREATE TABLE {dst_schema}.bc_non_commercial_gr_skey AS
 WITH vri_species_cd_datadict AS (
 	SELECT
 		CASE 
@@ -36,7 +37,7 @@ WITH vri_species_cd_datadict AS (
 		species_full_name,
 		type
 	FROM
-		thlb_proxy.vri_species_cd_datadict			   
+		{dst_schema}.vri_species_cd_datadict			   
 )
 SELECT
 	vri_key.gr_skey,
@@ -45,9 +46,9 @@ SELECT
 	non_com.non_commercial,
 	man_unit.man_unit
 FROM
-whse.veg_comp_lyr_r1_poly_internal_2023_gr_skey vri_key
-LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023 vri USING (pgid)
+{dst_schema}.veg_comp_lyr_r1_poly_internal_gr_skey vri_key
+LEFT JOIN {dst_schema}.veg_comp_lyr_r1_poly_internal vri USING (pgid)
 LEFT JOIN vri_species_cd_datadict on vri.species_cd_1 = vri_species_cd_datadict.species_cd
-LEFT JOIN whse.man_unit_gr_skey man_unit on man_unit.gr_skey = vri_key.gr_skey
-LEFT JOIN thlb_proxy.non_commercial_lu_table non_com on non_com.tsa = man_unit.tsa_rank1 and vri_species_cd_datadict.species_grouping = non_com.species_grouping;"
+LEFT JOIN {dst_schema}.man_unit_gr_skey man_unit on man_unit.gr_skey = vri_key.gr_skey
+LEFT JOIN {dst_schema}.non_commercial_lu_table non_com on non_com.tsa = man_unit.tsa_rank1 and vri_species_cd_datadict.species_grouping = non_com.species_grouping;")
 run_sql_r(query, conn_list)

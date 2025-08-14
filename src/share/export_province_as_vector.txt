@@ -1,7 +1,7 @@
 -- exported pthlb_net using generate_tiffs.R from Mike - them imported the raster back into postgres:
 
 raster2pgsql -s 3005 -I -C -M -t 100x100 pthlb_net.tif public.pthlb_net > pthlb_net.sql
-psql -U postgres -d prov_data -f pthlb_net.sql 
+psql -U postgres -d prov_data -f pthlb_net.sql
 
 
 drop table if exists public.pthlb_net_as_polygon;

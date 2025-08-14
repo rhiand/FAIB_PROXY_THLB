@@ -13,15 +13,17 @@ db <- DBI::dbConnect(conn_list["driver"][[1]],
 				password = conn_list["password"][[1]],
 				port = conn_list["port"][[1]])
 
-
+dst_schema <- "whse"
+vector_schema <- "whse_vector"
+repo_path <- 'C:/projects/FAIB_PROXY_THLB'
 ## look at percentiles
-query <- "SELECT 
+query <- glue("SELECT 
 	man_unit,
 	opening_id,
   opening_area,
 	sum(silv_polygon_area)/opening_area as prop
   FROM 
-	thlb_proxy.retention_data_explore
+	{dst_schema}.retention_data_explore
 WHERE 
 	silv_reserve_code = 'G'
 AND
@@ -33,7 +35,7 @@ AND
 GROUP BY 
 	man_unit, opening_id, opening_area
 ORDER BY 
-	man_unit"
+	man_unit")
 ret <- sql_to_df(query, conn_list)
 
 # Calculate quantiles (0-10% to 90-100%) grouped by tsa_rank1
@@ -46,10 +48,10 @@ percentiles <- ret %>%
   unnest_wider(percentiles, names_sep = "_p") %>%
   rename_with(~ paste0("p", c(seq(0, 10, 1), seq(88, 100, 1))), starts_with("percentiles_p"))
 
-write.csv(percentiles, '/projects/THLB_Proxy/data/analysis/retention/retention_explore_percentiles.csv', row.names=F)
+write.csv(percentiles, glue("{repo_path}/data/analysis/retention/retention_explore_percentiles_{format(Sys.Date(), '%Y_%m_%d')}.csv"), row.names=F)
 
 
-output_pdf <- "/projects/THLB_Proxy/data/analysis/retention/man_unit_retention_histograms_2024_12_12.pdf"
+output_pdf <- glue("{repo_path}/data/analysis/retention/man_unit_retention_histograms_{format(Sys.Date(), '%Y_%m_%d')}.pdf")
 pdf(output_pdf, width = 11, height = 8.5)  # Landscape PDF
 
 # Get unique man_units
@@ -118,7 +120,7 @@ for (page in 1:pages) {
 dev.off()
 
 
-## After reviewing histograms & tables - leads are happy enough - we will use the cutoffs suggested
+## After reviewing histograms & tables - leads (Mark, Kelly, Gordon) are happy enough with the cutoff method suggested - going forward with using this method
 ## commit them to db
 man_units <- unique(ret$man_unit)
 ret_df <- data.frame(
@@ -159,4 +161,4 @@ for (unit in man_units) {
   ret_df <- rbind(ret_df, new_row)
 }
 
-df_to_pg(Id(schema = 'thlb_proxy', table = 'retention_thresholds_man_unit'), ret_df, conn_list, overwrite=TRUE, append=FALSE)
+df_to_pg(Id(schema = dst_schema, table = 'retention_thresholds_man_unit'), ret_df, conn_list, overwrite=TRUE, append=FALSE)

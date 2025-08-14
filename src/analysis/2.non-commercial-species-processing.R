@@ -4,14 +4,15 @@ library(tidyverse)
 source('src/utils/functions.R')
 
 conn_list <- dadmtools::get_pg_conn_list()
-dst_schema <- "thlb_proxy"
+dst_schema <- "whse"
+repo_path <- 'C:/projects/FAIB_PROXY_THLB'
 
-query <- "DROP TABLE IF EXISTS thlb_proxy.non_commercial_tsa_species_1_cc_ha;"
+query <- glue("DROP TABLE IF EXISTS {dst_schema}.non_commercial_tsa_species_1_cc_ha;")
 run_sql_r(query, conn_list)
 
 ## create a table of all species_cd_1 within recently harvested openings since 2017 and where fmlb exists (i.e. is forested)
 ## the VRI data is a combination of two tables: 2016 VRI and 2016 TFL integrated VRI
-query <- "CREATE TABLE thlb_proxy.non_commercial_tsa_species_1_cc_ha AS
+query <- glue("CREATE TABLE {dst_schema}.non_commercial_tsa_species_1_cc_ha AS
 SELECT
 tsa_rank1
 , CASE 
@@ -22,30 +23,30 @@ tsa_rank1
 , sum(CASE WHEN cc.harvest_start_year_calendar >= 2017 THEN 1 ELSE 0 END) as harvested_ha
 
 FROM
-whse.all_bc_gr_skey bc
-LEFT JOIN whse.veg_consolidated_cut_blocks_sp_2024_gr_skey cc_key ON cc_key.gr_skey = bc.gr_skey
-LEFT JOIN whse.veg_consolidated_cut_blocks_sp_2024 cc ON cc.pgid = cc_key.pgid
-LEFT JOIN thlb_proxy.veg_comp_lyr_r1_poly_2016_gr_skey vri_key on vri_key.gr_skey = bc.gr_skey
-LEFT JOIN thlb_proxy.veg_comp_lyr_r1_poly_2016 vri ON vri.pgid = vri_key.pgid
-LEFT JOIN thlb_proxy.tfl_integrated2016_gr_skey vritfl_key ON vritfl_key.gr_skey = vri_key.gr_skey
-LEFT JOIN thlb_proxy.tfl_integrated2016 vritfl ON vritfl_key.pgid = vritfl.pgid
-LEFT JOIN whse.man_unit_gr_skey man_unit on man_unit.gr_skey = bc.gr_skey
-LEFT JOIN thlb_proxy.seral_2023_tap_method fmlb on fmlb.gr_skey = bc.gr_skey
+{dst_schema}.all_bc_gr_skey bc
+LEFT JOIN {dst_schema}.veg_consolidated_cut_blocks_sp_gr_skey cc_key ON cc_key.gr_skey = bc.gr_skey
+LEFT JOIN {dst_schema}.veg_consolidated_cut_blocks_sp cc ON cc.pgid = cc_key.pgid
+LEFT JOIN {dst_schema}.veg_comp_lyr_r1_poly_2016_gr_skey vri_key on vri_key.gr_skey = bc.gr_skey
+LEFT JOIN {dst_schema}.veg_comp_lyr_r1_poly_2016 vri ON vri.pgid = vri_key.pgid
+LEFT JOIN {dst_schema}.tfl_integrated2016_gr_skey vritfl_key ON vritfl_key.gr_skey = vri_key.gr_skey
+LEFT JOIN {dst_schema}.tfl_integrated2016 vritfl ON vritfl_key.pgid = vritfl.pgid
+LEFT JOIN {dst_schema}.man_unit_gr_skey man_unit on man_unit.gr_skey = bc.gr_skey
+LEFT JOIN {dst_schema}.fmlb fmlb on fmlb.gr_skey = bc.gr_skey
 WHERE
-	fmlb.fmlb_adj = 1
+	fmlb.fmlb_adj = 'Y'
 GROUP BY
 	tsa_rank1
 	, CASE 
 		WHEN vri.bclcs_level_1 = 'U' THEN vritfl.species_cd_1 
 		ELSE vri.species_cd_1
-	 END;"
+	 END;")
 run_sql_r(query, conn_list)
 
-query <- "DROP TABLE IF EXISTS thlb_proxy.non_commercial_lu_table;"
+query <- glue("DROP TABLE IF EXISTS {dst_schema}.non_commercial_lu_table;")
 run_sql_r(query, conn_list)
 
 ## 
-query <- "CREATE TABLE thlb_proxy.non_commercial_lu_table AS
+query <- glue("CREATE TABLE {dst_schema}.non_commercial_lu_table AS
 -- create groupings of species from the data dictionary of all species created in previous script
 WITH vri_species_cd_datadict AS (
 	SELECT
@@ -69,7 +70,7 @@ WITH vri_species_cd_datadict AS (
 		species_full_name,
 		type
 	FROM
-		thlb_proxy.vri_species_cd_datadict			   
+		{dst_schema}.vri_species_cd_datadict			   
 ), species_grouping AS (
 -- join groupings of species with table of all species_cd_1 and all species within recently harvested openings since 2017 - group on TSA
 SELECT 
@@ -78,7 +79,7 @@ SELECT
 	sum(species_cd_1_ha) as species_ha, -- sum of all species
 	sum(harvested_ha) as harvested_ha -- sum of all species in harvested openings
 FROM
-thlb_proxy.non_commercial_tsa_species_1_cc_ha tbl
+{dst_schema}.non_commercial_tsa_species_1_cc_ha tbl
 JOIN vri_species_cd_datadict dict on tbl.species_cd_1 = dict.species_cd
 GROUP BY 
 	tsa_rank1,
@@ -125,14 +126,14 @@ SELECT
 		ELSE NULL
 		END AS non_commercial
 FROM 
-	species_breakdown;"
+	species_breakdown;")
 run_sql_r(query, conn_list)
 
-query <- "SELECT * FROM thlb_proxy.non_commercial_lu_table"
+query <- glue("SELECT * FROM {dst_schema}.non_commercial_lu_table")
 data <- sql_to_df(query, conn_list)
 
 ## exploration of non-commercial species
-output_pdf <- "data/analysis/non_commercial_species_TSA_bar_graphs_percent_occurrence_2024_12_12.pdf"
+output_pdf <- glue("{repo_path}/data/analysis/non_commercial_species_TSA_bar_graphs_percent_occurrence_{format(Sys.Date(), '%Y_%m_%d')}.pdf")
 pdf(output_pdf, width = 10, height = 8)
 
 # Unique TSAs

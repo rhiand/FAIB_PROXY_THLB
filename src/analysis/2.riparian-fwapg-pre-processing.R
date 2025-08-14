@@ -70,7 +70,6 @@ fishy.geom,
 bad_data.fwa_upstreambordercrossings
 FROM
 whse_sp.modelled_habitat_potential fishy
-JOIN whse_sp.fwa_stream_networks_sp fwa USING (linear_feature_id)
 JOIN public.fwa_upstreambordercrossings_output bad_data ON bad_data.blue_line_key = fishy.blue_line_key
 WHERE
 bad_data.fwa_upstreambordercrossings in ('AB_120', 'USA_49', 'YTNWT_60')

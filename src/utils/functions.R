@@ -435,7 +435,7 @@ get_raster_99th_perc <- function(in_raster, sampler) {
   # sampler: the spatial vector of blks
   # unit: The spatial vector of the boundary of interest (e.g., unit<-create_unit(bnd_path))
 
-calc_inop <- function(in_raster, unit, mgmt_unit, clip_99th, threshold_type, conn_list){
+calc_inop <- function(in_raster, unit, mgmt_unit, clip_99th, threshold_type, conn_list, schema, threshold_table){
 
 	unit_elev2 <- terra::extract(in_raster, unit) # extract in_raster for the unit
 	unit100th <- quantile(unit_elev2[,2], probs = 1, na.rm = TRUE) # determine maximum elevation within the unit.
@@ -450,7 +450,7 @@ calc_inop <- function(in_raster, unit, mgmt_unit, clip_99th, threshold_type, con
 	rast_matrix <- matrix(rast_cutoff, ncol = 3, byrow = TRUE)
 	### reclassify elevation raster based on cutoffs
 	df <- data.frame(cutblock_percentile_99 = clip_99th, unit_max = unit100th, man_unit = mgmt_unit, grid = threshold_type)
-	df_to_pg(Id(schema = 'thlb_proxy', table = glue('inoperable_thresholds')), df, conn_list, overwrite=FALSE, append=TRUE)
+	df_to_pg(Id(schema = schema, table = threshold_table), df, conn_list, overwrite=FALSE, append=TRUE)
 	return(terra::classify(in_raster, rast_matrix))
 }
 

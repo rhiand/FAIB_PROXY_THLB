@@ -1,6 +1,3 @@
-# library(parallel)
-# library(doParallel)
-# library(foreach)
 library(dadmtools)
 source('src/utils/functions.R')
 
@@ -13,7 +10,8 @@ db <- DBI::dbConnect(conn_list["driver"][[1]],
 				port = conn_list["port"][[1]])
 start_time <- Sys.time()
 print(glue("Script started at {format(start_time, '%Y-%m-%d %I:%M:%S %p')}"))
-dst_schema <- "thlb_proxy"
+dst_schema <- "whse"
+vector_schema <- "whse_vector"
 
 query <- glue("DROP TABLE IF EXISTS {dst_schema}.inoperable_gr_skey")
 run_sql_r(query, conn_list)
@@ -30,9 +28,9 @@ SELECT
 	mu.man_unit
 	, ST_Union(geom) as geom
 FROM 
-	thlb_proxy.tsa_boundaries_2020 tsa
+	{vector_schema}.tsa_boundaries_2020 tsa
 JOIN
-	whse.mu_lookup_table_im mu ON mu.tsa_number = tsa.tsa
+	{dst_schema}.mu_lookup_table_im mu ON mu.tsa_number = tsa.tsa
 GROUP BY 
 	mu.man_unit
 UNION ALL
@@ -40,7 +38,7 @@ UNION ALL
 	SELECT
 		(ST_Dump(ST_GeneratePoints(geom, 2000))).geom AS geom
 	from
-		thlb_proxy.tsa_boundaries_2020
+		{vector_schema}.tsa_boundaries_2020
 	where 
 		tsa_number = '04'
 ), pts_clustered AS (
@@ -67,16 +65,16 @@ SELECT
 FROM
 	veronoi_polys b
 CROSS JOIN
-	(SELECT geom, tsa FROM thlb_proxy.tsa_boundaries_2020 WHERE tsa_number = '04') tsa
+	(SELECT geom, tsa FROM {vector_schema}.tsa_boundaries_2020 WHERE tsa_number = '04') tsa
 JOIN 
-whse.mu_lookup_table_im mu ON mu.tsa_number = tsa.tsa
+{dst_schema}.mu_lookup_table_im mu ON mu.tsa_number = tsa.tsa
 )
 UNION ALL
 (WITH pts AS (
 	SELECT
 		(ST_Dump(ST_GeneratePoints(geom, 2000))).geom AS geom
 	from
-		thlb_proxy.tsa_boundaries_2020
+		{vector_schema}.tsa_boundaries_2020
 	where 
 		tsa_number = '29'
 ), pts_clustered AS (
@@ -103,17 +101,17 @@ SELECT
 FROM
 	veronoi_polys b
 CROSS JOIN
-	(SELECT geom, tsa FROM thlb_proxy.tsa_boundaries_2020 WHERE tsa_number = '29') tsa
+	(SELECT geom, tsa FROM {vector_schema}.tsa_boundaries_2020 WHERE tsa_number = '29') tsa
 JOIN 
-whse.mu_lookup_table_im mu ON mu.tsa_number = tsa.tsa
+{dst_schema}.mu_lookup_table_im mu ON mu.tsa_number = tsa.tsa
 )
 UNION ALL
 SELECT
 	mu.man_unit as mgmt_unit_name
 	,ST_Union(geom) as geom
 FROM
-	thlb_proxy.fadm_tfl_all_sp tfl
-JOIN whse.mu_lookup_table_im mu ON mu.forest_file_id = tfl.forest_file_id
+	{vector_schema}.fadm_tfl_all_sp tfl
+JOIN {dst_schema}.mu_lookup_table_im mu ON mu.forest_file_id = tfl.forest_file_id
 GROUP BY
 	mu.man_unit")
 run_sql_r(query, conn_list)
@@ -134,14 +132,14 @@ query <- glue("SELECT man_unit FROM {dst_schema}.inoperable_all_mgmt_units where
 # 	SELECT
 # 		man_unit
 # 	FROM
-# 		thlb_proxy.inoperable_thresholds
+# 		{dst_schema}.inoperable_thresholds
 # 	GROUP BY 
 # 		man_unit
 # )
 # SELECT
 # 	man_unit 
 # FROM 
-# 	thlb_proxy.inoperable_all_mgmt_units a
+# 	{dst_schema}.inoperable_all_mgmt_units a
 # LEFT JOIN already_processed b USING (man_unit)
 # WHERE 
 # 	b.man_unit IS NULL
@@ -155,18 +153,18 @@ for (mgmt_unit in mgmt_units) {
 	print(glue("MGMT UNIT: {mgmt_unit}, started at: {format(start_time, '%Y-%m-%d %I:%M:%S %p')}"))
 	## define data driven queries for cutblocks, tsa's, stability
 	cutblock_query <- glue("SELECT
-						distinct on (blk.veg_consolidated_cut_block_id)
+						distinct on (blk.vccb_sysid)
 						blk.geom
 					FROM 
-						{dst_schema}.veg_consolidated_cut_blocks_sp blk
+						{vector_schema}.veg_consolidated_cut_blocks_sp blk
 					JOIN 
 						{dst_schema}.inoperable_all_mgmt_units reg ON ST_Intersects(reg.geom, blk.geom)
 					WHERE 
 						reg.man_unit = '{mgmt_unit}'
 					AND
-						harvest_year >= (extract(year from now()) - 10)
+						harvest_start_year_calendar >= (extract(year from now()) - 10)
 					ORDER BY 
-						blk.veg_consolidated_cut_block_id;")
+						blk.vccb_sysid;")
 	cutblock_vect  <- create_sampler(db, cutblock_query)
 	mgmt_unit_query <- glue("SELECT 
 							geom as geom
@@ -185,7 +183,7 @@ for (mgmt_unit in mgmt_units) {
 			mgmt_area_m2 = sum(terra::expanse(mgmt_unit_vect, unit = "m")),
 			created_at = Sys.time()
 		)
-		df_to_pg(Id(schema = glue('{dst_schema}'), table = glue('inoperable_cutblock_summary')), cutblock_summary_df, conn_list, overwrite=FALSE, append=TRUE)
+		df_to_pg(Id(schema = dst_schema, table = glue('inoperable_cutblock_summary')), cutblock_summary_df, conn_list, overwrite=FALSE, append=TRUE)
 		print(glue('Skipping iteration as management unit: {mgmt_unit} has no cutblocks'))
 		next
 	} else {
@@ -196,7 +194,7 @@ for (mgmt_unit in mgmt_units) {
 			mgmt_area_m2 = sum(terra::expanse(mgmt_unit_vect, unit = "m")),
 			created_at = Sys.time()
 		)
-		df_to_pg(Id(schema = glue('{dst_schema}'), table = glue('inoperable_cutblock_summary')), cutblock_summary_df, conn_list, overwrite=FALSE, append=TRUE)
+		df_to_pg(Id(schema = dst_schema, table = glue('inoperable_cutblock_summary')), cutblock_summary_df, conn_list, overwrite=FALSE, append=TRUE)
 	}
 
 	dem_clipped <- get_dem(mgmt_unit_vect)
@@ -205,6 +203,7 @@ for (mgmt_unit in mgmt_units) {
 	elev_99th <- get_raster_99th_perc(dem_clipped, cutblock_vect)
 	slope_99th <- get_raster_99th_perc(slope_clipped, cutblock_vect)
 	rm(cutblock_vect)
+	print('here')
 	## if cassiar - iterate over sub units of Cassiar using the 99th slope & dem from the whole area
 	if (mgmt_unit %in% c('4 - Cassiar TSA', '29 - Williams Lake TSA')) {
 		if (mgmt_unit == '4 - Cassiar TSA'){
@@ -216,6 +215,7 @@ for (mgmt_unit in mgmt_units) {
 		}
 
 		for (mgmt_unit in mgmt_units) {
+			print('here')
 			print(glue('On management unit: {mgmt_unit}'))
 			mgmt_unit_query <- glue("SELECT 
 									geom as geom
@@ -228,7 +228,7 @@ for (mgmt_unit in mgmt_units) {
 								1::int as class2,
 								stab.geom as geom
 							FROM 
-								{dst_schema}.ste_ter_attribute_polys_svw_ar stab
+								{vector_schema}.ste_ter_attribute_polys_svw_ar stab
 							JOIN 
 								{dst_schema}.inoperable_all_mgmt_units reg ON ST_Intersects(reg.geom, stab.geom)
 							WHERE 
@@ -239,19 +239,19 @@ for (mgmt_unit in mgmt_units) {
 			slope_clipped <- get_slope(dem_clipped, mgmt_unit_vect)
 
 			message('Generate dem inoperable')
-			inoperable_elevation <- calc_inop(dem_clipped, mgmt_unit_vect, mgmt_unit, elev_99th, 'elevation', conn_list)
+			inoperable_elevation <- calc_inop(dem_clipped, mgmt_unit_vect, mgmt_unit, elev_99th, 'elevation', conn_list, dst_schema, 'inoperable_thresholds')
 			message('Rasterize stability vector to 25m DEM')
 			stability_clipped <- terra::rasterize(stability_vect, background=0, rast(dem_clipped), 'class2')
 			rm(stability_vect)
 
 			message('Generate slope inoperable')
-			inoperable_slope <- calc_inop(slope_clipped, mgmt_unit_vect, mgmt_unit, slope_99th, 'slope', conn_list)
+			inoperable_slope <- calc_inop(slope_clipped, mgmt_unit_vect, mgmt_unit, slope_99th, 'slope', conn_list, dst_schema, 'inoperable_thresholds')
 			# writeRaster(inoperable_slope, "data\\analysis\\inoperable_slope_tsa_{}.tif", overwrite=TRUE)
 			rm(dem_clipped)
 			rm(slope_clipped)
 
 			message('Read in 100 meter resolution template raster')
-			template_tif <- rast('S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_01ha_gr_skey.tif')
+			template_tif <- rast('//spatialfiles2.bcgov/archive/FOR/VIC/HTS/ANA/workarea/PROVINCIAL/bc_01ha_gr_skey.tif')
 			template_100m_cropped <- terra::crop(template_tif, mgmt_unit_vect)
 			template_100m_cropped <- terra::mask(template_100m_cropped, mgmt_unit_vect)
 			rm(template_tif)
@@ -273,7 +273,7 @@ for (mgmt_unit in mgmt_units) {
 						1::int as class2,
 						stab.geom as geom
 					FROM 
-						{dst_schema}.ste_ter_attribute_polys_svw_ar stab
+						{vector_schema}.ste_ter_attribute_polys_svw_ar stab
 					JOIN 
 						{dst_schema}.inoperable_all_mgmt_units reg ON ST_Intersects(reg.geom, stab.geom)
 					WHERE 
@@ -284,7 +284,7 @@ for (mgmt_unit in mgmt_units) {
 
 	stability_vect <- create_sampler(db, stability_query)
 
-	inoperable_elevation <- calc_inop(dem_clipped, mgmt_unit_vect, mgmt_unit, elev_99th, 'elevation', conn_list)
+	inoperable_elevation <- calc_inop(dem_clipped, mgmt_unit_vect, mgmt_unit, elev_99th, 'elevation', conn_list, dst_schema, 'inoperable_thresholds')
 	# writeRaster(inoperable_elevation, glue("data\\analysis\\inoperable_elevation_tsa_{mgmt_unit}.tif"), overwrite=TRUE)
 
 	message('Rasterize stability vector to 25m DEM to mgmt_unit_vects')
@@ -292,13 +292,13 @@ for (mgmt_unit in mgmt_units) {
 	# writeRaster(stability_clipped, glue("data\\analysis\\stability_clipped_tsa_{mgmt_unit}.tif"), overwrite=TRUE)
 
 	message('Extract Thresholds: 99 percentile for slope')
-	inoperable_slope <- calc_inop(slope_clipped, mgmt_unit_vect, mgmt_unit, slope_99th, 'slope', conn_list)
+	inoperable_slope <- calc_inop(slope_clipped, mgmt_unit_vect, mgmt_unit, slope_99th, 'slope', conn_list, dst_schema, 'inoperable_thresholds')
 	# writeRaster(inoperable_slope, glue("data\\analysis\\inoperable_slope_tsa_{mgmt_unit}.tif"), overwrite=TRUE)
 	rm(dem_clipped)
 	rm(slope_clipped)
 
 	message('Read in 100 meter resolution template raster')
-    template_tif <- rast('S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_01ha_gr_skey.tif')
+    template_tif <- rast('//spatialfiles2.bcgov/archive/FOR/VIC/HTS/ANA/workarea/PROVINCIAL/bc_01ha_gr_skey.tif')
 	template_100m_cropped <- terra::crop(template_tif, mgmt_unit_vect)
 	template_100m_cropped <- terra::mask(template_100m_cropped, mgmt_unit_vect)
 	# writeRaster(template_100m_cropped, "data\\analysis\\template_100m_cropped.tif", overwrite=TRUE)

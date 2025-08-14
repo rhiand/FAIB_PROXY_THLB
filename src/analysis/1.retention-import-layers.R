@@ -1,7 +1,6 @@
 library(dadmtools)
-library(bcdata)
-library(tidyverse)
 source('src/utils/functions.R')
+
 conn_list <- dadmtools::get_pg_conn_list()
 db <- DBI::dbConnect(conn_list["driver"][[1]],
 				host = conn_list["host"][[1]],
@@ -10,12 +9,14 @@ db <- DBI::dbConnect(conn_list["driver"][[1]],
 				password = conn_list["password"][[1]],
 				port = conn_list["port"][[1]])
 
+dst_schema <- "whse"
+vector_schema <- "whse_vector"
 
 ## WHSE_FOREST_VEGETATION.RSLT_OPENING_SVW
 import_bcgw_to_pg(src_schema     = "WHSE_FOREST_VEGETATION",
                   src_layer      = "RSLT_OPENING_SVW",
                   fdw_schema     = "load",
-                  dst_schema     = "thlb_proxy",
+                  dst_schema     = vector_schema,
                   dst_layer      = "RSLT_OPENING_SVW",
                   fields_to_keep = "OPENING_ID, DISTURBANCE_START_DATE, DISTURBANCE_END_DATE, OPENING_GROSS_AREA, CUT_BLOCK_ID, TIMBER_MARK, opening_category_code",
                   geometry_name  = "geometry",
@@ -23,26 +24,26 @@ import_bcgw_to_pg(src_schema     = "WHSE_FOREST_VEGETATION",
                   grouping_name  = NULL,
                   pg_conn_list   = conn_list)
 
-query <- "ALTER TABLE thlb_proxy.rslt_opening_svw ADD COLUMN centroid geometry(Point, 3005);"
+query <- glue("ALTER TABLE {vector_schema}.rslt_opening_svw ADD COLUMN centroid geometry(Point, 3005);")
 run_sql_r(query, conn_list)
 
-query <- "UPDATE thlb_proxy.rslt_opening_svw set centroid = ST_Centroid(geom);"
+query <- glue("UPDATE {vector_schema}.rslt_opening_svw set centroid = ST_Centroid(geom);")
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE thlb_proxy.rslt_opening_svw ADD PRIMARY KEY (opening_id);"
+query <- glue("ALTER TABLE {vector_schema}.rslt_opening_svw ADD PRIMARY KEY (opening_id);")
 run_sql_r(query, conn_list)               
 
-query <- "CREATE INDEX rslt_opening_svw_centroid_geom_idx ON thlb_proxy.rslt_opening_svw USING gist(geom);"
+query <- glue("CREATE INDEX rslt_opening_svw_centroid_geom_idx ON {vector_schema}.rslt_opening_svw USING gist(geom);")
 run_sql_r(query, conn_list)
 
-query <- "ANALYZE thlb_proxy.rslt_opening_svw;"
+query <- glue("ANALYZE {vector_schema}.rslt_opening_svw;")
 run_sql_r(query, conn_list)
 
 ## WHSE_FOREST_VEGETATION.RSLT_FOREST_COVER_INV_SVW
 import_bcgw_to_pg(src_schema     = "WHSE_FOREST_VEGETATION",
                   src_layer      = "RSLT_FOREST_COVER_INV_SVW",
                   fdw_schema     = "load",
-                  dst_schema     = "thlb_proxy",
+                  dst_schema     = vector_schema,
                   dst_layer      = "RSLT_FOREST_COVER_INV_SVW",
                   fields_to_keep = "OPENING_ID, SILV_RESERVE_CODE, SILV_RESERVE_OBJECTIVE_CODE, SILV_POLYGON_AREA, FOREST_COVER_WHEN_UPDATED",
                   geometry_name  = "geometry",
@@ -77,13 +78,13 @@ import_bcgw_to_pg(src_schema     = "WHSE_FOREST_VEGETATION",
 
 ## In addition, the silv_reserve_code = 'G' was introduced in 2011 - but only started to be enforced in 2012 - so upped the disturbance_start_date filter from 2011 to 2012
 
-query <- "DROP TABLE IF EXISTS thlb_proxy.retention_data_explore"
+query <- glue("DROP TABLE IF EXISTS {dst_schema}.retention_data_explore")
 run_sql_r(query, conn_list)
 
 ## calculate the sum of opening_area
-query <- "CREATE TABLE thlb_proxy.retention_data_explore AS
+query <- glue("CREATE TABLE {dst_schema}.retention_data_explore AS
 	SELECT 
-		tsa.man_unit,
+		mu_look.man_unit,
 		opening.opening_id, 
 		sum(res.silv_polygon_area) over (partition by res.opening_id) as opening_area,
 		res.silv_reserve_code,
@@ -93,13 +94,14 @@ query <- "CREATE TABLE thlb_proxy.retention_data_explore AS
 		opening.DISTURBANCE_START_DATE,
 		res.forest_cover_when_updated
 	FROM
-	thlb_proxy.rslt_opening_svw opening 
-	LEFT JOIN thlb_proxy.tsa_boundaries_2020 tsa on ST_Intersects(tsa.geom, opening.centroid)
-	LEFT JOIN thlb_proxy.rslt_forest_cover_inv_svw res USING (opening_id)
+	{vector_schema}.rslt_opening_svw opening 
+	LEFT JOIN {vector_schema}.tsa_boundaries_2020 tsa on ST_Intersects(tsa.geom, opening.centroid)
+	LEFT JOIN {vector_schema}.rslt_forest_cover_inv_svw res USING (opening_id)
+	LEFT JOIN {dst_schema}.mu_lookup_table_im mu_look on tsa.tsa_number::integer = mu_look.tsa_number::integer
 	WHERE
-		DISTURBANCE_START_DATE > '2012-01-01'
+		opening.DISTURBANCE_START_DATE > '2012-01-01'
 	AND
-		timber_mark is not null
+		opening.timber_mark is not null
 	AND 
-		res.forest_cover_when_updated > '2012-01-01'" 
+		res.forest_cover_when_updated > '2012-01-01'")
 run_sql_r(query, conn_list)

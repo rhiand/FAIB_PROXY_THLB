@@ -1,16 +1,19 @@
 library(dadmtools)
 source('src/utils/functions.R')
-## relies on install_github("bcgov/FAIB_DATA_MANAGEMENT") being installed at some point
+dst_schema <- "whse"
+vector_schema <- "whse_vector"
+
 conn_list <- dadmtools::get_pg_conn_list()
+
 start_time <- Sys.time()
 print(glue("Script started at {format(start_time, '%Y-%m-%d %I:%M:%S %p')}"))
 
-query <- 'DROP TABLE IF EXISTS thlb_proxy.prov_netdown'
+query <- glue('DROP TABLE IF EXISTS {dst_schema}.thlb_proxy_netdown')
 run_sql_r(query, conn_list)
 
-query <- 'CREATE TABLE IF NOT EXISTS thlb_proxy.prov_netdown
+query <- glue('CREATE TABLE IF NOT EXISTS {dst_schema}.thlb_proxy_netdown
 (
-    gr_skey integer NOT NULL,
+    gr_skey integer NOT NULL primary key,
     geom geometry(Point,3005) NOT NULL,
     man_unit character varying COLLATE pg_catalog."default" NOT NULL,
     tsa_rank1 character varying(32) COLLATE pg_catalog."default",
@@ -64,19 +67,79 @@ query <- 'CREATE TABLE IF NOT EXISTS thlb_proxy.prov_netdown
     p12_phys_inop numeric,
     n13_non_merchantable text COLLATE pg_catalog."default",
     n14_non_commercial text COLLATE pg_catalog."default",
-    CONSTRAINT prov_netdown_pkey PRIMARY KEY (gr_skey)
-);'
+	p15_future_retention double precision,
+	version varchar(10),
+	fmlb double precision,
+	falb double precision,
+	paflb double precision,
+	pthlb_net double precision);')
 run_sql_r(query, conn_list)
 
-query <- 'SELECT tsa_rank1 from whse.man_unit_gr_skey WHERE tsa_rank1 is not null group by tsa_rank1'
+query <- glue('SELECT tsa_rank1 from {dst_schema}.man_unit_gr_skey WHERE tsa_rank1 is not null group by tsa_rank1')
 tsas <- sql_to_df(query, conn_list)
 
 
 for (i in 1:nrow(tsas)){
 	tsa <- tsas$tsa_rank1[i]
-	print(glue("INSERTING {tsa} into thlb_proxy.prov_netdown {i}/{nrow(tsas)}"))
+	print(glue("INSERTING {tsa} into {dst_schema}.thlb_proxy_netdown {i}/{nrow(tsas)}"))
 
-	query <- glue("INSERT INTO thlb_proxy.prov_netdown
+	query <- glue("INSERT INTO {dst_schema}.thlb_proxy_netdown (
+		gr_skey,
+		geom,
+		man_unit,
+		tsa_rank1,
+		own,
+		natural_disturbance,
+		bgc_label,
+		zone,
+		subzone,
+		harvest_start_year_calendar,
+		opening_id,
+		opening_number,
+		bclcs_level_1,
+		bclcs_level_2,
+		bclcs_level_3,
+		bclcs_level_4,
+		bclcs_level_5,
+		project,
+		non_productive_descriptor_cd,
+		land_cover_class_cd_1,
+		land_cover_class_cd_2,
+		land_cover_class_cd_3,
+		non_veg_cover_type_1,
+		for_mgmt_land_base_ind,
+		site_index,
+		species_cd_1,
+		present_land_use_label,
+		waterbody_type,
+		class2,
+		number_of_cutblocks,
+		elev_99th,
+		slope_99th,
+		inop_fact,
+		land_designation_type_code,
+		harvest_restriction_class_rank,
+		harvest_restriction_class_name,
+		wha_label,
+		non_commercial,
+		merchantability,
+		current_retention,
+		n01_fmlb,
+		n02_ownership,
+		n03_ownership,
+		n04_nonfor,
+		p05_linear_features,
+		n06_parks,
+		n07_wha,
+		n08_misc,
+		p09_riparian,
+		n10_arch,
+		n11_harvest_restrictions,
+		p12_phys_inop,
+		n13_non_merchantable,
+		n14_non_commercial,
+		version
+	)
 	WITH vri_species_cd_datadict AS (
 		SELECT
 			CASE
@@ -99,7 +162,7 @@ for (i in 1:nrow(tsas)){
 			species_full_name,
 			type
 		FROM
-			thlb_proxy.vri_species_cd_datadict
+			{dst_schema}.vri_species_cd_datadict
 	)
 	SELECT
 		bc.gr_skey,
@@ -175,20 +238,8 @@ for (i in 1:nrow(tsas)){
 		END as current_retention,
 
 		 -- FMLB
-		 CASE
-		 	WHEN bec.natural_disturbance = 'NDT5' THEN 'NDT5'
-		 	-- if its been harvested then its forested
-		 	WHEN (nullif(vri.opening_id::text,'0') is not null or nullif(vri.opening_number::text,'0') is not null or cc.harvest_start_year_calendar is not null or ccg.gr_skey is not null) THEN NULL
-		 	--
-		 	WHEN (coalesce(vri.bclcs_level_1,'') IN ('U', '') AND btm.present_land_use_label IN ('Old Forest', 'Recently Logged', 'Selectively Logged','Young Forest')) THEN NULL
-		 	---- WHEN upper(bec_zone || bec_subzone) IN ('SWBMKS', 'SWBUNS', 'SWBVKS') then 'N'
-		 	-- exclude where vegetated, not treed and not fire_update
-		 	WHEN vri.bclcs_level_1 = 'V' AND coalesce(vri.bclcs_level_2,'') <> 'T' AND vri.project NOT LIKE 'FIRE_UPDATE%' THEN 'not_treed_not_fire'
-		 	-- exclude urban that has been classified as forested
-		 	WHEN ((trim(vri.non_productive_descriptor_cd) = 'U' OR vri.bclcs_level_5 = 'UR' OR vri.land_cover_class_cd_1 = 'UR' OR vri.land_cover_class_cd_2 = 'UR' OR vri.land_cover_class_cd_3 = 'UR' OR vri.non_veg_cover_type_1 = 'UR')) AND (coalesce(vri.for_mgmt_land_base_ind,'Y') = 'Y') THEN 'URBAN and fmlb_orig = Y'
-		 	WHEN vri.for_mgmt_land_base_ind = 'Y' THEN NULL
-		 	WHEN vri.for_mgmt_land_base_ind = 'N' THEN 'fmlb_orig = N'
-		 END AS n01_fmlb,
+		 fmlb.netdown_fmlb AS n01_fmlb,
+		 
 		 CASE WHEN fown.own_sched IN ('40N', '41N', '52N', '80N') THEN own_sched_desc ELSE NULL END AS n02_ownership,
 		 CASE WHEN fown.own_sched IN ('50N', '51N', '53N', '54N') THEN own_sched_desc ELSE NULL END AS n03_ownership,
 		 CASE
@@ -217,8 +268,15 @@ for (i in 1:nrow(tsas)){
 		 coalesce(lin.fact,0) as p05_linear_features,
 		 CASE WHEN fown.own_sched IN ('60N', '81U') THEN own_sched_desc ELSE NULL END AS n06_parks,
 		 CASE WHEN wha.timber_harvest_code IN ('NO HARVEST ZONE', 'NO HARVEST') THEN wha.timber_harvest_code ELSE NULL END AS n07_wha,
+		 -- HDE: July, 2025 - no longer exclude 68U & 66N
+		 -- let analysts make that decision
 		 -- CASE WHEN fown.own_sched IN ('68U', '66N') THEN own_sched_desc ELSE NULL END AS n08_rec,
-		 CASE WHEN fown.own_sched IN ('69U', '99N') THEN own_sched_desc ELSE NULL END AS n08_misc,
+		 CASE 
+		 	-- HDE: July, 2025 - do not exclude 69U Crown Misc Reserves Caribou
+		 	WHEN own_sched_desc = '69U - Crown - Misc. Reserves Caribou' THEN NULL
+		 	WHEN fown.own_sched IN ('69U', '99N') THEN own_sched_desc 
+			ELSE NULL 
+		END AS n08_misc,
 		 coalesce(rip.fact,0) as p09_riparian,
 		 CASE
 		 	WHEN arch.pgid IS NOT NULL THEN 'arch sites'
@@ -230,72 +288,57 @@ for (i in 1:nrow(tsas)){
 		 END AS n11_harvest_restrictions,
 		 coalesce(inop.inop_fact,0) as p12_phys_inop,
 		 CASE WHEN merch.merchantability = 0 THEN 'non_merchantable' ELSE NULL END as n13_non_merchantable,
-		 non_com.non_commercial as n14_non_commercial
+		 non_com.non_commercial as n14_non_commercial,
+		current_date::varchar(10) as version
 
 	FROM
-	whse.all_bc_gr_skey bc
-	JOIN (SELECT * from whse.man_unit_gr_skey WHERE tsa_rank1 = '{tsa}') man_unit on man_unit.gr_skey = bc.gr_skey
-	LEFT JOIN thlb_proxy.seral_2023_tap_method fmlb on fmlb.gr_skey = bc.gr_skey
-	LEFT JOIN whse.f_own_gr_skey fown_key ON bc.gr_skey = fown_key.gr_skey
-	LEFT JOIN (SELECT own || schedule as own_sched, own || schedule || ' - ' || ownership_description AS own_sched_desc, pgid FROM whse.f_own) fown USING (pgid)
-	LEFT JOIN whse.bec_biogeoclimatic_poly_gr_skey bec_key on bec_key.gr_skey = bc.gr_skey
-	LEFT JOIN whse.bec_biogeoclimatic_poly bec ON bec.pgid = bec_key.pgid
-	LEFT JOIN thlb_proxy.btm_present_land_use_v1_svw_gr_skey btmg on btmg.gr_skey = bc.gr_skey
-	LEFT JOIN thlb_proxy.btm_present_land_use_v1_svw btm on btm.pgid = btmg.pgid
-	LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023_gr_skey vri_key on vri_key.gr_skey = bc.gr_skey
-	LEFT JOIN whse.veg_comp_lyr_r1_poly_internal_2023 vri on vri.pgid = vri_key.pgid
+	{dst_schema}.all_bc_gr_skey bc
+	JOIN (SELECT * from {dst_schema}.man_unit_gr_skey WHERE tsa_rank1 = '{tsa}') man_unit on man_unit.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.fmlb fmlb on fmlb.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.f_own_gr_skey fown_key ON bc.gr_skey = fown_key.gr_skey
+	LEFT JOIN (SELECT own || schedule as own_sched, own || schedule || ' - ' || ownership_description AS own_sched_desc, pgid FROM {dst_schema}.f_own) fown USING (pgid)
+	LEFT JOIN {dst_schema}.bec_biogeoclimatic_poly_gr_skey bec_key on bec_key.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.bec_biogeoclimatic_poly bec ON bec.pgid = bec_key.pgid
+	LEFT JOIN {dst_schema}.btm_present_land_use_v1_svw_gr_skey btmg on btmg.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.btm_present_land_use_v1_svw btm on btm.pgid = btmg.pgid
+	LEFT JOIN {dst_schema}.veg_comp_lyr_r1_poly_internal_gr_skey vri_key on vri_key.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.veg_comp_lyr_r1_poly_internal vri on vri.pgid = vri_key.pgid
 	LEFT JOIN vri_species_cd_datadict on vri.species_cd_1 = vri_species_cd_datadict.species_cd
-	LEFT JOIN whse.veg_consolidated_cut_blocks_sp_jan2025_gr_skey ccg on ccg.gr_skey = bc.gr_skey
-	LEFT JOIN whse.veg_consolidated_cut_blocks_sp_jan2025 cc on cc.pgid = ccg.pgid
-	LEFT JOIN whse.fwa_wetlands_gr_skey wet_key ON wet_key.gr_skey = bc.gr_skey
-	LEFT JOIN whse.fwa_wetlands wet ON wet.pgid = wet_key.pgid
-	LEFT JOIN thlb_proxy.bc_linear_features lin ON lin.gr_skey = bc.gr_skey
-	LEFT JOIN thlb_proxy.bc_riparian_buffers rip ON rip.gr_skey = bc.gr_skey
-	LEFT JOIN thlb_proxy.bc_inoperable_gr_skey inop ON inop.gr_skey = bc.gr_skey
-	LEFT JOIN thlb_proxy.bc_merchantability_gr_skey merch ON merch.gr_skey = bc.gr_skey
-	LEFT JOIN thlb_proxy.non_commercial_lu_table non_com on non_com.tsa = man_unit.tsa_rank1 and vri_species_cd_datadict.species_grouping = non_com.species_grouping
-	LEFT JOIN whse.rr_restriction_202408_gr_skey rr_key on rr_key.gr_skey = bc.gr_skey
-	LEFT JOIN whse.rr_restriction_202408 rr on rr.pgid = rr_key.pgid
-	LEFT JOIN thlb_proxy.wcp_wildlife_habitat_area_poly_gr_skey wha_key ON wha_key.gr_skey = bc.gr_skey
-	LEFT JOIN thlb_proxy.wcp_wildlife_habitat_area_poly wha ON wha.pgid = wha_key.pgid
-	LEFT JOIN thlb_proxy.raad_tfm_sites_svw_gr_skey arch_key on bc.gr_skey = arch_key.gr_skey
-	LEFT JOIN thlb_proxy.raad_tfm_sites_svw arch ON arch.pgid = arch_key.pgid
-	LEFT JOIN thlb_proxy.rslt_forest_cover_reserve_svw_20250110_gr_skey res_key ON res_key.gr_skey = bc.gr_skey
-	LEFT JOIN thlb_proxy.rslt_forest_cover_reserve_svw_20250110 res ON res.pgid = res_key.pgid
-	LEFT JOIN (SELECT distinct on (opening_id) opening_id FROM thlb_proxy.rslt_forest_cover_inv_svw cov JOIN thlb_proxy.rslt_opening_svw opening USING (opening_id) WHERE forest_cover_when_updated >= '2012-01-01' AND DISTURBANCE_START_DATE > '2012-01-01' AND timber_mark is not null ORDER BY opening_id, forest_cover_when_updated desc) res_inv ON res.opening_id = res_inv.opening_id") ## TODO join with opening id so can filter on disturbance date
+	LEFT JOIN {dst_schema}.veg_consolidated_cut_blocks_sp_gr_skey ccg on ccg.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.veg_consolidated_cut_blocks_sp cc on cc.pgid = ccg.pgid
+	LEFT JOIN {dst_schema}.fwa_wetlands_gr_skey wet_key ON wet_key.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.fwa_wetlands wet ON wet.pgid = wet_key.pgid
+	LEFT JOIN {dst_schema}.bc_linear_features lin ON lin.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.bc_riparian_buffers rip ON rip.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.bc_inoperable_gr_skey inop ON inop.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.bc_merchantability_gr_skey merch ON merch.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.non_commercial_lu_table non_com on non_com.tsa = man_unit.tsa_rank1 and vri_species_cd_datadict.species_grouping = non_com.species_grouping
+	LEFT JOIN {dst_schema}.rr_restriction_gr_skey rr_key on rr_key.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.rr_restriction rr on rr.pgid = rr_key.pgid
+	LEFT JOIN {dst_schema}.wcp_wildlife_habitat_area_poly_gr_skey wha_key ON wha_key.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.wcp_wildlife_habitat_area_poly wha ON wha.pgid = wha_key.pgid
+	LEFT JOIN {dst_schema}.raad_tfm_sites_svw_gr_skey arch_key on bc.gr_skey = arch_key.gr_skey
+	LEFT JOIN {dst_schema}.raad_tfm_sites_svw arch ON arch.pgid = arch_key.pgid
+	LEFT JOIN {dst_schema}.rslt_forest_cover_reserve_svw_gr_skey res_key ON res_key.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.rslt_forest_cover_reserve_svw res ON res.pgid = res_key.pgid
+	LEFT JOIN (SELECT distinct on (opening_id) opening_id FROM {vector_schema}.rslt_forest_cover_inv_svw cov JOIN {vector_schema}.rslt_opening_svw opening USING (opening_id) WHERE forest_cover_when_updated >= '2012-01-01' AND DISTURBANCE_START_DATE > '2012-01-01' AND timber_mark is not null ORDER BY opening_id, forest_cover_when_updated desc) res_inv ON res.opening_id = res_inv.opening_id")
 	run_sql_r(query, conn_list)
 }
 
-query <- "ALTER TABLE thlb_proxy.prov_netdown ADD PRIMARY KEY (gr_skey)"
+query <- glue("CREATE INDEX prov_netdown_man_unit_idx ON {dst_schema}.thlb_proxy_netdown USING btree(man_unit);")
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE thlb_proxy.prov_netdown ALTER COLUMN fmlb SET NOT NULL"
+query <- glue("CREATE INDEX prov_netdown_tsa_rank1_idx ON {dst_schema}.thlb_proxy_netdown USING btree(tsa_rank1);")
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE thlb_proxy.prov_netdown ALTER COLUMN falb SET NOT NULL"
+query <- glue("CREATE INDEX prov_netdown_geom_idx ON {dst_schema}.thlb_proxy_netdown USING gist(geom);")
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE thlb_proxy.prov_netdown ALTER COLUMN paflb SET NOT NULL"
-run_sql_r(query, conn_list)
-
-query <- "ALTER TABLE thlb_proxy.prov_netdown ALTER COLUMN pthlb_net SET NOT NULL"
-run_sql_r(query, conn_list)
-
-query <- "CREATE INDEX prov_netdown_man_unit_idx ON thlb_proxy.prov_netdown USING btree(man_unit);"
-run_sql_r(query, conn_list)
-
-
-query <- "CREATE INDEX prov_netdown_tsa_rank1_idx ON thlb_proxy.prov_netdown USING btree(tsa_rank1);"
-run_sql_r(query, conn_list)
-
-query <- "CREATE INDEX prov_netdown_geom_idx ON thlb_proxy.prov_netdown USING gist(geom);"
-run_sql_r(query, conn_list)
-
-query <- "ANALYZE thlb_proxy.prov_netdown;"
+query <- glue("ANALYZE {dst_schema}.thlb_proxy_netdown;")
 run_sql_r(query, conn_list)
 
 todays_date <- format(Sys.time(), "%Y-%m-%d %I:%M:%S %p")
-query <- glue("COMMENT ON TABLE thlb_proxy.prov_netdown IS 'Table created at {todays_date}.'")
+query <- glue("COMMENT ON TABLE {dst_schema}.thlb_proxy_netdown IS 'Table created at {todays_date}.'")
 run_sql_r(query, conn_list)
 
 end_time <- Sys.time()

@@ -10,13 +10,14 @@ db <- DBI::dbConnect(conn_list["driver"][[1]],
 				port = conn_list["port"][[1]])
 start_time <- Sys.time()
 print(glue("Script started at {format(start_time, '%Y-%m-%d %I:%M:%S %p')}"))
-dst_schema <- "thlb_proxy"
+dst_schema <- "whse"
+vector_schema <- "whse_vector"
 
 
-query <- "DROP TABLE IF EXISTS thlb_proxy.bc_inoperable_gr_skey;"
+query <- glue("DROP TABLE IF EXISTS {dst_schema}.bc_inoperable_gr_skey;")
 run_sql_r(query, conn_list)
 
-query <- "CREATE TABLE thlb_proxy.bc_inoperable_gr_skey AS
+query <- glue("CREATE TABLE {dst_schema}.bc_inoperable_gr_skey AS
 SELECT 
 	distinct on (inop.gr_skey)
 	inop.gr_skey,
@@ -31,8 +32,8 @@ SELECT
 	slope_threshold.slope_99th
 	
 FROM 
-thlb_proxy.inoperable_gr_skey inop 
-JOIN thlb_proxy.inoperable_cutblock_summary inop_cc on split_part(inop.man_unit, '-sub-', 1) = inop_cc.mgmt_unit
+{dst_schema}.inoperable_gr_skey inop 
+JOIN {dst_schema}.inoperable_cutblock_summary inop_cc on split_part(inop.man_unit, '-sub-', 1) = inop_cc.mgmt_unit
 JOIN
 	(
 		SELECT 
@@ -40,7 +41,7 @@ JOIN
 			cutblock_percentile_99 as elev_99th,
 			split_part(inop.man_unit, '-sub-', 1) as man_unit
 		FROM 
-			thlb_proxy.inoperable_thresholds inop
+			{dst_schema}.inoperable_thresholds inop
 		WHERE grid = 'elevation'
 		ORDER BY
 			cutblock_percentile_99,
@@ -54,7 +55,7 @@ JOIN
 			cutblock_percentile_99 as slope_99th,
 			split_part(inop.man_unit, '-sub-', 1) as man_unit
 		FROM 
-		thlb_proxy.inoperable_thresholds inop
+		{dst_schema}.inoperable_thresholds inop
 		WHERE grid = 'slope'
 		ORDER BY
 			cutblock_percentile_99,
@@ -65,11 +66,11 @@ WHERE
 	inop_cc.number_of_cutblocks >= 30
 AND
 	inop.man_unit ilike 'TFL%'
-ORDER BY inop.gr_skey, class2 DESC"
+ORDER BY inop.gr_skey, class2 DESC")
 run_sql_r(query, conn_list)
 
 	
-query <- "INSERT INTO thlb_proxy.bc_inoperable_gr_skey
+query <- glue("INSERT INTO {dst_schema}.bc_inoperable_gr_skey
 SELECT 
 	distinct on (inop.gr_skey)
 	inop.gr_skey,
@@ -83,8 +84,8 @@ SELECT
 	elev_threshold.elev_99th,
 	slope_threshold.slope_99th
 FROM 
-thlb_proxy.inoperable_gr_skey inop 
-JOIN thlb_proxy.inoperable_cutblock_summary inop_cc on split_part(inop.man_unit, '-sub-', 1) = inop_cc.mgmt_unit
+{dst_schema}.inoperable_gr_skey inop 
+JOIN {dst_schema}.inoperable_cutblock_summary inop_cc on split_part(inop.man_unit, '-sub-', 1) = inop_cc.mgmt_unit
 JOIN
 	(
 		SELECT 
@@ -92,7 +93,7 @@ JOIN
 			cutblock_percentile_99 as elev_99th,
 			split_part(inop.man_unit, '-sub-', 1) as man_unit
 		FROM 
-			thlb_proxy.inoperable_thresholds inop
+			{dst_schema}.inoperable_thresholds inop
 		WHERE grid = 'elevation'
 		ORDER BY
 			cutblock_percentile_99,
@@ -106,20 +107,20 @@ JOIN
 			cutblock_percentile_99 as slope_99th,
 			split_part(inop.man_unit, '-sub-', 1) as man_unit
 		FROM 
-		thlb_proxy.inoperable_thresholds inop
+		{dst_schema}.inoperable_thresholds inop
 		WHERE grid = 'slope'
 		ORDER BY
 			cutblock_percentile_99,
 			split_part(inop.man_unit, '-sub-', 1)
 	) slope_threshold
 ON split_part(inop.man_unit, '-sub-', 1) = slope_threshold.man_unit
-LEFT JOIN thlb_proxy.bc_inoperable_gr_skey inop_exist ON inop_exist.gr_skey = inop.gr_skey
+LEFT JOIN {dst_schema}.bc_inoperable_gr_skey inop_exist ON inop_exist.gr_skey = inop.gr_skey
 WHERE 
 	inop_cc.number_of_cutblocks >= 30
 AND 
 	-- don't retrieve any gr_skey that already exists in inop table from managed licences & TFLs
 	inop_exist.gr_skey IS NULL
-ORDER BY inop.gr_skey, class2 DESC"
+ORDER BY inop.gr_skey, class2 DESC")
 run_sql_r(query, conn_list)
 
 end_time <- Sys.time()

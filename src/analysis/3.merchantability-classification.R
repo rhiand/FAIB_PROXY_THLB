@@ -10,7 +10,7 @@ db <- DBI::dbConnect(conn_list["driver"][[1]],
 				port = conn_list["port"][[1]])
 start_time <- Sys.time()
 print(glue("Script started at {format(start_time, '%Y-%m-%d %I:%M:%S %p')}"))
-dst_schema <- "thlb_proxy"
+dst_schema <- "whse"
 query <- glue("DROP TABLE IF EXISTS {dst_schema}.bc_merchantability_gr_skey")
 run_sql_r(query, conn_list)
 
@@ -30,16 +30,16 @@ WITH p5_site_index AS (
 		END AS p5
 		, vri.site_index
 	FROM
-	whse.veg_comp_lyr_r1_poly_internal_2023_gr_skey vri_key
-	LEFT JOIN (SELECT pgid, CASE WHEN site_index = 0 THEN NULL ELSE site_index END AS site_index FROM whse.veg_comp_lyr_r1_poly_internal_2023) vri USING (pgid)
-	LEFT JOIN whse.tsa_boundaries_gr_skey tsa_key on tsa_key.gr_skey = vri_key.gr_skey
-	LEFT JOIN whse.tsa_boundaries tsa on tsa.pgid = tsa_key.pgid 
+	{dst_schema}.veg_comp_lyr_r1_poly_internal_gr_skey vri_key
+	LEFT JOIN (SELECT pgid, CASE WHEN site_index = 0 THEN NULL ELSE site_index END AS site_index FROM {dst_schema}.veg_comp_lyr_r1_poly_internal) vri USING (pgid)
+	LEFT JOIN {dst_schema}.tsa_boundaries_gr_skey tsa_key on tsa_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN {dst_schema}.tsa_boundaries tsa on tsa.pgid = tsa_key.pgid 
 	LEFT JOIN {dst_schema}.tsa_tfl_abt_5p_site_index_cc si_tsa ON si_tsa.forest_file_id = tsa.tsa_number
-	LEFT JOIN whse.fadm_tfl_all_sp_gr_skey tfl_key ON tfl_key.gr_skey = vri_key.gr_skey
-	LEFT JOIN whse.fadm_tfl_all_sp tfl ON tfl.pgid = tfl_key.pgid 
+	LEFT JOIN {dst_schema}.fadm_tfl_all_sp_gr_skey tfl_key ON tfl_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN {dst_schema}.fadm_tfl_all_sp tfl ON tfl.pgid = tfl_key.pgid 
 	LEFT JOIN {dst_schema}.tsa_tfl_abt_5p_site_index_cc si_tfl ON tfl.forest_file_id = si_tfl.forest_file_id
-	LEFT JOIN whse.ften_managed_licence_poly_svw_gr_skey manlic_key ON manlic_key.gr_skey = vri_key.gr_skey
-	LEFT JOIN whse.ften_managed_licence_poly_svw manlic ON manlic.pgid = manlic_key.pgid 
+	LEFT JOIN {dst_schema}.ften_managed_licence_poly_svw_gr_skey manlic_key ON manlic_key.gr_skey = vri_key.gr_skey
+	LEFT JOIN {dst_schema}.ften_managed_licence_poly_svw manlic ON manlic.pgid = manlic_key.pgid 
 	LEFT JOIN {dst_schema}.tsa_tfl_abt_5p_site_index_cc si_manlic ON manlic.forest_file_id = si_manlic.forest_file_id
 )
 SELECT

@@ -26,14 +26,14 @@ CREATE TABLE whse.man_unit_gr_skey AS
 		END AS manlic_rank1,
 		di.district_name AS district_name,
 		LEFT(reg.region_name, -24 ) as region_name,
-		nsc.name
+		nsc.area_name as name
 	FROM
 	whse.all_bc_gr_skey a 
 	left join whse.adm_nr_regions_sp_gr_skey regg on a.gr_skey = regg.gr_skey 
 	left join whse.adm_nr_regions_sp reg on regg.pgid = reg.pgid
 
 	left join whse.north_south_coast_gr_skey nscg on a.gr_skey = nscg.gr_skey
-	left join whse.north_south_coast nsc on nscg.fid = nsc.fid
+	left join whse.north_south_coast nsc on nscg.pgid = nsc.pgid
 
 	left join whse.adm_nr_districts_sp_gr_skey dig on a.gr_skey = dig.gr_skey 
 	left join whse.adm_nr_districts_sp di on dig.pgid = di.pgid
@@ -51,5 +51,10 @@ CREATE TABLE whse.man_unit_gr_skey AS
 
 ALTER TABLE whse.man_unit_gr_skey ADD PRIMARY KEY (gr_skey);
 
-COMMENT ON TABLE whse.man_unit_gr_skey
-    IS 'Last ran 2025-02-06';
+DO $$
+BEGIN
+    EXECUTE format(
+        'COMMENT ON TABLE whse.man_unit_gr_skey IS %L',
+        'Last ran ' || now()
+    );
+END$$;

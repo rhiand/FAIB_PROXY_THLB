@@ -60,7 +60,7 @@ knitr::opts_chunk$set(fig.width = 8.5, fig.height = 7, collapse = TRUE)
 The netdown process is a progressive exclusion algorithm where the BC land base is classified into four nested categories: FMLB (Forest Management Land Base), FALB (Forest Assessment Land Base), pAFLB (Proxy Analysis Forest Land Base), and pTHLB (Proxy Timber Harvesting Land Base):
 
 
-![](C:/projects/THLB_Proxy/images/land_classification_diagram.png){width="656"}
+![](C:/projects/FAIB_PROXY_THLB/images/land_classification_diagram.png){width="656"}
 
 
 To delineate the four land base categories, several deductions occur, each of which is described in detail in this document. The FMLB, FALB, pAFLB and pTHLB variables are updated with each landclass area deduction, also known as netdown inclusion factors. Initially, the FMLB, FALB, pAFLB and pTHLB all have a value of one. The values are updated accordingly with each netdown inclusion factor. 
@@ -74,7 +74,7 @@ The area deductions are then presented in a netdown summary table - the table su
 - The **netdown** is the remaining area after the net excluded area is removed. The final value (bottom row) is the pTHLB.
 
 For example:
-![](C:/projects/THLB_Proxy/images/netdown_explanation.png){width="656"}
+![](C:/projects/FAIB_PROXY_THLB/images/netdown_explanation.png){width="656"}
 
 ### Categorical vs. numerical area deduction variables
 
@@ -136,8 +136,8 @@ query <- "SELECT
 	p.p12_phys_inop,
 	p.n13_non_merchantable,
 	p.n14_non_commercial
-FROM thlb_proxy.prov_netdown p
---WHERE tsa_tfl IN ('Arrow TSA')--, 'Fort St. John TSA', 'Fort Nelson TSA')
+FROM whse.thlb_proxy_netdown p
+--WHERE man_unit IN ('Arrow TSA')--, 'Fort St. John TSA', 'Fort Nelson TSA')
 "
 netdown_tab <- sql_to_df(query, conn_list)
 netdown_summary <- setup_tracking_variable(netdown_tab)
@@ -166,9 +166,10 @@ Rules for populating `for_mgmt_land_base_ind`:
 
 'N' is assigned if:
 
-- 'The stand has never been harvested, and the inventory source is Forest Inventory Planning (FIP), and the area is either non-productive or unreported; OR
-- The inventory source is not FIP, and the land cover classification is either non-vegetated or unreported; OR
-- The site index is less than 5.
+- 'The stand has never been harvested, AND
+  - the inventory source is Forest Inventory Planning (FIP), and the area is either non-productive or BC Land Cover Classification Schema Level 1(bclcs) is unreported; OR
+  - The inventory source is not FIP, and the bclcs level 3 is either non-vegetated or unreported or bclcs level 3 is alpine; OR
+  - The site index or estimated site index (respectively) is less than 5.
 
 'Y' is assigned if:
 
@@ -239,7 +240,7 @@ SELECT
     bclcs_level_3,
     project
 FROM
-  whse.veg_comp_lyr_r1_poly_internal_2023 v
+  whse.veg_comp_lyr_r1_poly_internal v
 )
 SELECT
 -- Some Fire Update polygons are flipped back from N to Y if they fall into the following pattern:
@@ -259,42 +260,109 @@ FROM
 recreate_for_mgmt_land_base_ind;
 ```
 
-The following adjustments were made based on a review of satellite imagery, consultation with inventory specialists, and guidance from the Biodiversity Guidebook. These changes were intended to better align the classification of forest cover with practical interpretations, particularly for assessing old growth and biodiversity:
+The following adjustments were made based on a review of satellite imagery, consultation with inventory specialists, and guidance from the Biodiversity Guidebook. These changes were intended to better align the classification of forest cover with practical interpretations, particularly for assessing old growth and biodiversity. The following rules were applied in this order:
 
 'N' is assigned if:
 
-- if BEC.natural_disturbance = 'NDT5'
-- if bclcs_level_1 = 'V' AND bclcs_level_2 <> 'T' and vri.project NOT LIKE 'FIRE_UPDATE%'
-- if URBAN is true AND vri.for_mgmt_land_base_ind = 'Y', (URBAN defined as: URBAN IS TRUE if vri.non_productive_descriptor_cd = 'U' OR vri.bclcs_level_5 = 'UR' OR vri.land_cover_class_cd_1 = 'UR' OR vri.land_cover_class_cd_2 = 'UR' vri.OR land_cover_class_cd_3 = 'UR')
+- 'N' if BEC natural_disturbance = 'NDT5'; I.e. Alpine Tundra
+- 'Y' if VRI non-zero opening_id exists or historical harvest (I.e., consolidated cutblock) exists; I.e. previously harvested
+- 'N' if BEC zone is 'SWB' and BEC subzone is 'mks', 'uns', 'vks'; spruce-willow-birch shrublands
+- 'N' if BEC zone = 'BG'; bunchgrass
+- 'Y' if lidar derived tree cover over VRI polygon >= 10% and napercent of lidar coverage of VRI polygon < 25%; data only available where lidar data exists and VRI bclcs is unreported.
+- 'N' if lidar derived tree cover over VRI polygon < 10% and napercent of lidar coverage of VRI polygon < 25%; ; data only available where lidar data exists and VRI bclcs is unreported.
+- 'Y' if TFL = 19 and base thematic mapping classification (BTM) is Forested and VRI for_mgmt_land_base_ind = 'N' and VRI inventory_standard_cd = 'F' or for_mgmt_land_base_ind is NULL; fix where known old VRI data is incorrect within TFL 19
+- 'Y' if Strathcona Park and BCLCS Level 1 = Vegetated and BCLCS Level 2 = Treed and Site Index > 4 and VRI for_mgmt_land_base_ind = 'N'; fix where known incorrect VRI data within Strathcona Park
+- 'Y' if BCLCS Level 1 is Unreported or NULL and BTM is forested; infill where no VRI data
+- 'N' if area is classified as URBAN AND  VRI for_mgmt_land_base_ind = 'Y', (URBAN defined as: URBAN IS TRUE if vri.non_productive_descriptor_cd = 'U' OR vri.bclcs_level_5 = 'UR' OR vri.land_cover_class_cd_1 = 'UR' OR vri.land_cover_class_cd_2 = 'UR' vri.OR land_cover_class_cd_3 = 'UR')
+- 'N' if BCLCS Level 1 is Non-vegetated and earliest_nonlogging_dist_type is not 'IBM', 'B', 'NB'; I.e., non-veg and not disturbed by Mountain Pine Beetle or Wildfire
+- 'Y' if BCLCS Level 1 is Vegetated, BCLCS Level 1 is non-vegetated, VRI for_mgmt_land_base_ind = 'Y', Crown Closure < 10, Land Cover Class Code 1 is null, BTM is forested and earliest_nonlogging_dist_type is not 'IBM', 'B', 'NB' (Mountain Pine Beetle & Wildfire)
+- 'N' if BCLCS Level 1 is Vegetated, BCLCS Level 1 is non-vegetated, VRI for_mgmt_land_base_ind = 'Y', Crown Closure < 10, Land Cover Class Code 1 is not Treed (treed defined as 'TB', 'TC', 'TM'), and earliest_nonlogging_dist_type is not 'IBM', 'B', 'NB' (Mountain Pine Beetle & Wildfire)
 
-'Y' is assigned if:
-
-+ if harvest IS TRUE, (harvest is defined as: harvest is TRUE if vri.harvest_date is not null OR consolidated cutblocks exist OR vri.opening_id or vri.opening_number IS NOT NULL or '0' otherwise 'N')
-+ if (vri.bclcs_level_1 IN ('U', '') AND btm.present_land_use_label in ('Old Forest', 'Recently Logged', 'Selectively Logged', 'Young Forest'))
-
-
-OTHERWISE retain vri.for_mgmt_land_base_ind
+OTHERWISE retain VRI for_mgmt_land_base_ind
 
 
 Below is a SQL snippet illustrating the logic used to build the newly adjusted FMLB. It is done using a long 'case when' statement. In the netdown table, each adjustment is assigned it's own descriptive label under the variable n01_fmlb.
 
 ```{sql fmlb_adj_sql, eval= FALSE}
-		CASE 
-			WHEN bec.natural_disturbance = 'NDT5' THEN 'NDT5'
-			-- if its been harvested then its forested
-			WHEN (nullif(vri.opening_id::text,'0') is not null or nullif(vri.opening_number::text,'0') is not null or cc.harvest_start_year_calendar is not null or ccg.gr_skey is not null) THEN NULL
-			-- bring back in btm forested
-			WHEN (coalesce(vri.bclcs_level_1,'') IN ('U', '') AND btm.present_land_use_label IN ('Old Forest', 'Recently Logged', 'Selectively Logged','Young Forest')) THEN NULL
-			-- exclude where vegetated, not treed and not fire_update
-			WHEN vri.bclcs_level_1 = 'V' AND coalesce(vri.bclcs_level_2,'') <> 'T' AND vri.project NOT LIKE 'FIRE_UPDATE%' THEN 'not_treed_not_fire'
-			-- exclude urban that has been classified as forested
-			WHEN ((trim(vri.non_productive_descriptor_cd) = 'U' OR vri.bclcs_level_5 = 'UR' OR vri.land_cover_class_cd_1 = 'UR' OR vri.land_cover_class_cd_2 = 'UR' OR vri.land_cover_class_cd_3 = 'UR' OR vri.non_veg_cover_type_1 = 'UR')) AND (coalesce(vri.for_mgmt_land_base_ind,'Y') = 'Y') THEN 'URBAN and fmlb_orig = Y'
-			WHEN vri.for_mgmt_land_base_ind = 'Y' THEN NULL
-			WHEN vri.for_mgmt_land_base_ind = 'N' THEN 'fmlb_orig = N'
+	CASE 
+		-- remove BEC NDT5 — Alpine Tundra and Subalpine Parkland
+		WHEN bec.natural_disturbance = 'NDT5' THEN 'BEC NDT5'
+		-- keep in any RESULTS openings or consolidated cutblocks
+		WHEN (nullif(vri.opening_id::text,'0') is not null or cc.harvest_start_year_calendar is not null) THEN NULL
+		-- remove spruce, willow, birch shrublands
+		WHEN upper(bec.zone || bec.subzone) IN ('SWBMKS', 'SWBUNS', 'SWBVKS') then 'BEC spruce-willow-birch shrublands'
+		-- removeall bec bunch grass
+		WHEN bec.zone = 'BG' THEN 'BEC bunchgrass'
+		-- current & historical lidar
+		-- include in FMLB if >= 10% treed & napercent < 25%
+		-- exclude from FMLB if < 10% treed percent & na percent < 25%
+		WHEN current_lidar.treedpercent >= 10 and current_lidar.napercent < 25 then NULL
+		WHEN current_lidar.treedpercent < 10 and current_lidar.napercent < 25 then 'Lidar < 10% treed %'
+		WHEN hx_lidar.treedpercent >= 10 and hx_lidar.napercent < 25 then NULL
+		WHEN hx_lidar.treedpercent < 10 and hx_lidar.napercent < 25 then 'Lidar < 10% treed %'
+		-- keep in where VRI is unreported but btm present land use is forested
+		-- keep in where TFL 19, btm forest and inv != F or orig FMLB is null
+		-- known old growth in TFL19 where old inventory
+		WHEN 
+			tfl.forest_file_id ='TFL19' and 
+			((vri.for_mgmt_land_base_ind = 'N' and vri.inventory_standard_cd = 'F') OR (vri.for_mgmt_land_base_ind IS NULL)) and 
+			btm.present_land_use_label in ('Old Forest', 'Recently Logged', 'Selectively Logged', 'Young Forest') 
+		THEN NULL
+		-- keep in known areas of forest in strathcona park 
+		WHEN 
+			park.protected_lands_name = 'STRATHCONA PARK' AND 
+			vri.bclcs_level_1 ='V' AND 
+			vri.bclcs_level_2 = 'T' AND 
+			vri.site_index > 4 AND
+			vri.for_mgmt_land_base_ind ='N' 
+		THEN NULL
+		-- keep in where VRI is unreported but btm present land use is forested
+		WHEN 
+			(coalesce(vri.bclcs_level_1,'U') = 'U' AND 
+			btm.present_land_use_label IN ('Old Forest', 'Recently Logged', 'Selectively Logged', 'Young Forest')) 
+		THEN NULL
+		-- remove where original for_mgmt_land_base_ind = 'Y' but other fields denote unreported
+		WHEN 
+			((trim(vri.non_productive_descriptor_cd) = 'U' OR 
+			vri.bclcs_level_5 = 'UR' OR 
+			vri.land_cover_class_cd_1 = 'UR' OR 
+			vri.land_cover_class_cd_2 = 'UR' OR 
+			vri.land_cover_class_cd_3 = 'UR' OR 
+			vri.non_veg_cover_type_1 = 'UR')) AND 
+			(coalesce(vri.for_mgmt_land_base_ind,'Y') = 'Y') 
+		THEN 'unreported/urban'
+		-- remove where bclcs_level_1 is Non Vegetated and not beetle kill or wildfire
+		-- don't want to switch something to N when it is beetle kill or wildfire
+		WHEN 
+			coalesce(vri.bclcs_level_1, 'U') = 'N' AND 
+			COALESCE(earliest_nonlogging_dist_type, 'ZZ') not in ('IBM', 'B', 'NB')  
+		THEN 'bclcs nonveg, not beetle kill or burn'
+		-- keep in veg / non treed / CC < 10 / land cover class IS NULL / not beetle kill (IBM) or wildfire (B, NB) / FMLB original = 'Y' / forested according to feds
+		WHEN 
+			vri.BCLCS_LEVEL_1 = 'V' AND 
+			COALESCE(vri.BCLCS_LEVEL_2, '') <> 'T' AND 
+			vri.FOR_MGMT_LAND_BASE_IND = 'Y' AND 
+			vri.CROWN_CLOSURE < 10 AND 
+			vri.LAND_COVER_CLASS_CD_1 IS NULL AND
+			btm.present_land_use_label in ('Old Forest', 'Recently Logged', 'Selectively Logged', 'Young Forest') AND
+			COALESCE(earliest_nonlogging_dist_type, 'ZZ') not in ('IBM', 'B', 'NB')
+		THEN NULL
+		-- remove where veg / non treed / CC < 10 / land cover class not tree classes / not beetle kill (IBM) or wildfire (B, NB) / FMLB original = 'Y'
+		-- https://archive.ipcc.ch/ipccreports/sres/land_use/index.php?idp=124
+		WHEN 
+			vri.BCLCS_LEVEL_1 = 'V' AND 
+			COALESCE(vri.BCLCS_LEVEL_2, '') <> 'T' AND 
+			vri.FOR_MGMT_LAND_BASE_IND = 'Y' AND 
+			vri.CROWN_CLOSURE < 10 AND 
+			coalesce(vri.LAND_COVER_CLASS_CD_1, '') NOT IN ('TB', 'TC', 'TM') AND 
+			COALESCE(earliest_nonlogging_dist_type, 'ZZ') not in ('IBM', 'B', 'NB')
+		THEN 'veg, nontreed etc'
+		WHEN vri.for_mgmt_land_base_ind  = 'N' then 'for_mgmt_land_base_ind = N'
+		WHEN vri.for_mgmt_land_base_ind  = 'Y' then NULL
 		END AS n01_fmlb
 ```
 
-**Data sources:** BCGW files: WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_BASEMAPPING.BTM_PRESENT_LAND_USE_V1_SVW, WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY
+**Data sources:** BCGW files: WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY, WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP, WHSE_BASEMAPPING.BTM_PRESENT_LAND_USE_V1_SVW, WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY, WHSE_TANTALIS.TA_PARK_ECORES_PA_SVW, WHSE_ADMIN_BOUNDARIES.FADM_TFL_ALL_SP, Internal Lidar Dataset
 
 __R Scripts__
 
@@ -302,7 +370,7 @@ The following scripts were used to perform this netdown factor's pre-processing:
 
 ```
 src\analysis\1.fmlb-import-layers.R
-src\analysis\2.fmlb-processing.R
+src\analysis\2.fmlb-creation.R
 ```
 
 #### Non-Forest Summary
@@ -983,23 +1051,23 @@ conn_list <- dadmtools::get_pg_conn_list()
 
 ## Add geometry field to the FREP monitoring data
 ## one time
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS geom;"
+query <- "ALTER TABLE whse.june13_riparian_data_for_faib DROP COLUMN IF EXISTS geom;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN IF NOT EXISTS geom Geometry(Point, 3005);"
+query <- "ALTER TABLE whse.june13_riparian_data_for_faib ADD COLUMN IF NOT EXISTS geom Geometry(Point, 3005);"
 run_sql_r(query, conn_list)
-query <- "UPDATE thlb_proxy.june13_riparian_data_for_faib SET geom = ST_SetSRID(ST_Point(bcalbers_easting, bcalbers_northing), 3005);"
+query <- "UPDATE whse.june13_riparian_data_for_faib SET geom = ST_SetSRID(ST_Point(bcalbers_easting, bcalbers_northing), 3005);"
 run_sql_r(query, conn_list)
 
 ## Compare the modeled stream width with FREP data
 ## Add a linking key (I.e., `modelled_habitat_potential_fid`) to `thlb_proxy.june13_riparian_data_for_faib` with the fid of the nearest linestring of `thlb_proxy.modelled_habitat_potential`
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS modelled_habitat_potential_fid;"
+query <- "ALTER TABLE whse.june13_riparian_data_for_faib DROP COLUMN IF EXISTS modelled_habitat_potential_fid;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN modelled_habitat_potential_fid INTEGER;"
+query <- "ALTER TABLE whse.june13_riparian_data_for_faib ADD COLUMN modelled_habitat_potential_fid INTEGER;"
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_line;"
+query <- "ALTER TABLE whse.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_line;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN distance_to_line real;"
+query <- "ALTER TABLE whse.june13_riparian_data_for_faib ADD COLUMN distance_to_line real;"
 run_sql_r(query, conn_list)
 
 ## Associate FREP points with modeled stream with by distance
@@ -1009,17 +1077,17 @@ query <- "WITH nearest_lines AS (
         l.fid AS line_fid,
 		l.distance
     FROM
-        thlb_proxy.june13_riparian_data_for_faib r
+        whse.june13_riparian_data_for_faib r
     CROSS JOIN LATERAL (
         SELECT
 		fid,
 		ST_Distance(r.geom, l.geom) as distance
-        FROM thlb_proxy.modelled_habitat_potential l
+        FROM whse.modelled_habitat_potential l
         ORDER BY r.geom <-> l.geom
         LIMIT 1
     ) l
 )
-UPDATE thlb_proxy.june13_riparian_data_for_faib r
+UPDATE whse.june13_riparian_data_for_faib r
 SET
 	modelled_habitat_potential_fid = nl.line_fid,
 	distance_to_line= nl.distance
@@ -1030,14 +1098,14 @@ WHERE
 run_sql_r(query, conn_list)
 
 
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS fwa_rivers_poly_waterbody_poly_id;"
+query <- "ALTER TABLE whse.june13_riparian_data_for_faib DROP COLUMN IF EXISTS fwa_rivers_poly_waterbody_poly_id;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN fwa_rivers_poly_waterbody_poly_id INTEGER;"
+query <- "ALTER TABLE whse.june13_riparian_data_for_faib ADD COLUMN fwa_rivers_poly_waterbody_poly_id INTEGER;"
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_poly;"
+query <- "ALTER TABLE whse.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_poly;"
 run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.june13_riparian_data_for_faib ADD COLUMN distance_to_poly real;"
+query <- "ALTER TABLE whse.june13_riparian_data_for_faib ADD COLUMN distance_to_poly real;"
 run_sql_r(query, conn_list)
 
 ## update FREP points that have been associated to a stream nearest river
@@ -1047,17 +1115,17 @@ query <- "WITH nearest_lines AS (
         l.waterbody_poly_id AS line_fid,
 		l.distance
     FROM
-        thlb_proxy.june13_riparian_data_for_faib r
+        whse.june13_riparian_data_for_faib r
     CROSS JOIN LATERAL (
         SELECT
           waterbody_poly_id,
           ST_Distance(r.geom, l.geom) as distance
-        FROM thlb_proxy.fwa_rivers_poly l
+        FROM whse_vector.fwa_rivers_poly l
         ORDER BY r.geom <-> l.geom
         LIMIT 1
     ) l
 )
-UPDATE thlb_proxy.june13_riparian_data_for_faib r
+UPDATE whse.june13_riparian_data_for_faib r
 SET
 	fwa_rivers_poly_waterbody_poly_id = nl.line_fid,
 	distance_to_poly= nl.distance
@@ -1071,7 +1139,7 @@ run_sql_r(query, conn_list)
 
 Look at the results of the confusion matrix. Accuracy of 0.42.. not very good. Advised to review accuracy over different regions like BEC zones etc. Didn't complete that work and carried on with THLB proxy.
 
-```{r eval = TRUE, message=FALSE, warning=FALSE}
+```{r eval = FALSE, message=FALSE, warning=FALSE}
 library(dadmtools)
 library(dplyr)
 library(caret)
@@ -1122,9 +1190,9 @@ query <- "SELECT
 	ELSE 0
 	END as match
 FROM
-thlb_proxy.june13_riparian_data_for_faib frep
-LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, channel_width, fid FROM thlb_proxy.modelled_habitat_potential) stream ON frep.modelled_habitat_potential_fid = stream.fid
-LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, waterbody_poly_id from thlb_proxy.fwa_rivers_poly) riv ON riv.waterbody_poly_id = frep.fwa_rivers_poly_waterbody_poly_id
+whse.june13_riparian_data_for_faib frep
+LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, channel_width, fid FROM whse.modelled_habitat_potential) stream ON frep.modelled_habitat_potential_fid = stream.fid
+LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, waterbody_poly_id from whse_vector.fwa_rivers_poly) riv ON riv.waterbody_poly_id = frep.fwa_rivers_poly_waterbody_poly_id
 WHERE 
 	stream_class_in_field in ('S1', 'S2', 'S3', 'S4', 'S5', 'S6')
 ORDER BY distance desc"
@@ -1263,7 +1331,7 @@ SELECT
 	round(slope_threshold.slope_99th::numeric, 1) as slope_threshold
 	
 FROM 
-thlb_proxy.inoperable_cutblock_summary inop_cc
+whse.inoperable_cutblock_summary inop_cc
 JOIN
 	(
 		SELECT 
@@ -1271,7 +1339,7 @@ JOIN
 			cutblock_percentile_99 as elev_99th,
 			split_part(inop.man_unit, '-sub-', 1) as man_unit
 		FROM 
-			thlb_proxy.inoperable_thresholds inop
+			whse.inoperable_thresholds inop
 		WHERE grid = 'elevation'
 		ORDER BY
 			cutblock_percentile_99,
@@ -1285,7 +1353,7 @@ JOIN
 			cutblock_percentile_99 as slope_99th,
 			split_part(inop.man_unit, '-sub-', 1) as man_unit
 		FROM 
-		thlb_proxy.inoperable_thresholds inop
+		whse.inoperable_thresholds inop
 		WHERE grid = 'slope'
 		ORDER BY
 			cutblock_percentile_99,
@@ -1311,7 +1379,7 @@ UNION ALL
 	round(slope_threshold.slope_99th::numeric, 1) as slope_threshold
 	
 FROM 
-thlb_proxy.inoperable_cutblock_summary inop_cc
+whse.inoperable_cutblock_summary inop_cc
 JOIN
 	(
 		SELECT 
@@ -1319,7 +1387,7 @@ JOIN
 			cutblock_percentile_99 as elev_99th,
 			split_part(inop.man_unit, '-sub-', 1) as man_unit
 		FROM 
-			thlb_proxy.inoperable_thresholds inop
+			whse.inoperable_thresholds inop
 		WHERE grid = 'elevation'
 		ORDER BY
 			cutblock_percentile_99,
@@ -1333,7 +1401,7 @@ JOIN
 			cutblock_percentile_99 as slope_99th,
 			split_part(inop.man_unit, '-sub-', 1) as man_unit
 		FROM 
-		thlb_proxy.inoperable_thresholds inop
+		whse.inoperable_thresholds inop
 		WHERE grid = 'slope'
 		ORDER BY
 			cutblock_percentile_99,
@@ -1499,17 +1567,17 @@ query <- "	WITH a AS (
 			WHEN si_tsa.man_unit IS NOT NULL THEN si_tsa.tfl_integrated_p5
 		END AS p5
 	FROM
-	whse.veg_comp_lyr_r1_poly_internal_2023_gr_skey vri_key
-	LEFT JOIN (SELECT pgid, CASE WHEN site_index = 0 THEN NULL ELSE site_index END AS site_index FROM whse.veg_comp_lyr_r1_poly_internal_2023) vri USING (pgid)
+	whse.veg_comp_lyr_r1_poly_internal_gr_skey vri_key
+	LEFT JOIN (SELECT pgid, CASE WHEN site_index = 0 THEN NULL ELSE site_index END AS site_index FROM whse.veg_comp_lyr_r1_poly_internal) vri USING (pgid)
 	LEFT JOIN whse.tsa_boundaries_gr_skey tsa_key on tsa_key.gr_skey = vri_key.gr_skey
 	LEFT JOIN whse.tsa_boundaries tsa on tsa.pgid = tsa_key.pgid 
-	LEFT JOIN thlb_proxy.tsa_tfl_abt_5p_site_index_cc si_tsa ON si_tsa.forest_file_id = tsa.tsa_number
+	LEFT JOIN whse.tsa_tfl_abt_5p_site_index_cc si_tsa ON si_tsa.forest_file_id = tsa.tsa_number
 	LEFT JOIN whse.fadm_tfl_all_sp_gr_skey tfl_key ON tfl_key.gr_skey = vri_key.gr_skey
 	LEFT JOIN whse.fadm_tfl_all_sp tfl ON tfl.pgid = tfl_key.pgid 
-	LEFT JOIN thlb_proxy.tsa_tfl_abt_5p_site_index_cc si_tfl ON tfl.forest_file_id = si_tfl.forest_file_id
+	LEFT JOIN whse.tsa_tfl_abt_5p_site_index_cc si_tfl ON tfl.forest_file_id = si_tfl.forest_file_id
 	LEFT JOIN whse.ften_managed_licence_poly_svw_gr_skey manlic_key ON manlic_key.gr_skey = vri_key.gr_skey
 	LEFT JOIN whse.ften_managed_licence_poly_svw manlic ON manlic.pgid = manlic_key.pgid 
-	LEFT JOIN thlb_proxy.tsa_tfl_abt_5p_site_index_cc si_manlic ON manlic.forest_file_id = si_manlic.forest_file_id
+	LEFT JOIN whse.tsa_tfl_abt_5p_site_index_cc si_manlic ON manlic.forest_file_id = si_manlic.forest_file_id
 	GROUP BY 
 	CASE 
 		WHEN si_manlic.man_unit IS NOT null THEN si_manlic.man_unit
@@ -1727,7 +1795,27 @@ src\analysis\2.retention-processing.R
 #### Long Term Stand-Level Retention over all TSAs
 
 ```{r thlb_ltr_tbl, eval= TRUE}
-query <- "SELECT man_unit, lower_bound_percentile, upper_bound_percentile, lower_bounds, upper_bounds, weighted_mean_ltr FROM thlb_proxy.retention_thresholds_man_unit UNION ALL SELECT '8 - Fort Nelson TSA', lower_bound_percentile, upper_bound_percentile, lower_bounds, upper_bounds, weighted_mean_ltr FROM thlb_proxy.retention_thresholds_man_unit where man_unit = '40 - Fort St. John TSA'"
+query <- "SELECT 
+  man_unit, 
+  lower_bound_percentile, 
+  upper_bound_percentile, 
+  lower_bounds, 
+  upper_bounds, 
+  weighted_mean_ltr 
+FROM 
+whse.retention_thresholds_man_unit 
+UNION ALL 
+SELECT 
+  '8 - Fort Nelson TSA', 
+  lower_bound_percentile, 
+  upper_bound_percentile, 
+  lower_bounds, 
+  upper_bounds, 
+  weighted_mean_ltr 
+FROM 
+  whse.retention_thresholds_man_unit 
+WHERE 
+  man_unit = '40 - Fort St. John TSA'"
 ltr_df <- sql_to_df(query, conn_list)
 
 ltr_df <- ltr_df %>%
@@ -1929,9 +2017,21 @@ df_to_pg(Id(schema = 'thlb_proxy', table = 'retention_adjustment_man_unit'), all
 
 ## join the previously created long term retention table to the newly created adjustment table & create the adjusted retention factor
 query <- "WITH ltr AS (
-SELECT * FROM thlb_proxy.retention_thresholds_man_unit 
+SELECT * 
+FROM 
+whse.retention_thresholds_man_unit 
 UNION ALL 
-SELECT '8 - Fort Nelson TSA', lower_bound_percentile, upper_bound_percentile, lower_bounds, upper_bounds, weighted_mean_ltr FROM thlb_proxy.retention_thresholds_man_unit where man_unit = '40 - Fort St. John TSA'
+SELECT 
+  '8 - Fort Nelson TSA', 
+  lower_bound_percentile, 
+  upper_bound_percentile, 
+  lower_bounds, 
+  upper_bounds, 
+  weighted_mean_ltr 
+FROM 
+  whse.retention_thresholds_man_unit 
+where 
+  man_unit = '40 - Fort St. John TSA'
 )
 SELECT
 	adj.tsa,
@@ -1940,7 +2040,7 @@ SELECT
 	ltr.weighted_mean_ltr * adj.percent/100.0 as adjusted_retention
 FROM 
 ltr
-JOIN thlb_proxy.retention_adjustment_man_unit adj
+JOIN whse.retention_adjustment_man_unit adj
 ON 
   adj.tsa = split_part(ltr.man_unit, ' - ', 2)
 WHERE 
@@ -2081,34 +2181,24 @@ JOIN harvest_netdown_adjustment adj USING (gr_skey);
 ```
  
  
-```{r aflb_to_pg, eval= FALSE}
+```{r aflb_to_pg, eval= TRUE}
 
-df_to_pg(Id(schema = 'thlb_proxy', table = 'prov_netdown_temp'), netdown_tab[,c('gr_skey', 'fmlb', 'falb', 'aflb', 'thlb_net', 'p15_future_retention')], conn_list, overwrite=TRUE)
+df_to_pg(Id(schema = 'whse', table = 'prov_netdown_temp'), netdown_tab[,c('gr_skey', 'fmlb', 'falb', 'aflb', 'thlb_net', 'p15_future_retention')], conn_list, overwrite=TRUE)
 
 ```
 
 
 
-```{r aflb_to_pgs, eval= FALSE}
-query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS p15_future_retention double precision;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS fmlb double precision;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS falb double precision;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS paflb double precision;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE thlb_proxy.prov_netdown add column IF NOT EXISTS pthlb_net double precision;"
-run_sql_r(query, conn_list)
-
-query <- "UPDATE thlb_proxy.prov_netdown set fmlb = a.fmlb,
-falb = a.falb,
-paflb = a.aflb,
-pthlb_net = a.thlb_net,
-p15_future_retention = a.p15_future_retention
+```{r aflb_to_pgs, eval= TRUE}
+query <- "UPDATE whse.thlb_proxy_netdown set 
+  fmlb = a.fmlb,
+  falb = a.falb,
+  paflb = a.aflb,
+  pthlb_net = a.thlb_net,
+  p15_future_retention = a.p15_future_retention
 from
-thlb_proxy.prov_netdown_temp a
-where a.gr_skey = thlb_proxy.prov_netdown.gr_skey;"
+  whse.prov_netdown_temp a
+where a.gr_skey = whse.thlb_proxy_netdown.gr_skey;"
 run_sql_r(query, conn_list)
 ```
 
