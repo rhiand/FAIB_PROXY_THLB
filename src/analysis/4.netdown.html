@@ -2055,7 +2055,7 @@ S:\FOR\VIC\HTS\ANA\workarea\PROVINCIAL\BC_Boundary_Terrestrial.tif</p>
 <span id="cb4-31"><a href="#cb4-31" tabindex="-1"></a><span class="st">    p.n13_non_merchantable,</span></span>
 <span id="cb4-32"><a href="#cb4-32" tabindex="-1"></a><span class="st">    p.n14_non_commercial</span></span>
 <span id="cb4-33"><a href="#cb4-33" tabindex="-1"></a><span class="st">FROM whse.thlb_proxy_netdown p</span></span>
-<span id="cb4-34"><a href="#cb4-34" tabindex="-1"></a><span class="st">WHERE man_unit IN (&#39;Arrow TSA&#39;)--, &#39;Fort St. John TSA&#39;, &#39;Fort Nelson TSA&#39;)</span></span>
+<span id="cb4-34"><a href="#cb4-34" tabindex="-1"></a><span class="st">--WHERE man_unit IN (&#39;Arrow TSA&#39;)--, &#39;Fort St. John TSA&#39;, &#39;Fort Nelson TSA&#39;)</span></span>
 <span id="cb4-35"><a href="#cb4-35" tabindex="-1"></a><span class="st">&quot;</span></span>
 <span id="cb4-36"><a href="#cb4-36" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> <span class="fu">sql_to_df</span>(query, conn_list)</span>
 <span id="cb4-37"><a href="#cb4-37" tabindex="-1"></a>netdown_summary <span class="ot">&lt;-</span> <span class="fu">setup_tracking_variable</span>(netdown_tab)</span>
@@ -2093,7 +2093,7 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831
+94,790,480
 </td>
 <td style="text-align:right;">
 100
@@ -2105,7 +2105,7 @@ Provincial_Boundary
 0
 </td>
 <td style="text-align:right;">
-856,831
+94,790,480
 </td>
 </tr>
 </tbody>
@@ -2147,12 +2147,16 @@ populated based on the following logic:</p>
 <p>Rules for populating <code>for_mgmt_land_base_ind</code>:</p>
 <p>‘N’ is assigned if:</p>
 <ul>
-<li>’The stand has never been harvested, and the inventory source is
-Forest Inventory Planning (FIP), and the area is either non-productive
-or unreported; OR</li>
-<li>The inventory source is not FIP, and the land cover classification
-is either non-vegetated or unreported; OR</li>
-<li>The site index is less than 5.</li>
+<li>’The stand has never been harvested, AND
+<ul>
+<li>the inventory source is Forest Inventory Planning (FIP), and the
+area is either non-productive or BC Land Cover Classification Schema
+Level 1(bclcs) is unreported; OR</li>
+<li>The inventory source is not FIP, and the bclcs level 3 is either
+non-vegetated or unreported or bclcs level 3 is alpine; OR</li>
+<li>The site index or estimated site index (respectively) is less than
+5.</li>
+</ul></li>
 </ul>
 <p>‘Y’ is assigned if:</p>
 <ul>
@@ -2249,56 +2253,142 @@ understand it. This effort was successful. The SQL used to recreate
 imagery, consultation with inventory specialists, and guidance from the
 Biodiversity Guidebook. These changes were intended to better align the
 classification of forest cover with practical interpretations,
-particularly for assessing old growth and biodiversity:</p>
+particularly for assessing old growth and biodiversity. The following
+rules were applied in this order:</p>
 <p>‘N’ is assigned if:</p>
 <ul>
-<li>if BEC.natural_disturbance = ‘NDT5’</li>
-<li>if bclcs_level_1 = ‘V’ AND bclcs_level_2 &lt;&gt; ‘T’ and
-vri.project NOT LIKE ‘FIRE_UPDATE%’</li>
-<li>if URBAN is true AND vri.for_mgmt_land_base_ind = ‘Y’, (URBAN
-defined as: URBAN IS TRUE if vri.non_productive_descriptor_cd = ‘U’ OR
-vri.bclcs_level_5 = ‘UR’ OR vri.land_cover_class_cd_1 = ‘UR’ OR
-vri.land_cover_class_cd_2 = ‘UR’ vri.OR land_cover_class_cd_3 =
-‘UR’)</li>
+<li>‘N’ if BEC natural_disturbance = ‘NDT5’; I.e. Alpine Tundra</li>
+<li>‘Y’ if VRI non-zero opening_id exists or historical harvest (I.e.,
+consolidated cutblock) exists; I.e. previously harvested</li>
+<li>‘N’ if BEC zone is ‘SWB’ and BEC subzone is ‘mks’, ‘uns’, ‘vks’;
+spruce-willow-birch shrublands</li>
+<li>‘N’ if BEC zone = ‘BG’; bunchgrass</li>
+<li>‘Y’ if lidar derived tree cover over VRI polygon &gt;= 10% and
+napercent of lidar coverage of VRI polygon &lt; 25%; data only available
+where lidar data exists and VRI bclcs is unreported.</li>
+<li>‘N’ if lidar derived tree cover over VRI polygon &lt; 10% and
+napercent of lidar coverage of VRI polygon &lt; 25%; ; data only
+available where lidar data exists and VRI bclcs is unreported.</li>
+<li>‘Y’ if TFL = 19 and base thematic mapping classification (BTM) is
+Forested and VRI for_mgmt_land_base_ind = ‘N’ and VRI
+inventory_standard_cd = ‘F’ or for_mgmt_land_base_ind is NULL; fix where
+known old VRI data is incorrect within TFL 19</li>
+<li>‘Y’ if Strathcona Park and BCLCS Level 1 = Vegetated and BCLCS Level
+2 = Treed and Site Index &gt; 4 and VRI for_mgmt_land_base_ind = ‘N’;
+fix where known incorrect VRI data within Strathcona Park</li>
+<li>‘Y’ if BCLCS Level 1 is Unreported or NULL and BTM is forested;
+infill where no VRI data</li>
+<li>‘N’ if area is classified as URBAN AND VRI for_mgmt_land_base_ind =
+‘Y’, (URBAN defined as: URBAN IS TRUE if
+vri.non_productive_descriptor_cd = ‘U’ OR vri.bclcs_level_5 = ‘UR’ OR
+vri.land_cover_class_cd_1 = ‘UR’ OR vri.land_cover_class_cd_2 = ‘UR’
+vri.OR land_cover_class_cd_3 = ‘UR’)</li>
+<li>‘N’ if BCLCS Level 1 is Non-vegetated and
+earliest_nonlogging_dist_type is not ‘IBM’, ‘B’, ‘NB’; I.e., non-veg and
+not disturbed by Mountain Pine Beetle or Wildfire</li>
+<li>‘Y’ if BCLCS Level 1 is Vegetated, BCLCS Level 1 is non-vegetated,
+VRI for_mgmt_land_base_ind = ‘Y’, Crown Closure &lt; 10, Land Cover
+Class Code 1 is null, BTM is forested and earliest_nonlogging_dist_type
+is not ‘IBM’, ‘B’, ‘NB’ (Mountain Pine Beetle &amp; Wildfire)</li>
+<li>‘N’ if BCLCS Level 1 is Vegetated, BCLCS Level 1 is non-vegetated,
+VRI for_mgmt_land_base_ind = ‘Y’, Crown Closure &lt; 10, Land Cover
+Class Code 1 is not Treed (treed defined as ‘TB’, ‘TC’, ‘TM’), and
+earliest_nonlogging_dist_type is not ‘IBM’, ‘B’, ‘NB’ (Mountain Pine
+Beetle &amp; Wildfire)</li>
 </ul>
-<p>‘Y’ is assigned if:</p>
-<ul>
-<li>if harvest IS TRUE, (harvest is defined as: harvest is TRUE if
-vri.harvest_date is not null OR consolidated cutblocks exist OR
-vri.opening_id or vri.opening_number IS NOT NULL or ‘0’ otherwise
-‘N’)</li>
-<li>if (vri.bclcs_level_1 IN (‘U’, ’‘) AND btm.present_land_use_label in
-(’Old Forest’, ‘Recently Logged’, ‘Selectively Logged’, ‘Young
-Forest’))</li>
-</ul>
-<p>OTHERWISE retain vri.for_mgmt_land_base_ind</p>
+<p>OTHERWISE retain VRI for_mgmt_land_base_ind</p>
 <p>Below is a SQL snippet illustrating the logic used to build the newly
 adjusted FMLB. It is done using a long ‘case when’ statement. In the
 netdown table, each adjustment is assigned it’s own descriptive label
 under the variable n01_fmlb.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>        <span class="cf">CASE</span> </span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>            <span class="cf">WHEN</span> bec.natural_disturbance <span class="op">=</span> <span class="st">&#39;NDT5&#39;</span> <span class="cf">THEN</span> <span class="st">&#39;NDT5&#39;</span></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>            <span class="co">-- if its been harvested then its forested</span></span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>            <span class="cf">WHEN</span> (<span class="fu">nullif</span>(vri.opening_id:<span class="ch">:text</span>,<span class="st">&#39;0&#39;</span>) <span class="kw">is</span> <span class="kw">not</span> <span class="kw">null</span> <span class="kw">or</span> <span class="fu">nullif</span>(vri.opening_number:<span class="ch">:text</span>,<span class="st">&#39;0&#39;</span>) <span class="kw">is</span> <span class="kw">not</span> <span class="kw">null</span> <span class="kw">or</span> cc.harvest_start_year_calendar <span class="kw">is</span> <span class="kw">not</span> <span class="kw">null</span> <span class="kw">or</span> ccg.gr_skey <span class="kw">is</span> <span class="kw">not</span> <span class="kw">null</span>) <span class="cf">THEN</span> <span class="kw">NULL</span></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>            <span class="co">-- bring back in btm forested</span></span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>            <span class="cf">WHEN</span> (<span class="fu">coalesce</span>(vri.bclcs_level_1,<span class="st">&#39;&#39;</span>) <span class="kw">IN</span> (<span class="st">&#39;U&#39;</span>, <span class="st">&#39;&#39;</span>) <span class="kw">AND</span> btm.present_land_use_label <span class="kw">IN</span> (<span class="st">&#39;Old Forest&#39;</span>, <span class="st">&#39;Recently Logged&#39;</span>, <span class="st">&#39;Selectively Logged&#39;</span>,<span class="st">&#39;Young Forest&#39;</span>)) <span class="cf">THEN</span> <span class="kw">NULL</span></span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>            <span class="co">-- exclude where vegetated, not treed and not fire_update</span></span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>            <span class="cf">WHEN</span> vri.bclcs_level_1 <span class="op">=</span> <span class="st">&#39;V&#39;</span> <span class="kw">AND</span> <span class="fu">coalesce</span>(vri.bclcs_level_2,<span class="st">&#39;&#39;</span>) <span class="op">&lt;&gt;</span> <span class="st">&#39;T&#39;</span> <span class="kw">AND</span> vri.project <span class="kw">NOT</span> <span class="kw">LIKE</span> <span class="st">&#39;FIRE_UPDATE%&#39;</span> <span class="cf">THEN</span> <span class="st">&#39;not_treed_not_fire&#39;</span></span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>            <span class="co">-- exclude urban that has been classified as forested</span></span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>            <span class="cf">WHEN</span> ((<span class="fu">trim</span>(vri.non_productive_descriptor_cd) <span class="op">=</span> <span class="st">&#39;U&#39;</span> <span class="kw">OR</span> vri.bclcs_level_5 <span class="op">=</span> <span class="st">&#39;UR&#39;</span> <span class="kw">OR</span> vri.land_cover_class_cd_1 <span class="op">=</span> <span class="st">&#39;UR&#39;</span> <span class="kw">OR</span> vri.land_cover_class_cd_2 <span class="op">=</span> <span class="st">&#39;UR&#39;</span> <span class="kw">OR</span> vri.land_cover_class_cd_3 <span class="op">=</span> <span class="st">&#39;UR&#39;</span> <span class="kw">OR</span> vri.non_veg_cover_type_1 <span class="op">=</span> <span class="st">&#39;UR&#39;</span>)) <span class="kw">AND</span> (<span class="fu">coalesce</span>(vri.for_mgmt_land_base_ind,<span class="st">&#39;Y&#39;</span>) <span class="op">=</span> <span class="st">&#39;Y&#39;</span>) <span class="cf">THEN</span> <span class="st">&#39;URBAN and fmlb_orig = Y&#39;</span></span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>            <span class="cf">WHEN</span> vri.for_mgmt_land_base_ind <span class="op">=</span> <span class="st">&#39;Y&#39;</span> <span class="cf">THEN</span> <span class="kw">NULL</span></span>
-<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>            <span class="cf">WHEN</span> vri.for_mgmt_land_base_ind <span class="op">=</span> <span class="st">&#39;N&#39;</span> <span class="cf">THEN</span> <span class="st">&#39;fmlb_orig = N&#39;</span></span>
-<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a>        <span class="cf">END</span> <span class="kw">AS</span> n01_fmlb</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>        <span class="co">-- remove BEC NDT5 — Alpine Tundra and Subalpine Parkland</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>        <span class="cf">WHEN</span> bec.natural_disturbance <span class="op">=</span> <span class="st">&#39;NDT5&#39;</span> <span class="cf">THEN</span> <span class="st">&#39;BEC NDT5&#39;</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>        <span class="co">-- keep in any RESULTS openings or consolidated cutblocks</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>        <span class="cf">WHEN</span> (<span class="fu">nullif</span>(vri.opening_id:<span class="ch">:text</span>,<span class="st">&#39;0&#39;</span>) <span class="kw">is</span> <span class="kw">not</span> <span class="kw">null</span> <span class="kw">or</span> cc.harvest_start_year_calendar <span class="kw">is</span> <span class="kw">not</span> <span class="kw">null</span>) <span class="cf">THEN</span> <span class="kw">NULL</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>        <span class="co">-- remove spruce, willow, birch shrublands</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>        <span class="cf">WHEN</span> <span class="fu">upper</span>(bec.<span class="dt">zone</span> <span class="op">||</span> bec.subzone) <span class="kw">IN</span> (<span class="st">&#39;SWBMKS&#39;</span>, <span class="st">&#39;SWBUNS&#39;</span>, <span class="st">&#39;SWBVKS&#39;</span>) <span class="cf">then</span> <span class="st">&#39;BEC spruce-willow-birch shrublands&#39;</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>        <span class="co">-- removeall bec bunch grass</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>        <span class="cf">WHEN</span> bec.<span class="dt">zone</span> <span class="op">=</span> <span class="st">&#39;BG&#39;</span> <span class="cf">THEN</span> <span class="st">&#39;BEC bunchgrass&#39;</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>        <span class="co">-- current &amp; historical lidar</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>        <span class="co">-- include in FMLB if &gt;= 10% treed &amp; napercent &lt; 25%</span></span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>        <span class="co">-- exclude from FMLB if &lt; 10% treed percent &amp; na percent &lt; 25%</span></span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a>        <span class="cf">WHEN</span> current_lidar.treedpercent <span class="op">&gt;=</span> <span class="dv">10</span> <span class="kw">and</span> current_lidar.napercent <span class="op">&lt;</span> <span class="dv">25</span> <span class="cf">then</span> <span class="kw">NULL</span></span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a>        <span class="cf">WHEN</span> current_lidar.treedpercent <span class="op">&lt;</span> <span class="dv">10</span> <span class="kw">and</span> current_lidar.napercent <span class="op">&lt;</span> <span class="dv">25</span> <span class="cf">then</span> <span class="st">&#39;Lidar &lt; 10% treed %&#39;</span></span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a>        <span class="cf">WHEN</span> hx_lidar.treedpercent <span class="op">&gt;=</span> <span class="dv">10</span> <span class="kw">and</span> hx_lidar.napercent <span class="op">&lt;</span> <span class="dv">25</span> <span class="cf">then</span> <span class="kw">NULL</span></span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a>        <span class="cf">WHEN</span> hx_lidar.treedpercent <span class="op">&lt;</span> <span class="dv">10</span> <span class="kw">and</span> hx_lidar.napercent <span class="op">&lt;</span> <span class="dv">25</span> <span class="cf">then</span> <span class="st">&#39;Lidar &lt; 10% treed %&#39;</span></span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a>        <span class="co">-- keep in where VRI is unreported but btm present land use is forested</span></span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a>        <span class="co">-- keep in where TFL 19, btm forest and inv != F or orig FMLB is null</span></span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a>        <span class="co">-- known old growth in TFL19 where old inventory</span></span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a>        <span class="cf">WHEN</span> </span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a>            tfl.forest_file_id <span class="op">=</span><span class="st">&#39;TFL19&#39;</span> <span class="kw">and</span> </span>
+<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a>            ((vri.for_mgmt_land_base_ind <span class="op">=</span> <span class="st">&#39;N&#39;</span> <span class="kw">and</span> vri.inventory_standard_cd <span class="op">=</span> <span class="st">&#39;F&#39;</span>) <span class="kw">OR</span> (vri.for_mgmt_land_base_ind <span class="kw">IS</span> <span class="kw">NULL</span>)) <span class="kw">and</span> </span>
+<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a>            btm.present_land_use_label <span class="kw">in</span> (<span class="st">&#39;Old Forest&#39;</span>, <span class="st">&#39;Recently Logged&#39;</span>, <span class="st">&#39;Selectively Logged&#39;</span>, <span class="st">&#39;Young Forest&#39;</span>) </span>
+<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a>        <span class="cf">THEN</span> <span class="kw">NULL</span></span>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a>        <span class="co">-- keep in known areas of forest in strathcona park </span></span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a>        <span class="cf">WHEN</span> </span>
+<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a>            park.protected_lands_name <span class="op">=</span> <span class="st">&#39;STRATHCONA PARK&#39;</span> <span class="kw">AND</span> </span>
+<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a>            vri.bclcs_level_1 <span class="op">=</span><span class="st">&#39;V&#39;</span> <span class="kw">AND</span> </span>
+<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a>            vri.bclcs_level_2 <span class="op">=</span> <span class="st">&#39;T&#39;</span> <span class="kw">AND</span> </span>
+<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a>            vri.site_index <span class="op">&gt;</span> <span class="dv">4</span> <span class="kw">AND</span></span>
+<span id="cb6-31"><a href="#cb6-31" tabindex="-1"></a>            vri.for_mgmt_land_base_ind <span class="op">=</span><span class="st">&#39;N&#39;</span> </span>
+<span id="cb6-32"><a href="#cb6-32" tabindex="-1"></a>        <span class="cf">THEN</span> <span class="kw">NULL</span></span>
+<span id="cb6-33"><a href="#cb6-33" tabindex="-1"></a>        <span class="co">-- keep in where VRI is unreported but btm present land use is forested</span></span>
+<span id="cb6-34"><a href="#cb6-34" tabindex="-1"></a>        <span class="cf">WHEN</span> </span>
+<span id="cb6-35"><a href="#cb6-35" tabindex="-1"></a>            (<span class="fu">coalesce</span>(vri.bclcs_level_1,<span class="st">&#39;U&#39;</span>) <span class="op">=</span> <span class="st">&#39;U&#39;</span> <span class="kw">AND</span> </span>
+<span id="cb6-36"><a href="#cb6-36" tabindex="-1"></a>            btm.present_land_use_label <span class="kw">IN</span> (<span class="st">&#39;Old Forest&#39;</span>, <span class="st">&#39;Recently Logged&#39;</span>, <span class="st">&#39;Selectively Logged&#39;</span>, <span class="st">&#39;Young Forest&#39;</span>)) </span>
+<span id="cb6-37"><a href="#cb6-37" tabindex="-1"></a>        <span class="cf">THEN</span> <span class="kw">NULL</span></span>
+<span id="cb6-38"><a href="#cb6-38" tabindex="-1"></a>        <span class="co">-- remove where original for_mgmt_land_base_ind = &#39;Y&#39; but other fields denote unreported</span></span>
+<span id="cb6-39"><a href="#cb6-39" tabindex="-1"></a>        <span class="cf">WHEN</span> </span>
+<span id="cb6-40"><a href="#cb6-40" tabindex="-1"></a>            ((<span class="fu">trim</span>(vri.non_productive_descriptor_cd) <span class="op">=</span> <span class="st">&#39;U&#39;</span> <span class="kw">OR</span> </span>
+<span id="cb6-41"><a href="#cb6-41" tabindex="-1"></a>            vri.bclcs_level_5 <span class="op">=</span> <span class="st">&#39;UR&#39;</span> <span class="kw">OR</span> </span>
+<span id="cb6-42"><a href="#cb6-42" tabindex="-1"></a>            vri.land_cover_class_cd_1 <span class="op">=</span> <span class="st">&#39;UR&#39;</span> <span class="kw">OR</span> </span>
+<span id="cb6-43"><a href="#cb6-43" tabindex="-1"></a>            vri.land_cover_class_cd_2 <span class="op">=</span> <span class="st">&#39;UR&#39;</span> <span class="kw">OR</span> </span>
+<span id="cb6-44"><a href="#cb6-44" tabindex="-1"></a>            vri.land_cover_class_cd_3 <span class="op">=</span> <span class="st">&#39;UR&#39;</span> <span class="kw">OR</span> </span>
+<span id="cb6-45"><a href="#cb6-45" tabindex="-1"></a>            vri.non_veg_cover_type_1 <span class="op">=</span> <span class="st">&#39;UR&#39;</span>)) <span class="kw">AND</span> </span>
+<span id="cb6-46"><a href="#cb6-46" tabindex="-1"></a>            (<span class="fu">coalesce</span>(vri.for_mgmt_land_base_ind,<span class="st">&#39;Y&#39;</span>) <span class="op">=</span> <span class="st">&#39;Y&#39;</span>) </span>
+<span id="cb6-47"><a href="#cb6-47" tabindex="-1"></a>        <span class="cf">THEN</span> <span class="st">&#39;unreported/urban&#39;</span></span>
+<span id="cb6-48"><a href="#cb6-48" tabindex="-1"></a>        <span class="co">-- remove where bclcs_level_1 is Non Vegetated and not beetle kill or wildfire</span></span>
+<span id="cb6-49"><a href="#cb6-49" tabindex="-1"></a>        <span class="co">-- don&#39;t want to switch something to N when it is beetle kill or wildfire</span></span>
+<span id="cb6-50"><a href="#cb6-50" tabindex="-1"></a>        <span class="cf">WHEN</span> </span>
+<span id="cb6-51"><a href="#cb6-51" tabindex="-1"></a>            <span class="fu">coalesce</span>(vri.bclcs_level_1, <span class="st">&#39;U&#39;</span>) <span class="op">=</span> <span class="st">&#39;N&#39;</span> <span class="kw">AND</span> </span>
+<span id="cb6-52"><a href="#cb6-52" tabindex="-1"></a>            <span class="fu">COALESCE</span>(earliest_nonlogging_dist_type, <span class="st">&#39;ZZ&#39;</span>) <span class="kw">not</span> <span class="kw">in</span> (<span class="st">&#39;IBM&#39;</span>, <span class="st">&#39;B&#39;</span>, <span class="st">&#39;NB&#39;</span>)  </span>
+<span id="cb6-53"><a href="#cb6-53" tabindex="-1"></a>        <span class="cf">THEN</span> <span class="st">&#39;bclcs nonveg, not beetle kill or burn&#39;</span></span>
+<span id="cb6-54"><a href="#cb6-54" tabindex="-1"></a>        <span class="co">-- keep in veg / non treed / CC &lt; 10 / land cover class IS NULL / not beetle kill (IBM) or wildfire (B, NB) / FMLB original = &#39;Y&#39; / forested according to feds</span></span>
+<span id="cb6-55"><a href="#cb6-55" tabindex="-1"></a>        <span class="cf">WHEN</span> </span>
+<span id="cb6-56"><a href="#cb6-56" tabindex="-1"></a>            vri.BCLCS_LEVEL_1 <span class="op">=</span> <span class="st">&#39;V&#39;</span> <span class="kw">AND</span> </span>
+<span id="cb6-57"><a href="#cb6-57" tabindex="-1"></a>            <span class="fu">COALESCE</span>(vri.BCLCS_LEVEL_2, <span class="st">&#39;&#39;</span>) <span class="op">&lt;&gt;</span> <span class="st">&#39;T&#39;</span> <span class="kw">AND</span> </span>
+<span id="cb6-58"><a href="#cb6-58" tabindex="-1"></a>            vri.FOR_MGMT_LAND_BASE_IND <span class="op">=</span> <span class="st">&#39;Y&#39;</span> <span class="kw">AND</span> </span>
+<span id="cb6-59"><a href="#cb6-59" tabindex="-1"></a>            vri.CROWN_CLOSURE <span class="op">&lt;</span> <span class="dv">10</span> <span class="kw">AND</span> </span>
+<span id="cb6-60"><a href="#cb6-60" tabindex="-1"></a>            vri.LAND_COVER_CLASS_CD_1 <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span></span>
+<span id="cb6-61"><a href="#cb6-61" tabindex="-1"></a>            btm.present_land_use_label <span class="kw">in</span> (<span class="st">&#39;Old Forest&#39;</span>, <span class="st">&#39;Recently Logged&#39;</span>, <span class="st">&#39;Selectively Logged&#39;</span>, <span class="st">&#39;Young Forest&#39;</span>) <span class="kw">AND</span></span>
+<span id="cb6-62"><a href="#cb6-62" tabindex="-1"></a>            <span class="fu">COALESCE</span>(earliest_nonlogging_dist_type, <span class="st">&#39;ZZ&#39;</span>) <span class="kw">not</span> <span class="kw">in</span> (<span class="st">&#39;IBM&#39;</span>, <span class="st">&#39;B&#39;</span>, <span class="st">&#39;NB&#39;</span>)</span>
+<span id="cb6-63"><a href="#cb6-63" tabindex="-1"></a>        <span class="cf">THEN</span> <span class="kw">NULL</span></span>
+<span id="cb6-64"><a href="#cb6-64" tabindex="-1"></a>        <span class="co">-- remove where veg / non treed / CC &lt; 10 / land cover class not tree classes / not beetle kill (IBM) or wildfire (B, NB) / FMLB original = &#39;Y&#39;</span></span>
+<span id="cb6-65"><a href="#cb6-65" tabindex="-1"></a>        <span class="co">-- https://archive.ipcc.ch/ipccreports/sres/land_use/index.php?idp=124</span></span>
+<span id="cb6-66"><a href="#cb6-66" tabindex="-1"></a>        <span class="cf">WHEN</span> </span>
+<span id="cb6-67"><a href="#cb6-67" tabindex="-1"></a>            vri.BCLCS_LEVEL_1 <span class="op">=</span> <span class="st">&#39;V&#39;</span> <span class="kw">AND</span> </span>
+<span id="cb6-68"><a href="#cb6-68" tabindex="-1"></a>            <span class="fu">COALESCE</span>(vri.BCLCS_LEVEL_2, <span class="st">&#39;&#39;</span>) <span class="op">&lt;&gt;</span> <span class="st">&#39;T&#39;</span> <span class="kw">AND</span> </span>
+<span id="cb6-69"><a href="#cb6-69" tabindex="-1"></a>            vri.FOR_MGMT_LAND_BASE_IND <span class="op">=</span> <span class="st">&#39;Y&#39;</span> <span class="kw">AND</span> </span>
+<span id="cb6-70"><a href="#cb6-70" tabindex="-1"></a>            vri.CROWN_CLOSURE <span class="op">&lt;</span> <span class="dv">10</span> <span class="kw">AND</span> </span>
+<span id="cb6-71"><a href="#cb6-71" tabindex="-1"></a>            <span class="fu">coalesce</span>(vri.LAND_COVER_CLASS_CD_1, <span class="st">&#39;&#39;</span>) <span class="kw">NOT</span> <span class="kw">IN</span> (<span class="st">&#39;TB&#39;</span>, <span class="st">&#39;TC&#39;</span>, <span class="st">&#39;TM&#39;</span>) <span class="kw">AND</span> </span>
+<span id="cb6-72"><a href="#cb6-72" tabindex="-1"></a>            <span class="fu">COALESCE</span>(earliest_nonlogging_dist_type, <span class="st">&#39;ZZ&#39;</span>) <span class="kw">not</span> <span class="kw">in</span> (<span class="st">&#39;IBM&#39;</span>, <span class="st">&#39;B&#39;</span>, <span class="st">&#39;NB&#39;</span>)</span>
+<span id="cb6-73"><a href="#cb6-73" tabindex="-1"></a>        <span class="cf">THEN</span> <span class="st">&#39;veg, nontreed etc&#39;</span></span>
+<span id="cb6-74"><a href="#cb6-74" tabindex="-1"></a>        <span class="cf">WHEN</span> vri.for_mgmt_land_base_ind  <span class="op">=</span> <span class="st">&#39;N&#39;</span> <span class="cf">then</span> <span class="st">&#39;for_mgmt_land_base_ind = N&#39;</span></span>
+<span id="cb6-75"><a href="#cb6-75" tabindex="-1"></a>        <span class="cf">WHEN</span> vri.for_mgmt_land_base_ind  <span class="op">=</span> <span class="st">&#39;Y&#39;</span> <span class="cf">then</span> <span class="kw">NULL</span></span>
+<span id="cb6-76"><a href="#cb6-76" tabindex="-1"></a>        <span class="cf">END</span> <span class="kw">AS</span> n01_fmlb</span></code></pre></div>
 <p><strong>Data sources:</strong> BCGW files:
 WHSE_FOREST_VEGETATION.VEG_COMP_LYR_R1_POLY,
 WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP,
 WHSE_BASEMAPPING.BTM_PRESENT_LAND_USE_V1_SVW,
-WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY</p>
+WHSE_FOREST_VEGETATION.BEC_BIOGEOCLIMATIC_POLY,
+WHSE_TANTALIS.TA_PARK_ECORES_PA_SVW,
+WHSE_ADMIN_BOUNDARIES.FADM_TFL_ALL_SP, Internal Lidar Dataset</p>
 <p><strong>R Scripts</strong></p>
 <p>The following scripts were used to perform this netdown factor’s
 pre-processing:</p>
 <pre><code>src\analysis\1.fmlb-import-layers.R
-src\analysis\2.fmlb-processing.R</code></pre>
+src\analysis\2.fmlb-creation.R</code></pre>
 <div id="non-forest-summary" class="section level4">
 <h4>Non-Forest Summary</h4>
 <p>The FMLB, FALB, pAFLB and pTHLB variables are updated in the netdown
@@ -2353,7 +2443,7 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831
+94,790,480
 </td>
 <td style="text-align:right;">
 100.00000
@@ -2365,7 +2455,7 @@ Provincial_Boundary
 0
 </td>
 <td style="text-align:right;">
-856,831
+94,790,480
 </td>
 </tr>
 <tr>
@@ -2373,19 +2463,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-27.09192
+38.11151
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 </tr>
 </tbody>
@@ -2431,7 +2521,7 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831
+94,790,480
 </td>
 <td style="text-align:right;">
 100.00000
@@ -2443,7 +2533,7 @@ Provincial_Boundary
 0
 </td>
 <td style="text-align:right;">
-856,831
+94,790,480
 </td>
 </tr>
 <tr>
@@ -2451,19 +2541,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-27.09192
+38.11151
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 </tr>
 <tr>
@@ -2471,19 +2561,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 <td style="text-align:right;">
-72.90808
+61.88849
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 </tr>
 </tbody>
@@ -2564,19 +2654,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831
+94,790,480
 </td>
 <td style="text-align:right;">
-100.00000
-</td>
-<td style="text-align:right;">
-0
+100.000000
 </td>
 <td style="text-align:right;">
 0
 </td>
 <td style="text-align:right;">
-856,831
+0
+</td>
+<td style="text-align:right;">
+94,790,480
 </td>
 </tr>
 <tr>
@@ -2584,19 +2674,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-27.09192
+38.111509
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 </tr>
 <tr>
@@ -2604,19 +2694,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 <td style="text-align:right;">
-72.90808
+61.888491
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 </tr>
 <tr>
@@ -2624,19 +2714,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082
+4,884,376
 </td>
 <td style="text-align:right;">
-12.73087
+5.152813
 </td>
 <td style="text-align:right;">
-86,531
+2,841,457
 </td>
 <td style="text-align:right;">
-318,663
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168
+55,822,941
 </td>
 </tr>
 </tbody>
@@ -2683,19 +2773,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831
+94,790,480
 </td>
 <td style="text-align:right;">
-100.00000
-</td>
-<td style="text-align:right;">
-0
+100.000000
 </td>
 <td style="text-align:right;">
 0
 </td>
 <td style="text-align:right;">
-856,831
+0
+</td>
+<td style="text-align:right;">
+94,790,480
 </td>
 </tr>
 <tr>
@@ -2703,19 +2793,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-27.09192
+38.111509
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 </tr>
 <tr>
@@ -2723,19 +2813,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 <td style="text-align:right;">
-72.90808
+61.888491
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 </tr>
 <tr>
@@ -2743,19 +2833,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082
+4,884,376
 </td>
 <td style="text-align:right;">
-12.73087
+5.152813
 </td>
 <td style="text-align:right;">
-86,531
+2,841,457
 </td>
 <td style="text-align:right;">
-318,663
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168
+55,822,941
 </td>
 </tr>
 <tr>
@@ -2763,19 +2853,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168
+55,822,941
 </td>
 <td style="text-align:right;">
-62.80912
+58.890873
 </td>
 <td style="text-align:right;">
-318,663
+38,967,539
 </td>
 <td style="text-align:right;">
-318,663
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168
+55,822,941
 </td>
 </tr>
 </tbody>
@@ -2854,7 +2944,7 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
@@ -2866,7 +2956,7 @@ Provincial_Boundary
 0
 </td>
 <td style="text-align:right;">
-856,831
+94,790,480
 </td>
 </tr>
 <tr>
@@ -2874,19 +2964,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 </tr>
 <tr>
@@ -2894,19 +2984,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 </tr>
 <tr>
@@ -2914,19 +3004,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531
+2,841,457
 </td>
 <td style="text-align:right;">
-318,663
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168
+55,822,941
 </td>
 </tr>
 <tr>
@@ -2934,19 +3024,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663
+38,967,539
 </td>
 <td style="text-align:right;">
-318,663
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168
+55,822,941
 </td>
 </tr>
 <tr>
@@ -2954,19 +3044,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77
+414,385
 </td>
 <td style="text-align:right;">
-318,740
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091
+55,408,556
 </td>
 </tr>
 </tbody>
@@ -3069,7 +3159,7 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
@@ -3081,7 +3171,7 @@ Provincial_Boundary
 0
 </td>
 <td style="text-align:right;">
-856,831
+94,790,480
 </td>
 </tr>
 <tr>
@@ -3089,19 +3179,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 </tr>
 <tr>
@@ -3109,19 +3199,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699
+58,664,398
 </td>
 </tr>
 <tr>
@@ -3129,19 +3219,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531
+2,841,457
 </td>
 <td style="text-align:right;">
-318,663
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168
+55,822,941
 </td>
 </tr>
 <tr>
@@ -3149,19 +3239,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663
+38,967,539
 </td>
 <td style="text-align:right;">
-318,663
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168
+55,822,941
 </td>
 </tr>
 <tr>
@@ -3169,19 +3259,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77
+414,385
 </td>
 <td style="text-align:right;">
-318,740
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091
+55,408,556
 </td>
 </tr>
 <tr>
@@ -3189,19 +3279,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642
+4,991,866
 </td>
 <td style="text-align:right;">
-332,382
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449
+50,416,690
 </td>
 </tr>
 </tbody>
@@ -3300,19 +3390,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.00
+0
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -3320,19 +3410,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -3340,19 +3430,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -3360,19 +3450,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.00
+2,841,457
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -3380,19 +3470,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.00
+38,967,539
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -3400,19 +3490,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.00
+414,385
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -3420,19 +3510,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.00
+4,991,866
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -3440,19 +3530,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.55
+1,125,595
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 </tbody>
@@ -3498,19 +3588,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.00
+0
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -3518,19 +3608,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -3538,19 +3628,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -3558,19 +3648,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.00
+2,841,457
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -3578,19 +3668,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.00
+38,967,539
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -3598,19 +3688,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.00
+414,385
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -3618,19 +3708,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.00
+4,991,866
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -3638,19 +3728,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.55
+1,125,595
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -3658,19 +3748,19 @@ Linear_Features
 LAND BASE SUMMARY - pAFLB
 </td>
 <td style="text-align:right;">
-511,163.45
+49,291,095
 </td>
 <td style="text-align:right;">
-59.6574412
+52.0000478
 </td>
 <td style="text-align:right;">
-345,667.55
+45,499,385
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 </tbody>
@@ -3749,19 +3839,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.00
+0
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -3769,19 +3859,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -3789,19 +3879,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -3809,19 +3899,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.00
+2,841,457
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -3829,19 +3919,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.00
+38,967,539
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -3849,19 +3939,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.00
+414,385
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -3869,19 +3959,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.00
+4,991,866
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -3889,19 +3979,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.55
+1,125,595
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -3909,19 +3999,19 @@ Linear_Features
 LAND BASE SUMMARY - pAFLB
 </td>
 <td style="text-align:right;">
-511,163.45
+49,291,095
 </td>
 <td style="text-align:right;">
-59.6574412
+52.0000478
 </td>
 <td style="text-align:right;">
-345,667.55
+45,499,385
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -3929,19 +4019,19 @@ LAND BASE SUMMARY - pAFLB
 Parks_and_Protected_Areas
 </td>
 <td style="text-align:right;">
-151,791.00
+14,032,699
 </td>
 <td style="text-align:right;">
-17.7153955
+14.8039117
 </td>
 <td style="text-align:right;">
-61,459.67
+6,016,248
 </td>
 <td style="text-align:right;">
-407,127.2
+51,515,634
 </td>
 <td style="text-align:right;">
-449,703.8
+43,274,846
 </td>
 </tr>
 </tbody>
@@ -4009,19 +4099,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.00
+0
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -4029,19 +4119,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -4049,19 +4139,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -4069,19 +4159,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.00
+2,841,457
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -4089,19 +4179,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.00
+38,967,539
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -4109,19 +4199,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.00
+414,385
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -4129,19 +4219,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.00
+4,991,866
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -4149,19 +4239,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.55
+1,125,595
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -4169,19 +4259,19 @@ Linear_Features
 LAND BASE SUMMARY - pAFLB
 </td>
 <td style="text-align:right;">
-511,163.45
+49,291,095
 </td>
 <td style="text-align:right;">
-59.6574412
+52.0000478
 </td>
 <td style="text-align:right;">
-345,667.55
+45,499,385
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -4189,19 +4279,19 @@ LAND BASE SUMMARY - pAFLB
 Parks_and_Protected_Areas
 </td>
 <td style="text-align:right;">
-151,791.00
+14,032,699
 </td>
 <td style="text-align:right;">
-17.7153955
+14.8039117
 </td>
 <td style="text-align:right;">
-61,459.67
+6,016,248
 </td>
 <td style="text-align:right;">
-407,127.2
+51,515,634
 </td>
 <td style="text-align:right;">
-449,703.8
+43,274,846
 </td>
 </tr>
 <tr>
@@ -4209,19 +4299,19 @@ Parks_and_Protected_Areas
 Wildlife_Habitat_Areas
 </td>
 <td style="text-align:right;">
-4,030.00
+3,878,931
 </td>
 <td style="text-align:right;">
-0.4703378
+4.0921103
 </td>
 <td style="text-align:right;">
-2,587.87
+1,427,360
 </td>
 <td style="text-align:right;">
-409,715.1
+52,942,994
 </td>
 <td style="text-align:right;">
-447,115.9
+41,847,486
 </td>
 </tr>
 </tbody>
@@ -4285,19 +4375,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.00
+0
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -4305,19 +4395,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -4325,19 +4415,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -4345,19 +4435,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.00
+2,841,457
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -4365,19 +4455,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.00
+38,967,539
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -4385,19 +4475,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.00
+414,385
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -4405,19 +4495,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.00
+4,991,866
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -4425,19 +4515,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.55
+1,125,595
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -4445,19 +4535,19 @@ Linear_Features
 LAND BASE SUMMARY - pAFLB
 </td>
 <td style="text-align:right;">
-511,163.45
+49,291,095
 </td>
 <td style="text-align:right;">
-59.6574412
+52.0000478
 </td>
 <td style="text-align:right;">
-345,667.55
+45,499,385
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -4465,19 +4555,19 @@ LAND BASE SUMMARY - pAFLB
 Parks_and_Protected_Areas
 </td>
 <td style="text-align:right;">
-151,791.00
+14,032,699
 </td>
 <td style="text-align:right;">
-17.7153955
+14.8039117
 </td>
 <td style="text-align:right;">
-61,459.67
+6,016,248
 </td>
 <td style="text-align:right;">
-407,127.2
+51,515,634
 </td>
 <td style="text-align:right;">
-449,703.8
+43,274,846
 </td>
 </tr>
 <tr>
@@ -4485,19 +4575,19 @@ Parks_and_Protected_Areas
 Wildlife_Habitat_Areas
 </td>
 <td style="text-align:right;">
-4,030.00
+3,878,931
 </td>
 <td style="text-align:right;">
-0.4703378
+4.0921103
 </td>
 <td style="text-align:right;">
-2,587.87
+1,427,360
 </td>
 <td style="text-align:right;">
-409,715.1
+52,942,994
 </td>
 <td style="text-align:right;">
-447,115.9
+41,847,486
 </td>
 </tr>
 <tr>
@@ -4505,19 +4595,19 @@ Wildlife_Habitat_Areas
 Misc_Tenures
 </td>
 <td style="text-align:right;">
-62,516.00
+3,091,866
 </td>
 <td style="text-align:right;">
-7.2961879
+3.2617896
 </td>
 <td style="text-align:right;">
-15,185.70
+1,608,733
 </td>
 <td style="text-align:right;">
-424,900.8
+54,551,727
 </td>
 <td style="text-align:right;">
-431,930.2
+40,238,753
 </td>
 </tr>
 </tbody>
@@ -5466,19 +5556,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.00
+0
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -5486,19 +5576,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -5506,19 +5596,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -5526,19 +5616,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.00
+2,841,457
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -5546,19 +5636,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.00
+38,967,539
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -5566,19 +5656,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.00
+414,385
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -5586,19 +5676,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.00
+4,991,866
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -5606,19 +5696,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.55
+1,125,595
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -5626,19 +5716,19 @@ Linear_Features
 LAND BASE SUMMARY - pAFLB
 </td>
 <td style="text-align:right;">
-511,163.45
+49,291,095
 </td>
 <td style="text-align:right;">
-59.6574412
+52.0000478
 </td>
 <td style="text-align:right;">
-345,667.55
+45,499,385
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -5646,19 +5736,19 @@ LAND BASE SUMMARY - pAFLB
 Parks_and_Protected_Areas
 </td>
 <td style="text-align:right;">
-151,791.00
+14,032,699
 </td>
 <td style="text-align:right;">
-17.7153955
+14.8039117
 </td>
 <td style="text-align:right;">
-61,459.67
+6,016,248
 </td>
 <td style="text-align:right;">
-407,127.2
+51,515,634
 </td>
 <td style="text-align:right;">
-449,703.8
+43,274,846
 </td>
 </tr>
 <tr>
@@ -5666,19 +5756,19 @@ Parks_and_Protected_Areas
 Wildlife_Habitat_Areas
 </td>
 <td style="text-align:right;">
-4,030.00
+3,878,931
 </td>
 <td style="text-align:right;">
-0.4703378
+4.0921103
 </td>
 <td style="text-align:right;">
-2,587.87
+1,427,360
 </td>
 <td style="text-align:right;">
-409,715.1
+52,942,994
 </td>
 <td style="text-align:right;">
-447,115.9
+41,847,486
 </td>
 </tr>
 <tr>
@@ -5686,19 +5776,19 @@ Wildlife_Habitat_Areas
 Misc_Tenures
 </td>
 <td style="text-align:right;">
-62,516.00
+3,091,866
 </td>
 <td style="text-align:right;">
-7.2961879
+3.2617896
 </td>
 <td style="text-align:right;">
-15,185.70
+1,608,733
 </td>
 <td style="text-align:right;">
-424,900.8
+54,551,727
 </td>
 <td style="text-align:right;">
-431,930.2
+40,238,753
 </td>
 </tr>
 <tr>
@@ -5706,19 +5796,19 @@ Misc_Tenures
 Riparian_Buffers
 </td>
 <td style="text-align:right;">
-89,020.80
+10,472,075
 </td>
 <td style="text-align:right;">
-10.3895398
+11.0476025
 </td>
 <td style="text-align:right;">
-15,248.99
+1,974,883
 </td>
 <td style="text-align:right;">
-440,149.8
+56,526,610
 </td>
 <td style="text-align:right;">
-416,681.2
+38,263,870
 </td>
 </tr>
 </tbody>
@@ -5788,19 +5878,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.0000
+0.00
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -5808,19 +5898,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -5828,19 +5918,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -5848,19 +5938,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.0000
+2,841,457.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -5868,19 +5958,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.0000
+38,967,539.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -5888,19 +5978,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.0000
+414,385.00
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -5908,19 +5998,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.0000
+4,991,866.00
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -5928,19 +6018,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.5497
+1,125,595.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -5948,19 +6038,19 @@ Linear_Features
 LAND BASE SUMMARY - pAFLB
 </td>
 <td style="text-align:right;">
-511,163.45
+49,291,095
 </td>
 <td style="text-align:right;">
-59.6574412
+52.0000478
 </td>
 <td style="text-align:right;">
-345,667.5497
+45,499,385.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -5968,19 +6058,19 @@ LAND BASE SUMMARY - pAFLB
 Parks_and_Protected_Areas
 </td>
 <td style="text-align:right;">
-151,791.00
+14,032,699
 </td>
 <td style="text-align:right;">
-17.7153955
+14.8039117
 </td>
 <td style="text-align:right;">
-61,459.6700
+6,016,248.41
 </td>
 <td style="text-align:right;">
-407,127.2
+51,515,634
 </td>
 <td style="text-align:right;">
-449,703.8
+43,274,846
 </td>
 </tr>
 <tr>
@@ -5988,19 +6078,19 @@ Parks_and_Protected_Areas
 Wildlife_Habitat_Areas
 </td>
 <td style="text-align:right;">
-4,030.00
+3,878,931
 </td>
 <td style="text-align:right;">
-0.4703378
+4.0921103
 </td>
 <td style="text-align:right;">
-2,587.8700
+1,427,360.04
 </td>
 <td style="text-align:right;">
-409,715.1
+52,942,994
 </td>
 <td style="text-align:right;">
-447,115.9
+41,847,486
 </td>
 </tr>
 <tr>
@@ -6008,19 +6098,19 @@ Wildlife_Habitat_Areas
 Misc_Tenures
 </td>
 <td style="text-align:right;">
-62,516.00
+3,091,866
 </td>
 <td style="text-align:right;">
-7.2961879
+3.2617896
 </td>
 <td style="text-align:right;">
-15,185.7000
+1,608,733.24
 </td>
 <td style="text-align:right;">
-424,900.8
+54,551,727
 </td>
 <td style="text-align:right;">
-431,930.2
+40,238,753
 </td>
 </tr>
 <tr>
@@ -6028,19 +6118,19 @@ Misc_Tenures
 Riparian_Buffers
 </td>
 <td style="text-align:right;">
-89,020.80
+10,472,075
 </td>
 <td style="text-align:right;">
-10.3895398
+11.0476025
 </td>
 <td style="text-align:right;">
-15,248.9914
+1,974,883.30
 </td>
 <td style="text-align:right;">
-440,149.8
+56,526,610
 </td>
 <td style="text-align:right;">
-416,681.2
+38,263,870
 </td>
 </tr>
 <tr>
@@ -6048,19 +6138,19 @@ Riparian_Buffers
 Non-Cultural_Heritage_Features
 </td>
 <td style="text-align:right;">
-535.00
+70,092
 </td>
 <td style="text-align:right;">
-0.0624394
+0.0739441
 </td>
 <td style="text-align:right;">
-26.6796
+22,288.77
 </td>
 <td style="text-align:right;">
-440,176.5
+56,548,899
 </td>
 <td style="text-align:right;">
-416,654.5
+38,241,581
 </td>
 </tr>
 </tbody>
@@ -6127,19 +6217,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.0000
+0.00
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -6147,19 +6237,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -6167,19 +6257,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -6187,19 +6277,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.0000
+2,841,457.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -6207,19 +6297,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.0000
+38,967,539.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -6227,19 +6317,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.0000
+414,385.00
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -6247,19 +6337,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.0000
+4,991,866.00
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -6267,19 +6357,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.5497
+1,125,595.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -6287,19 +6377,19 @@ Linear_Features
 LAND BASE SUMMARY - pAFLB
 </td>
 <td style="text-align:right;">
-511,163.45
+49,291,095
 </td>
 <td style="text-align:right;">
-59.6574412
+52.0000478
 </td>
 <td style="text-align:right;">
-345,667.5497
+45,499,385.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -6307,19 +6397,19 @@ LAND BASE SUMMARY - pAFLB
 Parks_and_Protected_Areas
 </td>
 <td style="text-align:right;">
-151,791.00
+14,032,699
 </td>
 <td style="text-align:right;">
-17.7153955
+14.8039117
 </td>
 <td style="text-align:right;">
-61,459.6700
+6,016,248.41
 </td>
 <td style="text-align:right;">
-407,127.2
+51,515,634
 </td>
 <td style="text-align:right;">
-449,703.8
+43,274,846
 </td>
 </tr>
 <tr>
@@ -6327,19 +6417,19 @@ Parks_and_Protected_Areas
 Wildlife_Habitat_Areas
 </td>
 <td style="text-align:right;">
-4,030.00
+3,878,931
 </td>
 <td style="text-align:right;">
-0.4703378
+4.0921103
 </td>
 <td style="text-align:right;">
-2,587.8700
+1,427,360.04
 </td>
 <td style="text-align:right;">
-409,715.1
+52,942,994
 </td>
 <td style="text-align:right;">
-447,115.9
+41,847,486
 </td>
 </tr>
 <tr>
@@ -6347,19 +6437,19 @@ Wildlife_Habitat_Areas
 Misc_Tenures
 </td>
 <td style="text-align:right;">
-62,516.00
+3,091,866
 </td>
 <td style="text-align:right;">
-7.2961879
+3.2617896
 </td>
 <td style="text-align:right;">
-15,185.7000
+1,608,733.24
 </td>
 <td style="text-align:right;">
-424,900.8
+54,551,727
 </td>
 <td style="text-align:right;">
-431,930.2
+40,238,753
 </td>
 </tr>
 <tr>
@@ -6367,19 +6457,19 @@ Misc_Tenures
 Riparian_Buffers
 </td>
 <td style="text-align:right;">
-89,020.80
+10,472,075
 </td>
 <td style="text-align:right;">
-10.3895398
+11.0476025
 </td>
 <td style="text-align:right;">
-15,248.9914
+1,974,883.30
 </td>
 <td style="text-align:right;">
-440,149.8
+56,526,610
 </td>
 <td style="text-align:right;">
-416,681.2
+38,263,870
 </td>
 </tr>
 <tr>
@@ -6387,19 +6477,19 @@ Riparian_Buffers
 Non-Cultural_Heritage_Features
 </td>
 <td style="text-align:right;">
-535.00
+70,092
 </td>
 <td style="text-align:right;">
-0.0624394
+0.0739441
 </td>
 <td style="text-align:right;">
-26.6796
+22,288.77
 </td>
 <td style="text-align:right;">
-440,176.5
+56,548,899
 </td>
 <td style="text-align:right;">
-416,654.5
+38,241,581
 </td>
 </tr>
 <tr>
@@ -6407,19 +6497,19 @@ Non-Cultural_Heritage_Features
 Harvest_Restrictions
 </td>
 <td style="text-align:right;">
-290,058.00
+27,007,920
 </td>
 <td style="text-align:right;">
-33.8524166
+28.4922283
 </td>
 <td style="text-align:right;">
-92,697.9065
+4,732,432.23
 </td>
 <td style="text-align:right;">
-532,874.4
+61,281,331
 </td>
 <td style="text-align:right;">
-323,956.6
+33,509,149
 </td>
 </tr>
 </tbody>
@@ -7925,19 +8015,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.0000
+0.00
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -7945,19 +8035,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -7965,19 +8055,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -7985,19 +8075,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.0000
+2,841,457.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -8005,19 +8095,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.0000
+38,967,539.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -8025,19 +8115,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.0000
+414,385.00
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -8045,19 +8135,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.0000
+4,991,866.00
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -8065,19 +8155,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.5497
+1,125,595.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -8085,19 +8175,19 @@ Linear_Features
 LAND BASE SUMMARY - pAFLB
 </td>
 <td style="text-align:right;">
-511,163.45
+49,291,095
 </td>
 <td style="text-align:right;">
-59.6574412
+52.0000478
 </td>
 <td style="text-align:right;">
-345,667.5497
+45,499,385.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -8105,19 +8195,19 @@ LAND BASE SUMMARY - pAFLB
 Parks_and_Protected_Areas
 </td>
 <td style="text-align:right;">
-151,791.00
+14,032,699
 </td>
 <td style="text-align:right;">
-17.7153955
+14.8039117
 </td>
 <td style="text-align:right;">
-61,459.6700
+6,016,248.41
 </td>
 <td style="text-align:right;">
-407,127.2
+51,515,634
 </td>
 <td style="text-align:right;">
-449,703.8
+43,274,846
 </td>
 </tr>
 <tr>
@@ -8125,19 +8215,19 @@ Parks_and_Protected_Areas
 Wildlife_Habitat_Areas
 </td>
 <td style="text-align:right;">
-4,030.00
+3,878,931
 </td>
 <td style="text-align:right;">
-0.4703378
+4.0921103
 </td>
 <td style="text-align:right;">
-2,587.8700
+1,427,360.04
 </td>
 <td style="text-align:right;">
-409,715.1
+52,942,994
 </td>
 <td style="text-align:right;">
-447,115.9
+41,847,486
 </td>
 </tr>
 <tr>
@@ -8145,19 +8235,19 @@ Wildlife_Habitat_Areas
 Misc_Tenures
 </td>
 <td style="text-align:right;">
-62,516.00
+3,091,866
 </td>
 <td style="text-align:right;">
-7.2961879
+3.2617896
 </td>
 <td style="text-align:right;">
-15,185.7000
+1,608,733.24
 </td>
 <td style="text-align:right;">
-424,900.8
+54,551,727
 </td>
 <td style="text-align:right;">
-431,930.2
+40,238,753
 </td>
 </tr>
 <tr>
@@ -8165,19 +8255,19 @@ Misc_Tenures
 Riparian_Buffers
 </td>
 <td style="text-align:right;">
-89,020.80
+10,472,075
 </td>
 <td style="text-align:right;">
-10.3895398
+11.0476025
 </td>
 <td style="text-align:right;">
-15,248.9914
+1,974,883.30
 </td>
 <td style="text-align:right;">
-440,149.8
+56,526,610
 </td>
 <td style="text-align:right;">
-416,681.2
+38,263,870
 </td>
 </tr>
 <tr>
@@ -8185,19 +8275,19 @@ Riparian_Buffers
 Non-Cultural_Heritage_Features
 </td>
 <td style="text-align:right;">
-535.00
+70,092
 </td>
 <td style="text-align:right;">
-0.0624394
+0.0739441
 </td>
 <td style="text-align:right;">
-26.6796
+22,288.77
 </td>
 <td style="text-align:right;">
-440,176.5
+56,548,899
 </td>
 <td style="text-align:right;">
-416,654.5
+38,241,581
 </td>
 </tr>
 <tr>
@@ -8205,19 +8295,19 @@ Non-Cultural_Heritage_Features
 Harvest_Restrictions
 </td>
 <td style="text-align:right;">
-290,058.00
+27,007,920
 </td>
 <td style="text-align:right;">
-33.8524166
+28.4922283
 </td>
 <td style="text-align:right;">
-92,697.9065
+4,732,432.23
 </td>
 <td style="text-align:right;">
-532,874.4
+61,281,331
 </td>
 <td style="text-align:right;">
-323,956.6
+33,509,149
 </td>
 </tr>
 <tr>
@@ -8225,19 +8315,19 @@ Harvest_Restrictions
 Physical_Inoperable
 </td>
 <td style="text-align:right;">
-149,302.05
+29,031,855
 </td>
 <td style="text-align:right;">
-17.4249121
+30.6273948
 </td>
 <td style="text-align:right;">
-48,090.7671
+5,403,968.25
 </td>
 <td style="text-align:right;">
-580,965.1
+66,685,299
 </td>
 <td style="text-align:right;">
-275,865.9
+28,105,181
 </td>
 </tr>
 </tbody>
@@ -9263,19 +9353,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.0000
+0.00
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -9283,19 +9373,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -9303,19 +9393,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -9323,19 +9413,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.0000
+2,841,457.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -9343,19 +9433,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.0000
+38,967,539.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -9363,19 +9453,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.0000
+414,385.00
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -9383,19 +9473,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.0000
+4,991,866.00
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -9403,19 +9493,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.5497
+1,125,595.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -9423,19 +9513,19 @@ Linear_Features
 LAND BASE SUMMARY - pAFLB
 </td>
 <td style="text-align:right;">
-511,163.45
+49,291,095
 </td>
 <td style="text-align:right;">
-59.6574412
+52.0000478
 </td>
 <td style="text-align:right;">
-345,667.5497
+45,499,385.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -9443,19 +9533,19 @@ LAND BASE SUMMARY - pAFLB
 Parks_and_Protected_Areas
 </td>
 <td style="text-align:right;">
-151,791.00
+14,032,699
 </td>
 <td style="text-align:right;">
-17.7153955
+14.8039117
 </td>
 <td style="text-align:right;">
-61,459.6700
+6,016,248.41
 </td>
 <td style="text-align:right;">
-407,127.2
+51,515,634
 </td>
 <td style="text-align:right;">
-449,703.8
+43,274,846
 </td>
 </tr>
 <tr>
@@ -9463,19 +9553,19 @@ Parks_and_Protected_Areas
 Wildlife_Habitat_Areas
 </td>
 <td style="text-align:right;">
-4,030.00
+3,878,931
 </td>
 <td style="text-align:right;">
-0.4703378
+4.0921103
 </td>
 <td style="text-align:right;">
-2,587.8700
+1,427,360.04
 </td>
 <td style="text-align:right;">
-409,715.1
+52,942,994
 </td>
 <td style="text-align:right;">
-447,115.9
+41,847,486
 </td>
 </tr>
 <tr>
@@ -9483,19 +9573,19 @@ Wildlife_Habitat_Areas
 Misc_Tenures
 </td>
 <td style="text-align:right;">
-62,516.00
+3,091,866
 </td>
 <td style="text-align:right;">
-7.2961879
+3.2617896
 </td>
 <td style="text-align:right;">
-15,185.7000
+1,608,733.24
 </td>
 <td style="text-align:right;">
-424,900.8
+54,551,727
 </td>
 <td style="text-align:right;">
-431,930.2
+40,238,753
 </td>
 </tr>
 <tr>
@@ -9503,19 +9593,19 @@ Misc_Tenures
 Riparian_Buffers
 </td>
 <td style="text-align:right;">
-89,020.80
+10,472,075
 </td>
 <td style="text-align:right;">
-10.3895398
+11.0476025
 </td>
 <td style="text-align:right;">
-15,248.9914
+1,974,883.30
 </td>
 <td style="text-align:right;">
-440,149.8
+56,526,610
 </td>
 <td style="text-align:right;">
-416,681.2
+38,263,870
 </td>
 </tr>
 <tr>
@@ -9523,19 +9613,19 @@ Riparian_Buffers
 Non-Cultural_Heritage_Features
 </td>
 <td style="text-align:right;">
-535.00
+70,092
 </td>
 <td style="text-align:right;">
-0.0624394
+0.0739441
 </td>
 <td style="text-align:right;">
-26.6796
+22,288.77
 </td>
 <td style="text-align:right;">
-440,176.5
+56,548,899
 </td>
 <td style="text-align:right;">
-416,654.5
+38,241,581
 </td>
 </tr>
 <tr>
@@ -9543,19 +9633,19 @@ Non-Cultural_Heritage_Features
 Harvest_Restrictions
 </td>
 <td style="text-align:right;">
-290,058.00
+27,007,920
 </td>
 <td style="text-align:right;">
-33.8524166
+28.4922283
 </td>
 <td style="text-align:right;">
-92,697.9065
+4,732,432.23
 </td>
 <td style="text-align:right;">
-532,874.4
+61,281,331
 </td>
 <td style="text-align:right;">
-323,956.6
+33,509,149
 </td>
 </tr>
 <tr>
@@ -9563,19 +9653,19 @@ Harvest_Restrictions
 Physical_Inoperable
 </td>
 <td style="text-align:right;">
-149,302.05
+29,031,855
 </td>
 <td style="text-align:right;">
-17.4249121
+30.6273948
 </td>
 <td style="text-align:right;">
-48,090.7671
+5,403,968.25
 </td>
 <td style="text-align:right;">
-580,965.1
+66,685,299
 </td>
 <td style="text-align:right;">
-275,865.9
+28,105,181
 </td>
 </tr>
 <tr>
@@ -9583,19 +9673,19 @@ Physical_Inoperable
 Non-Merchantable
 </td>
 <td style="text-align:right;">
-209,617.00
+22,861,751
 </td>
 <td style="text-align:right;">
-24.4642176
+24.1181931
 </td>
 <td style="text-align:right;">
-44,855.9406
+3,793,271.57
 </td>
 <td style="text-align:right;">
-625,821.1
+70,478,571
 </td>
 <td style="text-align:right;">
-231,009.9
+24,311,909
 </td>
 </tr>
 </tbody>
@@ -9738,19 +9828,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.0000
+0.00
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -9758,19 +9848,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -9778,19 +9868,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -9798,19 +9888,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.0000
+2,841,457.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -9818,19 +9908,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.0000
+38,967,539.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -9838,19 +9928,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.0000
+414,385.00
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -9858,19 +9948,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.0000
+4,991,866.00
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -9878,19 +9968,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.5497
+1,125,595.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -9898,19 +9988,19 @@ Linear_Features
 LAND BASE SUMMARY - pAFLB
 </td>
 <td style="text-align:right;">
-511,163.45
+49,291,095
 </td>
 <td style="text-align:right;">
-59.6574412
+52.0000478
 </td>
 <td style="text-align:right;">
-345,667.5497
+45,499,385.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -9918,19 +10008,19 @@ LAND BASE SUMMARY - pAFLB
 Parks_and_Protected_Areas
 </td>
 <td style="text-align:right;">
-151,791.00
+14,032,699
 </td>
 <td style="text-align:right;">
-17.7153955
+14.8039117
 </td>
 <td style="text-align:right;">
-61,459.6700
+6,016,248.41
 </td>
 <td style="text-align:right;">
-407,127.2
+51,515,634
 </td>
 <td style="text-align:right;">
-449,703.8
+43,274,846
 </td>
 </tr>
 <tr>
@@ -9938,19 +10028,19 @@ Parks_and_Protected_Areas
 Wildlife_Habitat_Areas
 </td>
 <td style="text-align:right;">
-4,030.00
+3,878,931
 </td>
 <td style="text-align:right;">
-0.4703378
+4.0921103
 </td>
 <td style="text-align:right;">
-2,587.8700
+1,427,360.04
 </td>
 <td style="text-align:right;">
-409,715.1
+52,942,994
 </td>
 <td style="text-align:right;">
-447,115.9
+41,847,486
 </td>
 </tr>
 <tr>
@@ -9958,19 +10048,19 @@ Wildlife_Habitat_Areas
 Misc_Tenures
 </td>
 <td style="text-align:right;">
-62,516.00
+3,091,866
 </td>
 <td style="text-align:right;">
-7.2961879
+3.2617896
 </td>
 <td style="text-align:right;">
-15,185.7000
+1,608,733.24
 </td>
 <td style="text-align:right;">
-424,900.8
+54,551,727
 </td>
 <td style="text-align:right;">
-431,930.2
+40,238,753
 </td>
 </tr>
 <tr>
@@ -9978,19 +10068,19 @@ Misc_Tenures
 Riparian_Buffers
 </td>
 <td style="text-align:right;">
-89,020.80
+10,472,075
 </td>
 <td style="text-align:right;">
-10.3895398
+11.0476025
 </td>
 <td style="text-align:right;">
-15,248.9914
+1,974,883.30
 </td>
 <td style="text-align:right;">
-440,149.8
+56,526,610
 </td>
 <td style="text-align:right;">
-416,681.2
+38,263,870
 </td>
 </tr>
 <tr>
@@ -9998,19 +10088,19 @@ Riparian_Buffers
 Non-Cultural_Heritage_Features
 </td>
 <td style="text-align:right;">
-535.00
+70,092
 </td>
 <td style="text-align:right;">
-0.0624394
+0.0739441
 </td>
 <td style="text-align:right;">
-26.6796
+22,288.77
 </td>
 <td style="text-align:right;">
-440,176.5
+56,548,899
 </td>
 <td style="text-align:right;">
-416,654.5
+38,241,581
 </td>
 </tr>
 <tr>
@@ -10018,19 +10108,19 @@ Non-Cultural_Heritage_Features
 Harvest_Restrictions
 </td>
 <td style="text-align:right;">
-290,058.00
+27,007,920
 </td>
 <td style="text-align:right;">
-33.8524166
+28.4922283
 </td>
 <td style="text-align:right;">
-92,697.9065
+4,732,432.23
 </td>
 <td style="text-align:right;">
-532,874.4
+61,281,331
 </td>
 <td style="text-align:right;">
-323,956.6
+33,509,149
 </td>
 </tr>
 <tr>
@@ -10038,19 +10128,19 @@ Harvest_Restrictions
 Physical_Inoperable
 </td>
 <td style="text-align:right;">
-149,302.05
+29,031,855
 </td>
 <td style="text-align:right;">
-17.4249121
+30.6273948
 </td>
 <td style="text-align:right;">
-48,090.7671
+5,403,968.25
 </td>
 <td style="text-align:right;">
-580,965.1
+66,685,299
 </td>
 <td style="text-align:right;">
-275,865.9
+28,105,181
 </td>
 </tr>
 <tr>
@@ -10058,19 +10148,19 @@ Physical_Inoperable
 Non-Merchantable
 </td>
 <td style="text-align:right;">
-209,617.00
+22,861,751
 </td>
 <td style="text-align:right;">
-24.4642176
+24.1181931
 </td>
 <td style="text-align:right;">
-44,855.9406
+3,793,271.57
 </td>
 <td style="text-align:right;">
-625,821.1
+70,478,571
 </td>
 <td style="text-align:right;">
-231,009.9
+24,311,909
 </td>
 </tr>
 <tr>
@@ -10078,19 +10168,19 @@ Non-Merchantable
 Non-Commercial
 </td>
 <td style="text-align:right;">
-44,672.00
+6,241,057
 </td>
 <td style="text-align:right;">
-5.2136302
+6.5840546
 </td>
 <td style="text-align:right;">
-10,112.6196
+570,778.21
 </td>
 <td style="text-align:right;">
-635,933.7
+71,049,349
 </td>
 <td style="text-align:right;">
-220,897.3
+23,741,131
 </td>
 </tr>
 </tbody>
@@ -11153,66 +11243,67 @@ retention factor)</li>
 <span id="cb48-123"><a href="#cb48-123" tabindex="-1"></a>  <span class="fu">ggsave</span>(<span class="at">filename =</span> file_name, <span class="at">plot =</span> plot, <span class="at">width =</span> <span class="dv">10</span>, <span class="at">height =</span> <span class="dv">6</span>, <span class="at">dpi =</span> <span class="dv">300</span>)</span>
 <span id="cb48-124"><a href="#cb48-124" tabindex="-1"></a>  <span class="fu">rm</span>(plot)</span>
 <span id="cb48-125"><a href="#cb48-125" tabindex="-1"></a>}</span>
-<span id="cb48-126"><a href="#cb48-126" tabindex="-1"></a></span>
-<span id="cb48-127"><a href="#cb48-127" tabindex="-1"></a>df_new <span class="ot">&lt;-</span> all_tsa_results <span class="sc">%&gt;%</span></span>
-<span id="cb48-128"><a href="#cb48-128" tabindex="-1"></a>  <span class="fu">filter</span>(tsa <span class="sc">==</span> <span class="st">&quot;Fort St. John TSA&quot;</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb48-129"><a href="#cb48-129" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">tsa =</span> <span class="st">&quot;Fort Nelson TSA&quot;</span>)</span>
-<span id="cb48-130"><a href="#cb48-130" tabindex="-1"></a></span>
-<span id="cb48-131"><a href="#cb48-131" tabindex="-1"></a>all_tsa_results <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(all_tsa_results, df_new)</span>
-<span id="cb48-132"><a href="#cb48-132" tabindex="-1"></a></span>
-<span id="cb48-133"><a href="#cb48-133" tabindex="-1"></a><span class="do">## write table that contains retention adjust to postgres</span></span>
-<span id="cb48-134"><a href="#cb48-134" tabindex="-1"></a><span class="fu">df_to_pg</span>(<span class="fu">Id</span>(<span class="at">schema =</span> <span class="st">&#39;thlb_proxy&#39;</span>, <span class="at">table =</span> <span class="st">&#39;retention_adjustment_man_unit&#39;</span>), all_tsa_results, conn_list, <span class="at">overwrite=</span><span class="cn">TRUE</span>)</span>
-<span id="cb48-135"><a href="#cb48-135" tabindex="-1"></a></span>
-<span id="cb48-136"><a href="#cb48-136" tabindex="-1"></a></span>
-<span id="cb48-137"><a href="#cb48-137" tabindex="-1"></a><span class="do">## join the previously created long term retention table to the newly created adjustment table &amp; create the adjusted retention factor</span></span>
-<span id="cb48-138"><a href="#cb48-138" tabindex="-1"></a>query <span class="ot">&lt;-</span> <span class="st">&quot;WITH ltr AS (</span></span>
-<span id="cb48-139"><a href="#cb48-139" tabindex="-1"></a><span class="st">SELECT * </span></span>
-<span id="cb48-140"><a href="#cb48-140" tabindex="-1"></a><span class="st">FROM </span></span>
-<span id="cb48-141"><a href="#cb48-141" tabindex="-1"></a><span class="st">whse.retention_thresholds_man_unit </span></span>
-<span id="cb48-142"><a href="#cb48-142" tabindex="-1"></a><span class="st">UNION ALL </span></span>
-<span id="cb48-143"><a href="#cb48-143" tabindex="-1"></a><span class="st">SELECT </span></span>
-<span id="cb48-144"><a href="#cb48-144" tabindex="-1"></a><span class="st">  &#39;8 - Fort Nelson TSA&#39;, </span></span>
-<span id="cb48-145"><a href="#cb48-145" tabindex="-1"></a><span class="st">  lower_bound_percentile, </span></span>
-<span id="cb48-146"><a href="#cb48-146" tabindex="-1"></a><span class="st">  upper_bound_percentile, </span></span>
-<span id="cb48-147"><a href="#cb48-147" tabindex="-1"></a><span class="st">  lower_bounds, </span></span>
-<span id="cb48-148"><a href="#cb48-148" tabindex="-1"></a><span class="st">  upper_bounds, </span></span>
-<span id="cb48-149"><a href="#cb48-149" tabindex="-1"></a><span class="st">  weighted_mean_ltr </span></span>
-<span id="cb48-150"><a href="#cb48-150" tabindex="-1"></a><span class="st">FROM </span></span>
-<span id="cb48-151"><a href="#cb48-151" tabindex="-1"></a><span class="st">  whse.retention_thresholds_man_unit </span></span>
-<span id="cb48-152"><a href="#cb48-152" tabindex="-1"></a><span class="st">where </span></span>
-<span id="cb48-153"><a href="#cb48-153" tabindex="-1"></a><span class="st">  man_unit = &#39;40 - Fort St. John TSA&#39;</span></span>
-<span id="cb48-154"><a href="#cb48-154" tabindex="-1"></a><span class="st">)</span></span>
-<span id="cb48-155"><a href="#cb48-155" tabindex="-1"></a><span class="st">SELECT</span></span>
-<span id="cb48-156"><a href="#cb48-156" tabindex="-1"></a><span class="st">    adj.tsa,</span></span>
-<span id="cb48-157"><a href="#cb48-157" tabindex="-1"></a><span class="st">    ltr.weighted_mean_ltr,</span></span>
-<span id="cb48-158"><a href="#cb48-158" tabindex="-1"></a><span class="st">    adj.percent/100 as percent,</span></span>
-<span id="cb48-159"><a href="#cb48-159" tabindex="-1"></a><span class="st">    ltr.weighted_mean_ltr * adj.percent/100.0 as adjusted_retention</span></span>
-<span id="cb48-160"><a href="#cb48-160" tabindex="-1"></a><span class="st">FROM </span></span>
-<span id="cb48-161"><a href="#cb48-161" tabindex="-1"></a><span class="st">ltr</span></span>
-<span id="cb48-162"><a href="#cb48-162" tabindex="-1"></a><span class="st">JOIN whse.retention_adjustment_man_unit adj</span></span>
-<span id="cb48-163"><a href="#cb48-163" tabindex="-1"></a><span class="st">ON </span></span>
-<span id="cb48-164"><a href="#cb48-164" tabindex="-1"></a><span class="st">  adj.tsa = split_part(ltr.man_unit, &#39; - &#39;, 2)</span></span>
-<span id="cb48-165"><a href="#cb48-165" tabindex="-1"></a><span class="st">WHERE </span></span>
-<span id="cb48-166"><a href="#cb48-166" tabindex="-1"></a><span class="st">  adj.landclass = &#39;Remaining stand-level retention&#39;&quot;</span></span>
-<span id="cb48-167"><a href="#cb48-167" tabindex="-1"></a>retention_adjustment_df <span class="ot">&lt;-</span> <span class="fu">sql_to_df</span>(query, conn_list)</span>
-<span id="cb48-168"><a href="#cb48-168" tabindex="-1"></a></span>
-<span id="cb48-169"><a href="#cb48-169" tabindex="-1"></a>retention_adjustment_df <span class="ot">&lt;-</span> retention_adjustment_df <span class="sc">%&gt;%</span></span>
-<span id="cb48-170"><a href="#cb48-170" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(weighted_mean_ltr, percent, adjusted_retention), <span class="sc">~</span> <span class="fu">round</span>(.x <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">2</span>)))</span>
-<span id="cb48-171"><a href="#cb48-171" tabindex="-1"></a></span>
-<span id="cb48-172"><a href="#cb48-172" tabindex="-1"></a>retention_adjustment_df <span class="ot">&lt;-</span> retention_adjustment_df <span class="sc">%&gt;%</span></span>
-<span id="cb48-173"><a href="#cb48-173" tabindex="-1"></a>  <span class="fu">rename</span>(</span>
-<span id="cb48-174"><a href="#cb48-174" tabindex="-1"></a>    <span class="st">`</span><span class="at">TSA</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">tsa</span><span class="st">`</span>,</span>
-<span id="cb48-175"><a href="#cb48-175" tabindex="-1"></a>    <span class="st">`</span><span class="at">Long Term Retention</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">weighted_mean_ltr</span><span class="st">`</span>,</span>
-<span id="cb48-176"><a href="#cb48-176" tabindex="-1"></a>    <span class="st">`</span><span class="at">Remaining Stand Level Retention (%)</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">percent</span><span class="st">`</span>,</span>
-<span id="cb48-177"><a href="#cb48-177" tabindex="-1"></a>    <span class="st">`</span><span class="at">Adjustment Factor (%)</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">adjusted_retention</span><span class="st">`</span></span>
-<span id="cb48-178"><a href="#cb48-178" tabindex="-1"></a>  )</span>
-<span id="cb48-179"><a href="#cb48-179" tabindex="-1"></a></span>
-<span id="cb48-180"><a href="#cb48-180" tabindex="-1"></a><span class="fu">kable</span>(retention_adjustment_df,</span>
-<span id="cb48-181"><a href="#cb48-181" tabindex="-1"></a>      <span class="at">booktabs =</span> T,</span>
-<span id="cb48-182"><a href="#cb48-182" tabindex="-1"></a>      <span class="at">format.args =</span> <span class="fu">list</span>(<span class="at">big.mark =</span> <span class="st">&quot;,&quot;</span>),</span>
-<span id="cb48-183"><a href="#cb48-183" tabindex="-1"></a>      <span class="at">caption =</span>  <span class="st">&quot;Adjusted stand-level retention&quot;</span> ) <span class="sc">%&gt;%</span> </span>
-<span id="cb48-184"><a href="#cb48-184" tabindex="-1"></a>  <span class="fu">kable_styling</span>(<span class="at">bootstrap_options =</span> <span class="st">&quot;striped&quot;</span>,</span>
-<span id="cb48-185"><a href="#cb48-185" tabindex="-1"></a>                <span class="at">font_size =</span> <span class="dv">10</span>)</span></code></pre></div>
+<span id="cb48-126"><a href="#cb48-126" tabindex="-1"></a><span class="do">## TSA: Fort Nelson TSA does not any retention. Will use a proxy instead.</span></span></code></pre></div>
+<div class="sourceCode" id="cb49"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" tabindex="-1"></a></span>
+<span id="cb49-2"><a href="#cb49-2" tabindex="-1"></a>df_new <span class="ot">&lt;-</span> all_tsa_results <span class="sc">%&gt;%</span></span>
+<span id="cb49-3"><a href="#cb49-3" tabindex="-1"></a>  <span class="fu">filter</span>(tsa <span class="sc">==</span> <span class="st">&quot;Fort St. John TSA&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb49-4"><a href="#cb49-4" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">tsa =</span> <span class="st">&quot;Fort Nelson TSA&quot;</span>)</span>
+<span id="cb49-5"><a href="#cb49-5" tabindex="-1"></a></span>
+<span id="cb49-6"><a href="#cb49-6" tabindex="-1"></a>all_tsa_results <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(all_tsa_results, df_new)</span>
+<span id="cb49-7"><a href="#cb49-7" tabindex="-1"></a></span>
+<span id="cb49-8"><a href="#cb49-8" tabindex="-1"></a><span class="do">## write table that contains retention adjust to postgres</span></span>
+<span id="cb49-9"><a href="#cb49-9" tabindex="-1"></a><span class="fu">df_to_pg</span>(<span class="fu">Id</span>(<span class="at">schema =</span> <span class="st">&#39;thlb_proxy&#39;</span>, <span class="at">table =</span> <span class="st">&#39;retention_adjustment_man_unit&#39;</span>), all_tsa_results, conn_list, <span class="at">overwrite=</span><span class="cn">TRUE</span>)</span>
+<span id="cb49-10"><a href="#cb49-10" tabindex="-1"></a></span>
+<span id="cb49-11"><a href="#cb49-11" tabindex="-1"></a></span>
+<span id="cb49-12"><a href="#cb49-12" tabindex="-1"></a><span class="do">## join the previously created long term retention table to the newly created adjustment table &amp; create the adjusted retention factor</span></span>
+<span id="cb49-13"><a href="#cb49-13" tabindex="-1"></a>query <span class="ot">&lt;-</span> <span class="st">&quot;WITH ltr AS (</span></span>
+<span id="cb49-14"><a href="#cb49-14" tabindex="-1"></a><span class="st">SELECT * </span></span>
+<span id="cb49-15"><a href="#cb49-15" tabindex="-1"></a><span class="st">FROM </span></span>
+<span id="cb49-16"><a href="#cb49-16" tabindex="-1"></a><span class="st">whse.retention_thresholds_man_unit </span></span>
+<span id="cb49-17"><a href="#cb49-17" tabindex="-1"></a><span class="st">UNION ALL </span></span>
+<span id="cb49-18"><a href="#cb49-18" tabindex="-1"></a><span class="st">SELECT </span></span>
+<span id="cb49-19"><a href="#cb49-19" tabindex="-1"></a><span class="st">  &#39;8 - Fort Nelson TSA&#39;, </span></span>
+<span id="cb49-20"><a href="#cb49-20" tabindex="-1"></a><span class="st">  lower_bound_percentile, </span></span>
+<span id="cb49-21"><a href="#cb49-21" tabindex="-1"></a><span class="st">  upper_bound_percentile, </span></span>
+<span id="cb49-22"><a href="#cb49-22" tabindex="-1"></a><span class="st">  lower_bounds, </span></span>
+<span id="cb49-23"><a href="#cb49-23" tabindex="-1"></a><span class="st">  upper_bounds, </span></span>
+<span id="cb49-24"><a href="#cb49-24" tabindex="-1"></a><span class="st">  weighted_mean_ltr </span></span>
+<span id="cb49-25"><a href="#cb49-25" tabindex="-1"></a><span class="st">FROM </span></span>
+<span id="cb49-26"><a href="#cb49-26" tabindex="-1"></a><span class="st">  whse.retention_thresholds_man_unit </span></span>
+<span id="cb49-27"><a href="#cb49-27" tabindex="-1"></a><span class="st">where </span></span>
+<span id="cb49-28"><a href="#cb49-28" tabindex="-1"></a><span class="st">  man_unit = &#39;40 - Fort St. John TSA&#39;</span></span>
+<span id="cb49-29"><a href="#cb49-29" tabindex="-1"></a><span class="st">)</span></span>
+<span id="cb49-30"><a href="#cb49-30" tabindex="-1"></a><span class="st">SELECT</span></span>
+<span id="cb49-31"><a href="#cb49-31" tabindex="-1"></a><span class="st">    adj.tsa,</span></span>
+<span id="cb49-32"><a href="#cb49-32" tabindex="-1"></a><span class="st">    ltr.weighted_mean_ltr,</span></span>
+<span id="cb49-33"><a href="#cb49-33" tabindex="-1"></a><span class="st">    adj.percent/100 as percent,</span></span>
+<span id="cb49-34"><a href="#cb49-34" tabindex="-1"></a><span class="st">    ltr.weighted_mean_ltr * adj.percent/100.0 as adjusted_retention</span></span>
+<span id="cb49-35"><a href="#cb49-35" tabindex="-1"></a><span class="st">FROM </span></span>
+<span id="cb49-36"><a href="#cb49-36" tabindex="-1"></a><span class="st">ltr</span></span>
+<span id="cb49-37"><a href="#cb49-37" tabindex="-1"></a><span class="st">JOIN whse.retention_adjustment_man_unit adj</span></span>
+<span id="cb49-38"><a href="#cb49-38" tabindex="-1"></a><span class="st">ON </span></span>
+<span id="cb49-39"><a href="#cb49-39" tabindex="-1"></a><span class="st">  adj.tsa = split_part(ltr.man_unit, &#39; - &#39;, 2)</span></span>
+<span id="cb49-40"><a href="#cb49-40" tabindex="-1"></a><span class="st">WHERE </span></span>
+<span id="cb49-41"><a href="#cb49-41" tabindex="-1"></a><span class="st">  adj.landclass = &#39;Remaining stand-level retention&#39;&quot;</span></span>
+<span id="cb49-42"><a href="#cb49-42" tabindex="-1"></a>retention_adjustment_df <span class="ot">&lt;-</span> <span class="fu">sql_to_df</span>(query, conn_list)</span>
+<span id="cb49-43"><a href="#cb49-43" tabindex="-1"></a></span>
+<span id="cb49-44"><a href="#cb49-44" tabindex="-1"></a>retention_adjustment_df <span class="ot">&lt;-</span> retention_adjustment_df <span class="sc">%&gt;%</span></span>
+<span id="cb49-45"><a href="#cb49-45" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(weighted_mean_ltr, percent, adjusted_retention), <span class="sc">~</span> <span class="fu">round</span>(.x <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">2</span>)))</span>
+<span id="cb49-46"><a href="#cb49-46" tabindex="-1"></a></span>
+<span id="cb49-47"><a href="#cb49-47" tabindex="-1"></a>retention_adjustment_df <span class="ot">&lt;-</span> retention_adjustment_df <span class="sc">%&gt;%</span></span>
+<span id="cb49-48"><a href="#cb49-48" tabindex="-1"></a>  <span class="fu">rename</span>(</span>
+<span id="cb49-49"><a href="#cb49-49" tabindex="-1"></a>    <span class="st">`</span><span class="at">TSA</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">tsa</span><span class="st">`</span>,</span>
+<span id="cb49-50"><a href="#cb49-50" tabindex="-1"></a>    <span class="st">`</span><span class="at">Long Term Retention</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">weighted_mean_ltr</span><span class="st">`</span>,</span>
+<span id="cb49-51"><a href="#cb49-51" tabindex="-1"></a>    <span class="st">`</span><span class="at">Remaining Stand Level Retention (%)</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">percent</span><span class="st">`</span>,</span>
+<span id="cb49-52"><a href="#cb49-52" tabindex="-1"></a>    <span class="st">`</span><span class="at">Adjustment Factor (%)</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">adjusted_retention</span><span class="st">`</span></span>
+<span id="cb49-53"><a href="#cb49-53" tabindex="-1"></a>  )</span>
+<span id="cb49-54"><a href="#cb49-54" tabindex="-1"></a></span>
+<span id="cb49-55"><a href="#cb49-55" tabindex="-1"></a><span class="fu">kable</span>(retention_adjustment_df,</span>
+<span id="cb49-56"><a href="#cb49-56" tabindex="-1"></a>      <span class="at">booktabs =</span> T,</span>
+<span id="cb49-57"><a href="#cb49-57" tabindex="-1"></a>      <span class="at">format.args =</span> <span class="fu">list</span>(<span class="at">big.mark =</span> <span class="st">&quot;,&quot;</span>),</span>
+<span id="cb49-58"><a href="#cb49-58" tabindex="-1"></a>      <span class="at">caption =</span>  <span class="st">&quot;Adjusted stand-level retention&quot;</span> ) <span class="sc">%&gt;%</span> </span>
+<span id="cb49-59"><a href="#cb49-59" tabindex="-1"></a>  <span class="fu">kable_styling</span>(<span class="at">bootstrap_options =</span> <span class="st">&quot;striped&quot;</span>,</span>
+<span id="cb49-60"><a href="#cb49-60" tabindex="-1"></a>                <span class="at">font_size =</span> <span class="dv">10</span>)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 Adjusted stand-level retention
@@ -11754,32 +11845,32 @@ Fort Nelson TSA
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb49"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" tabindex="-1"></a></span>
-<span id="cb49-2"><a href="#cb49-2" tabindex="-1"></a></span>
-<span id="cb49-3"><a href="#cb49-3" tabindex="-1"></a>retention_adjustment_df <span class="ot">&lt;-</span> <span class="fu">sql_to_df</span>(query, conn_list)</span></code></pre></div>
+<div class="sourceCode" id="cb50"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" tabindex="-1"></a></span>
+<span id="cb50-2"><a href="#cb50-2" tabindex="-1"></a></span>
+<span id="cb50-3"><a href="#cb50-3" tabindex="-1"></a>retention_adjustment_df <span class="ot">&lt;-</span> <span class="fu">sql_to_df</span>(query, conn_list)</span></code></pre></div>
 </div>
 <div id="stand-level-retention-summary" class="section level4">
 <h4>Stand-level Retention Summary</h4>
-<div class="sourceCode" id="cb50"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" tabindex="-1"></a><span class="do">## add in the adjusted retention as a column in the netdown dataframe</span></span>
-<span id="cb50-2"><a href="#cb50-2" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> netdown_tab <span class="sc">%&gt;%</span></span>
-<span id="cb50-3"><a href="#cb50-3" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
-<span id="cb50-4"><a href="#cb50-4" tabindex="-1"></a>    retention_adjustment_df <span class="sc">%&gt;%</span> <span class="fu">select</span>(tsa, adjusted_retention), </span>
-<span id="cb50-5"><a href="#cb50-5" tabindex="-1"></a>    <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&quot;tsa_rank1&quot;</span> <span class="ot">=</span> <span class="st">&quot;tsa&quot;</span>)</span>
-<span id="cb50-6"><a href="#cb50-6" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
-<span id="cb50-7"><a href="#cb50-7" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">p15_future_retention =</span> adjusted_retention)</span>
-<span id="cb50-8"><a href="#cb50-8" tabindex="-1"></a></span>
-<span id="cb50-9"><a href="#cb50-9" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Future Retention&quot;</span></span>
-<span id="cb50-10"><a href="#cb50-10" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;p15_future_retention&quot;</span></span>
-<span id="cb50-11"><a href="#cb50-11" tabindex="-1"></a></span>
-<span id="cb50-12"><a href="#cb50-12" tabindex="-1"></a></span>
-<span id="cb50-13"><a href="#cb50-13" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown_prop</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
-<span id="cb50-14"><a href="#cb50-14" tabindex="-1"></a></span>
-<span id="cb50-15"><a href="#cb50-15" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> netdown_tab <span class="sc">%&gt;%</span></span>
-<span id="cb50-16"><a href="#cb50-16" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">thlb_net =</span> thlb_net <span class="sc">*</span> (<span class="dv">1</span><span class="sc">-</span>p15_future_retention))</span>
-<span id="cb50-17"><a href="#cb50-17" tabindex="-1"></a></span>
-<span id="cb50-18"><a href="#cb50-18" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
-<span id="cb50-19"><a href="#cb50-19" tabindex="-1"></a>netdown<span class="ot">&lt;-</span><span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
-<span id="cb50-20"><a href="#cb50-20" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<div class="sourceCode" id="cb51"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" tabindex="-1"></a><span class="do">## add in the adjusted retention as a column in the netdown dataframe</span></span>
+<span id="cb51-2"><a href="#cb51-2" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> netdown_tab <span class="sc">%&gt;%</span></span>
+<span id="cb51-3"><a href="#cb51-3" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
+<span id="cb51-4"><a href="#cb51-4" tabindex="-1"></a>    retention_adjustment_df <span class="sc">%&gt;%</span> <span class="fu">select</span>(tsa, adjusted_retention), </span>
+<span id="cb51-5"><a href="#cb51-5" tabindex="-1"></a>    <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&quot;tsa_rank1&quot;</span> <span class="ot">=</span> <span class="st">&quot;tsa&quot;</span>)</span>
+<span id="cb51-6"><a href="#cb51-6" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb51-7"><a href="#cb51-7" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">p15_future_retention =</span> adjusted_retention)</span>
+<span id="cb51-8"><a href="#cb51-8" tabindex="-1"></a></span>
+<span id="cb51-9"><a href="#cb51-9" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;Future Retention&quot;</span></span>
+<span id="cb51-10"><a href="#cb51-10" tabindex="-1"></a>n_step<span class="ot">&lt;-</span><span class="st">&quot;p15_future_retention&quot;</span></span>
+<span id="cb51-11"><a href="#cb51-11" tabindex="-1"></a></span>
+<span id="cb51-12"><a href="#cb51-12" tabindex="-1"></a></span>
+<span id="cb51-13"><a href="#cb51-13" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">netdown_prop</span>(netdown_tab,netdown_summary,running_total,lclass,n_step)</span>
+<span id="cb51-14"><a href="#cb51-14" tabindex="-1"></a></span>
+<span id="cb51-15"><a href="#cb51-15" tabindex="-1"></a>netdown_tab <span class="ot">&lt;-</span> netdown_tab <span class="sc">%&gt;%</span></span>
+<span id="cb51-16"><a href="#cb51-16" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">thlb_net =</span> thlb_net <span class="sc">*</span> (<span class="dv">1</span><span class="sc">-</span>p15_future_retention))</span>
+<span id="cb51-17"><a href="#cb51-17" tabindex="-1"></a></span>
+<span id="cb51-18"><a href="#cb51-18" tabindex="-1"></a>running_total<span class="ot">&lt;-</span><span class="fu">get_running_total</span>(netdown_summary,lclass)</span>
+<span id="cb51-19"><a href="#cb51-19" tabindex="-1"></a>netdown<span class="ot">&lt;-</span><span class="fu">get_netdown</span>(netdown_summary,lclass)</span>
+<span id="cb51-20"><a href="#cb51-20" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 Netdown Summary Table
@@ -11812,19 +11903,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.0000
+0.00
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -11832,19 +11923,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -11852,19 +11943,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -11872,19 +11963,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.0000
+2,841,457.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -11892,19 +11983,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.0000
+38,967,539.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -11912,19 +12003,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.0000
+414,385.00
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -11932,19 +12023,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.0000
+4,991,866.00
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -11952,19 +12043,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.5497
+1,125,595.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -11972,19 +12063,19 @@ Linear_Features
 LAND BASE SUMMARY - pAFLB
 </td>
 <td style="text-align:right;">
-511,163.45
+49,291,095
 </td>
 <td style="text-align:right;">
-59.6574412
+52.0000478
 </td>
 <td style="text-align:right;">
-345,667.5497
+45,499,385.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -11992,19 +12083,19 @@ LAND BASE SUMMARY - pAFLB
 Parks_and_Protected_Areas
 </td>
 <td style="text-align:right;">
-151,791.00
+14,032,699
 </td>
 <td style="text-align:right;">
-17.7153955
+14.8039117
 </td>
 <td style="text-align:right;">
-61,459.6700
+6,016,248.41
 </td>
 <td style="text-align:right;">
-407,127.2
+51,515,634
 </td>
 <td style="text-align:right;">
-449,703.8
+43,274,846
 </td>
 </tr>
 <tr>
@@ -12012,19 +12103,19 @@ Parks_and_Protected_Areas
 Wildlife_Habitat_Areas
 </td>
 <td style="text-align:right;">
-4,030.00
+3,878,931
 </td>
 <td style="text-align:right;">
-0.4703378
+4.0921103
 </td>
 <td style="text-align:right;">
-2,587.8700
+1,427,360.04
 </td>
 <td style="text-align:right;">
-409,715.1
+52,942,994
 </td>
 <td style="text-align:right;">
-447,115.9
+41,847,486
 </td>
 </tr>
 <tr>
@@ -12032,19 +12123,19 @@ Wildlife_Habitat_Areas
 Misc_Tenures
 </td>
 <td style="text-align:right;">
-62,516.00
+3,091,866
 </td>
 <td style="text-align:right;">
-7.2961879
+3.2617896
 </td>
 <td style="text-align:right;">
-15,185.7000
+1,608,733.24
 </td>
 <td style="text-align:right;">
-424,900.8
+54,551,727
 </td>
 <td style="text-align:right;">
-431,930.2
+40,238,753
 </td>
 </tr>
 <tr>
@@ -12052,19 +12143,19 @@ Misc_Tenures
 Riparian_Buffers
 </td>
 <td style="text-align:right;">
-89,020.80
+10,472,075
 </td>
 <td style="text-align:right;">
-10.3895398
+11.0476025
 </td>
 <td style="text-align:right;">
-15,248.9914
+1,974,883.30
 </td>
 <td style="text-align:right;">
-440,149.8
+56,526,610
 </td>
 <td style="text-align:right;">
-416,681.2
+38,263,870
 </td>
 </tr>
 <tr>
@@ -12072,19 +12163,19 @@ Riparian_Buffers
 Non-Cultural_Heritage_Features
 </td>
 <td style="text-align:right;">
-535.00
+70,092
 </td>
 <td style="text-align:right;">
-0.0624394
+0.0739441
 </td>
 <td style="text-align:right;">
-26.6796
+22,288.77
 </td>
 <td style="text-align:right;">
-440,176.5
+56,548,899
 </td>
 <td style="text-align:right;">
-416,654.5
+38,241,581
 </td>
 </tr>
 <tr>
@@ -12092,19 +12183,19 @@ Non-Cultural_Heritage_Features
 Harvest_Restrictions
 </td>
 <td style="text-align:right;">
-290,058.00
+27,007,920
 </td>
 <td style="text-align:right;">
-33.8524166
+28.4922283
 </td>
 <td style="text-align:right;">
-92,697.9065
+4,732,432.23
 </td>
 <td style="text-align:right;">
-532,874.4
+61,281,331
 </td>
 <td style="text-align:right;">
-323,956.6
+33,509,149
 </td>
 </tr>
 <tr>
@@ -12112,19 +12203,19 @@ Harvest_Restrictions
 Physical_Inoperable
 </td>
 <td style="text-align:right;">
-149,302.05
+29,031,855
 </td>
 <td style="text-align:right;">
-17.4249121
+30.6273948
 </td>
 <td style="text-align:right;">
-48,090.7671
+5,403,968.25
 </td>
 <td style="text-align:right;">
-580,965.1
+66,685,299
 </td>
 <td style="text-align:right;">
-275,865.9
+28,105,181
 </td>
 </tr>
 <tr>
@@ -12132,19 +12223,19 @@ Physical_Inoperable
 Non-Merchantable
 </td>
 <td style="text-align:right;">
-209,617.00
+22,861,751
 </td>
 <td style="text-align:right;">
-24.4642176
+24.1181931
 </td>
 <td style="text-align:right;">
-44,855.9406
+3,793,271.57
 </td>
 <td style="text-align:right;">
-625,821.1
+70,478,571
 </td>
 <td style="text-align:right;">
-231,009.9
+24,311,909
 </td>
 </tr>
 <tr>
@@ -12152,19 +12243,19 @@ Non-Merchantable
 Non-Commercial
 </td>
 <td style="text-align:right;">
-44,672.00
+6,241,057
 </td>
 <td style="text-align:right;">
-5.2136302
+6.5840546
 </td>
 <td style="text-align:right;">
-10,112.6196
+570,778.21
 </td>
 <td style="text-align:right;">
-635,933.7
+71,049,349
 </td>
 <td style="text-align:right;">
-220,897.3
+23,741,131
 </td>
 </tr>
 <tr>
@@ -12172,19 +12263,19 @@ Non-Commercial
 Future Retention
 </td>
 <td style="text-align:right;">
-46,888.51
+8,353,926
 </td>
 <td style="text-align:right;">
-5.4723167
+8.8130430
 </td>
 <td style="text-align:right;">
-12,088.2002
+2,069,703.05
 </td>
 <td style="text-align:right;">
-648,021.9
+73,119,052
 </td>
 <td style="text-align:right;">
-208,809.1
+21,671,428
 </td>
 </tr>
 </tbody>
@@ -12193,11 +12284,11 @@ Future Retention
 </div>
 <div id="pthlb-land-base-summary" class="section level3">
 <h3>pTHLB Land Base Summary</h3>
-<div class="sourceCode" id="cb51"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;LAND BASE SUMMARY - pTHLB&quot;</span></span>
-<span id="cb51-2"><a href="#cb51-2" tabindex="-1"></a></span>
-<span id="cb51-3"><a href="#cb51-3" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">landbase_sum</span>(netdown_tab,netdown_summary,running_total,lclass,netdown,<span class="at">which_landbase=</span>thlb_net)</span>
-<span id="cb51-4"><a href="#cb51-4" tabindex="-1"></a></span>
-<span id="cb51-5"><a href="#cb51-5" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
+<div class="sourceCode" id="cb52"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" tabindex="-1"></a>lclass<span class="ot">&lt;-</span><span class="st">&quot;LAND BASE SUMMARY - pTHLB&quot;</span></span>
+<span id="cb52-2"><a href="#cb52-2" tabindex="-1"></a></span>
+<span id="cb52-3"><a href="#cb52-3" tabindex="-1"></a>netdown_summary<span class="ot">&lt;-</span><span class="fu">landbase_sum</span>(netdown_tab,netdown_summary,running_total,lclass,netdown,<span class="at">which_landbase=</span>thlb_net)</span>
+<span id="cb52-4"><a href="#cb52-4" tabindex="-1"></a></span>
+<span id="cb52-5"><a href="#cb52-5" tabindex="-1"></a><span class="fu">pretty_table</span>(netdown_summary)</span></code></pre></div>
 <table class="table table-striped" style="font-size: 10px; color: black; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 Netdown Summary Table
@@ -12230,19 +12321,19 @@ netdown
 Provincial_Boundary
 </td>
 <td style="text-align:right;">
-856,831.00
+94,790,480
 </td>
 <td style="text-align:right;">
 100.0000000
 </td>
 <td style="text-align:right;">
-0.0000
+0.00
 </td>
 <td style="text-align:right;">
-0.0
+0
 </td>
 <td style="text-align:right;">
-856,831.0
+94,790,480
 </td>
 </tr>
 <tr>
@@ -12250,19 +12341,19 @@ Provincial_Boundary
 FMLB
 </td>
 <td style="text-align:right;">
-232,132.00
+36,126,082
 </td>
 <td style="text-align:right;">
-27.0919236
+38.1115087
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -12270,19 +12361,19 @@ FMLB
 LAND BASE SUMMARY - FMLB
 </td>
 <td style="text-align:right;">
-624,699.00
+58,664,398
 </td>
 <td style="text-align:right;">
-72.9080764
+61.8884913
 </td>
 <td style="text-align:right;">
-232,132.0000
+36,126,082.00
 </td>
 <td style="text-align:right;">
-232,132.0
+36,126,082
 </td>
 <td style="text-align:right;">
-624,699.0
+58,664,398
 </td>
 </tr>
 <tr>
@@ -12290,19 +12381,19 @@ LAND BASE SUMMARY - FMLB
 Ownership_Areas_Excluded_from_FALB
 </td>
 <td style="text-align:right;">
-109,082.00
+4,884,376
 </td>
 <td style="text-align:right;">
-12.7308652
+5.1528128
 </td>
 <td style="text-align:right;">
-86,531.0000
+2,841,457.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -12310,19 +12401,19 @@ Ownership_Areas_Excluded_from_FALB
 LAND BASE SUMMARY - FALB
 </td>
 <td style="text-align:right;">
-538,168.00
+55,822,941
 </td>
 <td style="text-align:right;">
-62.8091187
+58.8908728
 </td>
 <td style="text-align:right;">
-318,663.0000
+38,967,539.00
 </td>
 <td style="text-align:right;">
-318,663.0
+38,967,539
 </td>
 <td style="text-align:right;">
-538,168.0
+55,822,941
 </td>
 </tr>
 <tr>
@@ -12330,19 +12421,19 @@ LAND BASE SUMMARY - FALB
 Ownership_Areas_Excluded_from_pAFLB
 </td>
 <td style="text-align:right;">
-222.00
+668,186
 </td>
 <td style="text-align:right;">
-0.0259094
+0.7049083
 </td>
 <td style="text-align:right;">
-77.0000
+414,385.00
 </td>
 <td style="text-align:right;">
-318,740.0
+39,381,924
 </td>
 <td style="text-align:right;">
-538,091.0
+55,408,556
 </td>
 </tr>
 <tr>
@@ -12350,19 +12441,19 @@ Ownership_Areas_Excluded_from_pAFLB
 Non_Forest_and_Non_Productive_Forest
 </td>
 <td style="text-align:right;">
-239,083.00
+39,808,397
 </td>
 <td style="text-align:right;">
-27.9031688
+41.9961973
 </td>
 <td style="text-align:right;">
-13,642.0000
+4,991,866.00
 </td>
 <td style="text-align:right;">
-332,382.0
+44,373,790
 </td>
 <td style="text-align:right;">
-524,449.0
+50,416,690
 </td>
 </tr>
 <tr>
@@ -12370,19 +12461,19 @@ Non_Forest_and_Non_Productive_Forest
 Linear_Features
 </td>
 <td style="text-align:right;">
-25,256.45
+1,727,299
 </td>
 <td style="text-align:right;">
-2.9476582
+1.8222285
 </td>
 <td style="text-align:right;">
-13,285.5497
+1,125,595.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -12390,19 +12481,19 @@ Linear_Features
 LAND BASE SUMMARY - pAFLB
 </td>
 <td style="text-align:right;">
-511,163.45
+49,291,095
 </td>
 <td style="text-align:right;">
-59.6574412
+52.0000478
 </td>
 <td style="text-align:right;">
-345,667.5497
+45,499,385.09
 </td>
 <td style="text-align:right;">
-345,667.5
+45,499,385
 </td>
 <td style="text-align:right;">
-511,163.5
+49,291,095
 </td>
 </tr>
 <tr>
@@ -12410,19 +12501,19 @@ LAND BASE SUMMARY - pAFLB
 Parks_and_Protected_Areas
 </td>
 <td style="text-align:right;">
-151,791.00
+14,032,699
 </td>
 <td style="text-align:right;">
-17.7153955
+14.8039117
 </td>
 <td style="text-align:right;">
-61,459.6700
+6,016,248.41
 </td>
 <td style="text-align:right;">
-407,127.2
+51,515,634
 </td>
 <td style="text-align:right;">
-449,703.8
+43,274,846
 </td>
 </tr>
 <tr>
@@ -12430,19 +12521,19 @@ Parks_and_Protected_Areas
 Wildlife_Habitat_Areas
 </td>
 <td style="text-align:right;">
-4,030.00
+3,878,931
 </td>
 <td style="text-align:right;">
-0.4703378
+4.0921103
 </td>
 <td style="text-align:right;">
-2,587.8700
+1,427,360.04
 </td>
 <td style="text-align:right;">
-409,715.1
+52,942,994
 </td>
 <td style="text-align:right;">
-447,115.9
+41,847,486
 </td>
 </tr>
 <tr>
@@ -12450,19 +12541,19 @@ Wildlife_Habitat_Areas
 Misc_Tenures
 </td>
 <td style="text-align:right;">
-62,516.00
+3,091,866
 </td>
 <td style="text-align:right;">
-7.2961879
+3.2617896
 </td>
 <td style="text-align:right;">
-15,185.7000
+1,608,733.24
 </td>
 <td style="text-align:right;">
-424,900.8
+54,551,727
 </td>
 <td style="text-align:right;">
-431,930.2
+40,238,753
 </td>
 </tr>
 <tr>
@@ -12470,19 +12561,19 @@ Misc_Tenures
 Riparian_Buffers
 </td>
 <td style="text-align:right;">
-89,020.80
+10,472,075
 </td>
 <td style="text-align:right;">
-10.3895398
+11.0476025
 </td>
 <td style="text-align:right;">
-15,248.9914
+1,974,883.30
 </td>
 <td style="text-align:right;">
-440,149.8
+56,526,610
 </td>
 <td style="text-align:right;">
-416,681.2
+38,263,870
 </td>
 </tr>
 <tr>
@@ -12490,19 +12581,19 @@ Riparian_Buffers
 Non-Cultural_Heritage_Features
 </td>
 <td style="text-align:right;">
-535.00
+70,092
 </td>
 <td style="text-align:right;">
-0.0624394
+0.0739441
 </td>
 <td style="text-align:right;">
-26.6796
+22,288.77
 </td>
 <td style="text-align:right;">
-440,176.5
+56,548,899
 </td>
 <td style="text-align:right;">
-416,654.5
+38,241,581
 </td>
 </tr>
 <tr>
@@ -12510,19 +12601,19 @@ Non-Cultural_Heritage_Features
 Harvest_Restrictions
 </td>
 <td style="text-align:right;">
-290,058.00
+27,007,920
 </td>
 <td style="text-align:right;">
-33.8524166
+28.4922283
 </td>
 <td style="text-align:right;">
-92,697.9065
+4,732,432.23
 </td>
 <td style="text-align:right;">
-532,874.4
+61,281,331
 </td>
 <td style="text-align:right;">
-323,956.6
+33,509,149
 </td>
 </tr>
 <tr>
@@ -12530,19 +12621,19 @@ Harvest_Restrictions
 Physical_Inoperable
 </td>
 <td style="text-align:right;">
-149,302.05
+29,031,855
 </td>
 <td style="text-align:right;">
-17.4249121
+30.6273948
 </td>
 <td style="text-align:right;">
-48,090.7671
+5,403,968.25
 </td>
 <td style="text-align:right;">
-580,965.1
+66,685,299
 </td>
 <td style="text-align:right;">
-275,865.9
+28,105,181
 </td>
 </tr>
 <tr>
@@ -12550,19 +12641,19 @@ Physical_Inoperable
 Non-Merchantable
 </td>
 <td style="text-align:right;">
-209,617.00
+22,861,751
 </td>
 <td style="text-align:right;">
-24.4642176
+24.1181931
 </td>
 <td style="text-align:right;">
-44,855.9406
+3,793,271.57
 </td>
 <td style="text-align:right;">
-625,821.1
+70,478,571
 </td>
 <td style="text-align:right;">
-231,009.9
+24,311,909
 </td>
 </tr>
 <tr>
@@ -12570,19 +12661,19 @@ Non-Merchantable
 Non-Commercial
 </td>
 <td style="text-align:right;">
-44,672.00
+6,241,057
 </td>
 <td style="text-align:right;">
-5.2136302
+6.5840546
 </td>
 <td style="text-align:right;">
-10,112.6196
+570,778.21
 </td>
 <td style="text-align:right;">
-635,933.7
+71,049,349
 </td>
 <td style="text-align:right;">
-220,897.3
+23,741,131
 </td>
 </tr>
 <tr>
@@ -12590,19 +12681,19 @@ Non-Commercial
 Future Retention
 </td>
 <td style="text-align:right;">
-46,888.51
+8,353,926
 </td>
 <td style="text-align:right;">
-5.4723167
+8.8130430
 </td>
 <td style="text-align:right;">
-12,088.2002
+2,069,703.05
 </td>
 <td style="text-align:right;">
-648,021.9
+73,119,052
 </td>
 <td style="text-align:right;">
-208,809.1
+21,671,428
 </td>
 </tr>
 <tr>
@@ -12610,19 +12701,19 @@ Future Retention
 LAND BASE SUMMARY - pTHLB
 </td>
 <td style="text-align:right;">
-208,809.11
+21,671,428
 </td>
 <td style="text-align:right;">
-24.3699289
+22.8624518
 </td>
 <td style="text-align:right;">
-648,021.8947
+73,119,052.17
 </td>
 <td style="text-align:right;">
-648,021.9
+73,119,052
 </td>
 <td style="text-align:right;">
-208,809.1
+21,671,428
 </td>
 </tr>
 </tbody>
@@ -12640,85 +12731,84 @@ using SQL instead of R. This can be useful when wanting to skip the
 process of the netdown table in favor of quickly updating the THLB
 field</li>
 </ul>
-<div class="sourceCode" id="cb52"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb52-1"><a href="#cb52-1" tabindex="-1"></a><span class="kw">WITH</span> harvest_netdown_adjustment <span class="kw">AS</span> (</span>
-<span id="cb52-2"><a href="#cb52-2" tabindex="-1"></a><span class="kw">SELECT</span></span>
-<span id="cb52-3"><a href="#cb52-3" tabindex="-1"></a>    gr_skey,</span>
-<span id="cb52-4"><a href="#cb52-4" tabindex="-1"></a>    <span class="co">-- recreate what the R netdown does by adjusting physically inoperable to be 1 when a cutblocks exists (harvest start year is pulled from consolidated cutblocks layer)</span></span>
-<span id="cb52-5"><a href="#cb52-5" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
-<span id="cb52-6"><a href="#cb52-6" tabindex="-1"></a>        <span class="cf">WHEN</span> harvest_start_year_calendar <span class="kw">IS</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="cf">THEN</span> <span class="dv">0</span></span>
-<span id="cb52-7"><a href="#cb52-7" tabindex="-1"></a>        <span class="cf">ELSE</span> p12_phys_inop</span>
-<span id="cb52-8"><a href="#cb52-8" tabindex="-1"></a>    <span class="cf">END</span> <span class="kw">AS</span> p12_phys_inop,</span>
-<span id="cb52-9"><a href="#cb52-9" tabindex="-1"></a>    <span class="co">-- recreate what the R netdown does by adjusting merchantability to be NULL when a cutblocks exists (harvest start year is pulled from consolidated cutblocks layer)</span></span>
-<span id="cb52-10"><a href="#cb52-10" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
-<span id="cb52-11"><a href="#cb52-11" tabindex="-1"></a>        <span class="cf">WHEN</span> harvest_start_year_calendar <span class="kw">IS</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="cf">THEN</span> <span class="kw">NULL</span></span>
-<span id="cb52-12"><a href="#cb52-12" tabindex="-1"></a>        <span class="cf">ELSE</span> n13_merchantability</span>
-<span id="cb52-13"><a href="#cb52-13" tabindex="-1"></a>    <span class="cf">END</span> <span class="kw">AS</span> n13_merchantability,</span>
-<span id="cb52-14"><a href="#cb52-14" tabindex="-1"></a>    <span class="co">-- recreate what the R netdown does by adjusting non commercial to be NULL when a cutblocks exists (harvest start year is pulled from consolidated cutblocks layer)</span></span>
-<span id="cb52-15"><a href="#cb52-15" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
-<span id="cb52-16"><a href="#cb52-16" tabindex="-1"></a>        <span class="cf">WHEN</span> harvest_start_year_calendar <span class="kw">IS</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="cf">THEN</span> <span class="kw">NULL</span></span>
-<span id="cb52-17"><a href="#cb52-17" tabindex="-1"></a>        <span class="cf">ELSE</span> n14_non_commercial</span>
-<span id="cb52-18"><a href="#cb52-18" tabindex="-1"></a>    <span class="cf">END</span> <span class="kw">AS</span> n14_non_commercial   </span>
-<span id="cb52-19"><a href="#cb52-19" tabindex="-1"></a><span class="kw">FROM</span></span>
-<span id="cb52-20"><a href="#cb52-20" tabindex="-1"></a><span class="op">&lt;</span><span class="kw">public</span>.proxy_table<span class="op">&gt;</span> net <span class="co">-- &lt;- edit with the imported proxy table from the SQL dump</span></span>
-<span id="cb52-21"><a href="#cb52-21" tabindex="-1"></a>)</span>
-<span id="cb52-22"><a href="#cb52-22" tabindex="-1"></a><span class="kw">select</span>  </span>
-<span id="cb52-23"><a href="#cb52-23" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="cf">CASE</span></span>
-<span id="cb52-24"><a href="#cb52-24" tabindex="-1"></a>            <span class="cf">WHEN</span> </span>
-<span id="cb52-25"><a href="#cb52-25" tabindex="-1"></a>                n01_fmlb <span class="kw">IS</span> <span class="kw">NULL</span> </span>
-<span id="cb52-26"><a href="#cb52-26" tabindex="-1"></a>                <span class="cf">THEN</span> <span class="dv">1</span> </span>
-<span id="cb52-27"><a href="#cb52-27" tabindex="-1"></a>            <span class="cf">ELSE</span> <span class="dv">0</span> </span>
-<span id="cb52-28"><a href="#cb52-28" tabindex="-1"></a>        <span class="cf">END</span>) <span class="kw">as</span> fmlb,</span>
-<span id="cb52-29"><a href="#cb52-29" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="cf">CASE</span> </span>
-<span id="cb52-30"><a href="#cb52-30" tabindex="-1"></a>            <span class="co">-- categorical netdowns</span></span>
-<span id="cb52-31"><a href="#cb52-31" tabindex="-1"></a>            <span class="cf">WHEN</span> </span>
-<span id="cb52-32"><a href="#cb52-32" tabindex="-1"></a>                n01_fmlb <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
-<span id="cb52-33"><a href="#cb52-33" tabindex="-1"></a>                n02_ownership <span class="kw">IS</span> <span class="kw">NULL</span> </span>
-<span id="cb52-34"><a href="#cb52-34" tabindex="-1"></a>                <span class="cf">THEN</span> <span class="dv">1</span></span>
-<span id="cb52-35"><a href="#cb52-35" tabindex="-1"></a>            <span class="cf">ELSE</span> <span class="dv">0</span> </span>
-<span id="cb52-36"><a href="#cb52-36" tabindex="-1"></a>        <span class="cf">END</span>) <span class="kw">as</span> falb,</span>
-<span id="cb52-37"><a href="#cb52-37" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="cf">CASE</span></span>
-<span id="cb52-38"><a href="#cb52-38" tabindex="-1"></a>            <span class="cf">WHEN</span> </span>
-<span id="cb52-39"><a href="#cb52-39" tabindex="-1"></a>                n01_fmlb <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
-<span id="cb52-40"><a href="#cb52-40" tabindex="-1"></a>                n02_ownership <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
-<span id="cb52-41"><a href="#cb52-41" tabindex="-1"></a>                n03_ownership <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
-<span id="cb52-42"><a href="#cb52-42" tabindex="-1"></a>                n04_nonfor <span class="kw">IS</span> <span class="kw">NULL</span> </span>
-<span id="cb52-43"><a href="#cb52-43" tabindex="-1"></a>                <span class="cf">THEN</span> <span class="dv">1</span> <span class="op">*</span> (<span class="dv">1</span><span class="op">-</span>p05_linear_features)</span>
-<span id="cb52-44"><a href="#cb52-44" tabindex="-1"></a>            <span class="cf">ELSE</span> <span class="dv">0</span> </span>
-<span id="cb52-45"><a href="#cb52-45" tabindex="-1"></a>        <span class="cf">END</span>) <span class="kw">as</span> paflb,</span>
-<span id="cb52-46"><a href="#cb52-46" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="cf">CASE</span> </span>
-<span id="cb52-47"><a href="#cb52-47" tabindex="-1"></a>            <span class="cf">WHEN</span> </span>
-<span id="cb52-48"><a href="#cb52-48" tabindex="-1"></a>                <span class="co">-- categorical netdowns</span></span>
-<span id="cb52-49"><a href="#cb52-49" tabindex="-1"></a>                n01_fmlb <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
-<span id="cb52-50"><a href="#cb52-50" tabindex="-1"></a>                n02_ownership <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
-<span id="cb52-51"><a href="#cb52-51" tabindex="-1"></a>                n03_ownership <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
-<span id="cb52-52"><a href="#cb52-52" tabindex="-1"></a>                n04_nonfor <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
-<span id="cb52-53"><a href="#cb52-53" tabindex="-1"></a>                n06_parks <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
-<span id="cb52-54"><a href="#cb52-54" tabindex="-1"></a>                n07_wha <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
-<span id="cb52-55"><a href="#cb52-55" tabindex="-1"></a>                n08_misc <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
-<span id="cb52-56"><a href="#cb52-56" tabindex="-1"></a>                n10_arch <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span></span>
-<span id="cb52-57"><a href="#cb52-57" tabindex="-1"></a>                n11_harvest_restrictions <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span></span>
-<span id="cb52-58"><a href="#cb52-58" tabindex="-1"></a>                adj.n13_merchantability <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span></span>
-<span id="cb52-59"><a href="#cb52-59" tabindex="-1"></a>                adj.n14_non_commercial <span class="kw">IS</span> <span class="kw">NULL</span></span>
-<span id="cb52-60"><a href="#cb52-60" tabindex="-1"></a>                <span class="co">-- proportional netdowns</span></span>
-<span id="cb52-61"><a href="#cb52-61" tabindex="-1"></a>                <span class="cf">THEN</span> <span class="dv">1</span> <span class="op">*</span> (<span class="dv">1</span><span class="op">-</span>p05_linear_features) <span class="op">*</span> (<span class="dv">1</span><span class="op">-</span>p09_riparian) <span class="op">*</span> (<span class="dv">1</span><span class="op">-</span>adj.p12_phys_inop) <span class="op">*</span> (<span class="dv">1</span><span class="op">-</span>p15_future_retention)</span>
-<span id="cb52-62"><a href="#cb52-62" tabindex="-1"></a>            <span class="cf">ELSE</span> <span class="dv">0</span> </span>
-<span id="cb52-63"><a href="#cb52-63" tabindex="-1"></a>        <span class="cf">END</span>) <span class="kw">as</span> pthlb_net</span>
-<span id="cb52-64"><a href="#cb52-64" tabindex="-1"></a><span class="kw">from</span></span>
-<span id="cb52-65"><a href="#cb52-65" tabindex="-1"></a><span class="op">&lt;</span><span class="kw">public</span>.proxy_table<span class="op">&gt;</span> net <span class="co">-- &lt;- edit with the imported proxy table from the SQL dump</span></span>
-<span id="cb52-66"><a href="#cb52-66" tabindex="-1"></a><span class="kw">JOIN</span> harvest_netdown_adjustment adj <span class="kw">USING</span> (gr_skey);</span></code></pre></div>
-<div class="sourceCode" id="cb53"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" tabindex="-1"></a></span>
-<span id="cb53-2"><a href="#cb53-2" tabindex="-1"></a><span class="fu">df_to_pg</span>(<span class="fu">Id</span>(<span class="at">schema =</span> <span class="st">&#39;whse&#39;</span>, <span class="at">table =</span> <span class="st">&#39;prov_netdown_temp&#39;</span>), netdown_tab[,<span class="fu">c</span>(<span class="st">&#39;gr_skey&#39;</span>, <span class="st">&#39;fmlb&#39;</span>, <span class="st">&#39;falb&#39;</span>, <span class="st">&#39;aflb&#39;</span>, <span class="st">&#39;thlb_net&#39;</span>, <span class="st">&#39;p15_future_retention&#39;</span>)], conn_list, <span class="at">overwrite=</span><span class="cn">TRUE</span>)</span></code></pre></div>
-<div class="sourceCode" id="cb54"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" tabindex="-1"></a>query <span class="ot">&lt;-</span> <span class="st">&quot;UPDATE whse.thlb_proxy_netdown set </span></span>
-<span id="cb54-2"><a href="#cb54-2" tabindex="-1"></a><span class="st">  fmlb = a.fmlb,</span></span>
-<span id="cb54-3"><a href="#cb54-3" tabindex="-1"></a><span class="st">  falb = a.falb,</span></span>
-<span id="cb54-4"><a href="#cb54-4" tabindex="-1"></a><span class="st">  paflb = a.aflb,</span></span>
-<span id="cb54-5"><a href="#cb54-5" tabindex="-1"></a><span class="st">  pthlb_net = a.thlb_net,</span></span>
-<span id="cb54-6"><a href="#cb54-6" tabindex="-1"></a><span class="st">  p15_future_retention = a.p15_future_retention</span></span>
-<span id="cb54-7"><a href="#cb54-7" tabindex="-1"></a><span class="st">from</span></span>
-<span id="cb54-8"><a href="#cb54-8" tabindex="-1"></a><span class="st">  whse.prov_netdown_temp a</span></span>
-<span id="cb54-9"><a href="#cb54-9" tabindex="-1"></a><span class="st">where a.gr_skey = whse.thlb_proxy_netdown.gr_skey;&quot;</span></span>
-<span id="cb54-10"><a href="#cb54-10" tabindex="-1"></a><span class="fu">run_sql_r</span>(query, conn_list)</span>
-<span id="cb54-11"><a href="#cb54-11" tabindex="-1"></a><span class="do">## [1] 856831</span></span></code></pre></div>
+<div class="sourceCode" id="cb53"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb53-1"><a href="#cb53-1" tabindex="-1"></a><span class="kw">WITH</span> harvest_netdown_adjustment <span class="kw">AS</span> (</span>
+<span id="cb53-2"><a href="#cb53-2" tabindex="-1"></a><span class="kw">SELECT</span></span>
+<span id="cb53-3"><a href="#cb53-3" tabindex="-1"></a>    gr_skey,</span>
+<span id="cb53-4"><a href="#cb53-4" tabindex="-1"></a>    <span class="co">-- recreate what the R netdown does by adjusting physically inoperable to be 1 when a cutblocks exists (harvest start year is pulled from consolidated cutblocks layer)</span></span>
+<span id="cb53-5"><a href="#cb53-5" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
+<span id="cb53-6"><a href="#cb53-6" tabindex="-1"></a>        <span class="cf">WHEN</span> harvest_start_year_calendar <span class="kw">IS</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="cf">THEN</span> <span class="dv">0</span></span>
+<span id="cb53-7"><a href="#cb53-7" tabindex="-1"></a>        <span class="cf">ELSE</span> p12_phys_inop</span>
+<span id="cb53-8"><a href="#cb53-8" tabindex="-1"></a>    <span class="cf">END</span> <span class="kw">AS</span> p12_phys_inop,</span>
+<span id="cb53-9"><a href="#cb53-9" tabindex="-1"></a>    <span class="co">-- recreate what the R netdown does by adjusting merchantability to be NULL when a cutblocks exists (harvest start year is pulled from consolidated cutblocks layer)</span></span>
+<span id="cb53-10"><a href="#cb53-10" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
+<span id="cb53-11"><a href="#cb53-11" tabindex="-1"></a>        <span class="cf">WHEN</span> harvest_start_year_calendar <span class="kw">IS</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="cf">THEN</span> <span class="kw">NULL</span></span>
+<span id="cb53-12"><a href="#cb53-12" tabindex="-1"></a>        <span class="cf">ELSE</span> n13_merchantability</span>
+<span id="cb53-13"><a href="#cb53-13" tabindex="-1"></a>    <span class="cf">END</span> <span class="kw">AS</span> n13_merchantability,</span>
+<span id="cb53-14"><a href="#cb53-14" tabindex="-1"></a>    <span class="co">-- recreate what the R netdown does by adjusting non commercial to be NULL when a cutblocks exists (harvest start year is pulled from consolidated cutblocks layer)</span></span>
+<span id="cb53-15"><a href="#cb53-15" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
+<span id="cb53-16"><a href="#cb53-16" tabindex="-1"></a>        <span class="cf">WHEN</span> harvest_start_year_calendar <span class="kw">IS</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="cf">THEN</span> <span class="kw">NULL</span></span>
+<span id="cb53-17"><a href="#cb53-17" tabindex="-1"></a>        <span class="cf">ELSE</span> n14_non_commercial</span>
+<span id="cb53-18"><a href="#cb53-18" tabindex="-1"></a>    <span class="cf">END</span> <span class="kw">AS</span> n14_non_commercial   </span>
+<span id="cb53-19"><a href="#cb53-19" tabindex="-1"></a><span class="kw">FROM</span></span>
+<span id="cb53-20"><a href="#cb53-20" tabindex="-1"></a><span class="op">&lt;</span><span class="kw">public</span>.proxy_table<span class="op">&gt;</span> net <span class="co">-- &lt;- edit with the imported proxy table from the SQL dump</span></span>
+<span id="cb53-21"><a href="#cb53-21" tabindex="-1"></a>)</span>
+<span id="cb53-22"><a href="#cb53-22" tabindex="-1"></a><span class="kw">select</span>  </span>
+<span id="cb53-23"><a href="#cb53-23" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="cf">CASE</span></span>
+<span id="cb53-24"><a href="#cb53-24" tabindex="-1"></a>            <span class="cf">WHEN</span> </span>
+<span id="cb53-25"><a href="#cb53-25" tabindex="-1"></a>                n01_fmlb <span class="kw">IS</span> <span class="kw">NULL</span> </span>
+<span id="cb53-26"><a href="#cb53-26" tabindex="-1"></a>                <span class="cf">THEN</span> <span class="dv">1</span> </span>
+<span id="cb53-27"><a href="#cb53-27" tabindex="-1"></a>            <span class="cf">ELSE</span> <span class="dv">0</span> </span>
+<span id="cb53-28"><a href="#cb53-28" tabindex="-1"></a>        <span class="cf">END</span>) <span class="kw">as</span> fmlb,</span>
+<span id="cb53-29"><a href="#cb53-29" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="cf">CASE</span> </span>
+<span id="cb53-30"><a href="#cb53-30" tabindex="-1"></a>            <span class="co">-- categorical netdowns</span></span>
+<span id="cb53-31"><a href="#cb53-31" tabindex="-1"></a>            <span class="cf">WHEN</span> </span>
+<span id="cb53-32"><a href="#cb53-32" tabindex="-1"></a>                n01_fmlb <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
+<span id="cb53-33"><a href="#cb53-33" tabindex="-1"></a>                n02_ownership <span class="kw">IS</span> <span class="kw">NULL</span> </span>
+<span id="cb53-34"><a href="#cb53-34" tabindex="-1"></a>                <span class="cf">THEN</span> <span class="dv">1</span></span>
+<span id="cb53-35"><a href="#cb53-35" tabindex="-1"></a>            <span class="cf">ELSE</span> <span class="dv">0</span> </span>
+<span id="cb53-36"><a href="#cb53-36" tabindex="-1"></a>        <span class="cf">END</span>) <span class="kw">as</span> falb,</span>
+<span id="cb53-37"><a href="#cb53-37" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="cf">CASE</span></span>
+<span id="cb53-38"><a href="#cb53-38" tabindex="-1"></a>            <span class="cf">WHEN</span> </span>
+<span id="cb53-39"><a href="#cb53-39" tabindex="-1"></a>                n01_fmlb <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
+<span id="cb53-40"><a href="#cb53-40" tabindex="-1"></a>                n02_ownership <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
+<span id="cb53-41"><a href="#cb53-41" tabindex="-1"></a>                n03_ownership <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
+<span id="cb53-42"><a href="#cb53-42" tabindex="-1"></a>                n04_nonfor <span class="kw">IS</span> <span class="kw">NULL</span> </span>
+<span id="cb53-43"><a href="#cb53-43" tabindex="-1"></a>                <span class="cf">THEN</span> <span class="dv">1</span> <span class="op">*</span> (<span class="dv">1</span><span class="op">-</span>p05_linear_features)</span>
+<span id="cb53-44"><a href="#cb53-44" tabindex="-1"></a>            <span class="cf">ELSE</span> <span class="dv">0</span> </span>
+<span id="cb53-45"><a href="#cb53-45" tabindex="-1"></a>        <span class="cf">END</span>) <span class="kw">as</span> paflb,</span>
+<span id="cb53-46"><a href="#cb53-46" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="cf">CASE</span> </span>
+<span id="cb53-47"><a href="#cb53-47" tabindex="-1"></a>            <span class="cf">WHEN</span> </span>
+<span id="cb53-48"><a href="#cb53-48" tabindex="-1"></a>                <span class="co">-- categorical netdowns</span></span>
+<span id="cb53-49"><a href="#cb53-49" tabindex="-1"></a>                n01_fmlb <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
+<span id="cb53-50"><a href="#cb53-50" tabindex="-1"></a>                n02_ownership <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
+<span id="cb53-51"><a href="#cb53-51" tabindex="-1"></a>                n03_ownership <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
+<span id="cb53-52"><a href="#cb53-52" tabindex="-1"></a>                n04_nonfor <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
+<span id="cb53-53"><a href="#cb53-53" tabindex="-1"></a>                n06_parks <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
+<span id="cb53-54"><a href="#cb53-54" tabindex="-1"></a>                n07_wha <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
+<span id="cb53-55"><a href="#cb53-55" tabindex="-1"></a>                n08_misc <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span> </span>
+<span id="cb53-56"><a href="#cb53-56" tabindex="-1"></a>                n10_arch <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span></span>
+<span id="cb53-57"><a href="#cb53-57" tabindex="-1"></a>                n11_harvest_restrictions <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span></span>
+<span id="cb53-58"><a href="#cb53-58" tabindex="-1"></a>                adj.n13_merchantability <span class="kw">IS</span> <span class="kw">NULL</span> <span class="kw">AND</span></span>
+<span id="cb53-59"><a href="#cb53-59" tabindex="-1"></a>                adj.n14_non_commercial <span class="kw">IS</span> <span class="kw">NULL</span></span>
+<span id="cb53-60"><a href="#cb53-60" tabindex="-1"></a>                <span class="co">-- proportional netdowns</span></span>
+<span id="cb53-61"><a href="#cb53-61" tabindex="-1"></a>                <span class="cf">THEN</span> <span class="dv">1</span> <span class="op">*</span> (<span class="dv">1</span><span class="op">-</span>p05_linear_features) <span class="op">*</span> (<span class="dv">1</span><span class="op">-</span>p09_riparian) <span class="op">*</span> (<span class="dv">1</span><span class="op">-</span>adj.p12_phys_inop) <span class="op">*</span> (<span class="dv">1</span><span class="op">-</span>p15_future_retention)</span>
+<span id="cb53-62"><a href="#cb53-62" tabindex="-1"></a>            <span class="cf">ELSE</span> <span class="dv">0</span> </span>
+<span id="cb53-63"><a href="#cb53-63" tabindex="-1"></a>        <span class="cf">END</span>) <span class="kw">as</span> pthlb_net</span>
+<span id="cb53-64"><a href="#cb53-64" tabindex="-1"></a><span class="kw">from</span></span>
+<span id="cb53-65"><a href="#cb53-65" tabindex="-1"></a><span class="op">&lt;</span><span class="kw">public</span>.proxy_table<span class="op">&gt;</span> net <span class="co">-- &lt;- edit with the imported proxy table from the SQL dump</span></span>
+<span id="cb53-66"><a href="#cb53-66" tabindex="-1"></a><span class="kw">JOIN</span> harvest_netdown_adjustment adj <span class="kw">USING</span> (gr_skey);</span></code></pre></div>
+<div class="sourceCode" id="cb54"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" tabindex="-1"></a></span>
+<span id="cb54-2"><a href="#cb54-2" tabindex="-1"></a><span class="fu">df_to_pg</span>(<span class="fu">Id</span>(<span class="at">schema =</span> <span class="st">&#39;whse&#39;</span>, <span class="at">table =</span> <span class="st">&#39;prov_netdown_temp&#39;</span>), netdown_tab[,<span class="fu">c</span>(<span class="st">&#39;gr_skey&#39;</span>, <span class="st">&#39;fmlb&#39;</span>, <span class="st">&#39;falb&#39;</span>, <span class="st">&#39;aflb&#39;</span>, <span class="st">&#39;thlb_net&#39;</span>, <span class="st">&#39;p15_future_retention&#39;</span>)], conn_list, <span class="at">overwrite=</span><span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb55"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" tabindex="-1"></a>query <span class="ot">&lt;-</span> <span class="st">&quot;UPDATE whse.thlb_proxy_netdown set </span></span>
+<span id="cb55-2"><a href="#cb55-2" tabindex="-1"></a><span class="st">  fmlb = a.fmlb,</span></span>
+<span id="cb55-3"><a href="#cb55-3" tabindex="-1"></a><span class="st">  falb = a.falb,</span></span>
+<span id="cb55-4"><a href="#cb55-4" tabindex="-1"></a><span class="st">  paflb = a.aflb,</span></span>
+<span id="cb55-5"><a href="#cb55-5" tabindex="-1"></a><span class="st">  pthlb_net = a.thlb_net,</span></span>
+<span id="cb55-6"><a href="#cb55-6" tabindex="-1"></a><span class="st">  p15_future_retention = a.p15_future_retention</span></span>
+<span id="cb55-7"><a href="#cb55-7" tabindex="-1"></a><span class="st">from</span></span>
+<span id="cb55-8"><a href="#cb55-8" tabindex="-1"></a><span class="st">  whse.prov_netdown_temp a</span></span>
+<span id="cb55-9"><a href="#cb55-9" tabindex="-1"></a><span class="st">where a.gr_skey = whse.thlb_proxy_netdown.gr_skey;&quot;</span></span>
+<span id="cb55-10"><a href="#cb55-10" tabindex="-1"></a><span class="fu">run_sql_r</span>(query, conn_list)</span></code></pre></div>
 </div>
 </div>
 
