@@ -273,7 +273,7 @@ for (i in 1:nrow(tsas)){
 		 -- CASE WHEN fown.own_sched IN ('68U', '66N') THEN own_sched_desc ELSE NULL END AS n08_rec,
 		 CASE 
 		 	-- HDE: July, 2025 - do not exclude 69U Crown Misc Reserves Caribou
-		 	WHEN own_sched_desc = '69U - Crown - Misc. Reserves Caribou' THEN NULL
+		 	WHEN fown.own_sched_desc = '69U - Crown - Misc. Reserves Caribou' THEN NULL
 		 	WHEN fown.own_sched IN ('69U', '99N') THEN own_sched_desc 
 			ELSE NULL 
 		END AS n08_misc,

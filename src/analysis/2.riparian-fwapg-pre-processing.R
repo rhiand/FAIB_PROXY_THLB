@@ -4,6 +4,9 @@
 ## calculated based on the BC border, any stream with a catchment area outside 
 ## BC will yield inaccurate measurements.
 
+## Built the database provided here: https://github.com/smnorris/fwapg and used the 
+## tables within to identify streams with a catchment area outside BC
+
 library(dadmtools)
 library(keyring)
 
@@ -20,6 +23,8 @@ fwapg_conn <- get_pg_conn_list(host=key_get("dbhost", keyring = "localfwapg"),
                  dbname=key_get("dbname", keyring = "localfwapg"),
                  password=key_get("dbpass", keyring = "localfwapg")
                  )
+
+
 
 query <- "DROP TABLE IF EXISTS whse_basemapping.fwa_upstreambordercrossings_output"
 run_sql_r(query, fwapg_conn)

@@ -1,5 +1,5 @@
 ---
-title: "Provincial Netdown"
+title: "Provincial THLB Proxy Netdown"
 author: "Hailey Eckstrand"
 date: "Last run on `r format(Sys.time(), '%B %d, %Y')`"
 output: 
@@ -89,7 +89,7 @@ Prior to completing the netdown process that creates the netdown dataframe, pre-
 
 ### Netdown dataframe
 
-In a pre-processing step, the resultant table: `thlb_proxy.prov_netdown` was created which includes all landclass related fields (E.g. bclcs_level_1) required to calculate the landclass area deduction variables (e.g. n01_fmlb) as well as the calculated netdown inclusion factors themselves. This was done in a pre-processing step as memory limitations were encountered when calculating landclass area deduction variables within this R netdown script. As the netdown process continues, these pre-calculated netdown inclusion factors are used update the FMLB, FALB, pAFLB, and pTHLB values as needed. The following script is used to create the resultant table: `thlb_proxy.prov_netdown`:
+In a pre-processing step, the resultant table: `whse.thlb_proxy_netdown` was created which includes all landclass related fields (E.g. bclcs_level_1) required to calculate the landclass area deduction variables (e.g. n01_fmlb) as well as the calculated netdown inclusion factors themselves. This was done in a pre-processing step as memory limitations were encountered when calculating landclass area deduction variables within this R netdown script. As the netdown process continues, these pre-calculated netdown inclusion factors are used update the FMLB, FALB, pAFLB, and pTHLB values as needed. The following script is used to create the resultant table: `whse.thlb_proxy_netdown`:
 
 ```
 src\analysis\3.netdown-create-table.R
@@ -101,7 +101,7 @@ src\analysis\3.netdown-create-table.R
 The netdown summary table is initially created with the Provincial Boundary. As the netdown process progresses, each landclass area deduction is appended as a new row. Each netdown inclusion factor (i.e. landclass area deduction) is described in the following sub-sections.
 
 
-**Data source:** S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\BC_Boundary_Terrestrial.tif
+**Data source:** //spatialfiles2.bcgov/archive/FOR/VIC/HTS/ANA/workarea/PROVINCIAL/BC_Boundary_Terrestrial.tif
 
 ```{r netdown_import, eval=TRUE}
 library(dadmtools)
@@ -136,9 +136,7 @@ query <- "SELECT
 	p.p12_phys_inop,
 	p.n13_non_merchantable,
 	p.n14_non_commercial
-FROM whse.thlb_proxy_netdown p
---WHERE man_unit IN ('Arrow TSA')--, 'Fort St. John TSA', 'Fort Nelson TSA')
-"
+FROM whse.thlb_proxy_netdown p"
 netdown_tab <- sql_to_df(query, conn_list)
 netdown_summary <- setup_tracking_variable(netdown_tab)
 running_total <- 0
@@ -151,13 +149,13 @@ pretty_table(netdown_summary)
 
 ### n01_fmlb
 
-The FMLB (Forest Management Land Base) represents the forested area within the province that is considered available for potential forest management activities. It was developed by the Ministry of Forests Forest Analysis and Inventory Branch (FAIB) and provided to the Old Growth Technical Advisory Panel (TAP) in 2021 to support their work in identifying and assessing old growth forests.
+The FMLB (Forest Management Land Base) represents the forested area within the province that is considered available for potential forest management activities. It was developed by the Ministry of Forests Forest Analysis and Inventory Branch (FAIB) and provided to the Old Growth Technical Advisory Panel (TAP) in 2021 to support their work in identifying and assessing old growth forests. 
 
-The FMLB is primarily derived from the Vegetation Resources Inventory (VRI) attribute `for_mgmt_land_base_ind`, which indicates areas considered part of the forest management land base. However, FAIB refined this definition through review with satellite imagery, consultation with inventory specialists and guidance from the Biodiversity Guidebook to better align with the practical interpretation of forest cover, particularly in the context of assessing old growth and biodiversity.
+The FMLB is primarily derived from the Vegetation Resources Inventory (VRI) attribute `for_mgmt_land_base_ind`, which indicates areas considered part of the forest management land base. However, FAIB refined this definition through review with satellite imagery, consultation with inventory specialists and guidance from the Biodiversity Guidebook to better align with the practical interpretation of forest cover, particularly in the context of assessing old growth and biodiversity. 
 
 The resulting FMLB provides a standardized spatial representation of forested lands available for management, serving as a foundation for further analysis and decision-making related to old growth and broader forest management.
 
-Since the field `for_mgmt_land_base_ind` plays a key role in the definition of the FMLB, the field definition and the SQL used to populate this field is provided for transparency. The `for_mgmt_land_base_ind` attribute is a text field indicating whether an area is classified as forested or non-forested. It is populated based on the following logic:
+Since the field `for_mgmt_land_base_ind` plays a key role in the definition of the FMLB, the field definition and the SQL used to populate this VRI field is provided for transparency. The `for_mgmt_land_base_ind` attribute is a text field indicating whether an area is classified as forested or non-forested. It is populated based on the following logic:
 
 - 'N': non forested 
 - 'Y': forested 
@@ -181,7 +179,7 @@ Rules for populating `for_mgmt_land_base_ind`:
 
 VRI field definitions were found [here](https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/data-management/standards/vegcomp_poly_rank1_data_dictionaryv5_2019.pdf).
 
-As part of this project, an exercise was conducted to replicate the `for_mgmt_land_base_ind` VRI attribute in order to better understand it. This effort was successful. The SQL used to recreate `for_mgmt_land_base_ind` is provided below for reference.
+As part of this project, an exercise was conducted to replicate the `for_mgmt_land_base_ind` VRI attribute in order to better understand it. This effort was successful when running against the 2023 VRI. The SQL used to recreate `for_mgmt_land_base_ind` is provided below for reference.
 
 
 ```{sql fmlb_sql, eval= FALSE}
@@ -260,9 +258,7 @@ FROM
 recreate_for_mgmt_land_base_ind;
 ```
 
-The following adjustments were made based on a review of satellite imagery, consultation with inventory specialists, and guidance from the Biodiversity Guidebook. These changes were intended to better align the classification of forest cover with practical interpretations, particularly for assessing old growth and biodiversity. The following rules were applied in this order:
-
-'N' is assigned if:
+The following adjustments were made based on a review of satellite imagery, consultation with inventory specialists, and guidance from the Biodiversity Guidebook. These changes were intended to better align the classification of forest cover with practical interpretations, particularly for assessing old growth and biodiversity. This definition was then later updated in 2025. The following rules were applied in this order:
 
 - 'N' if BEC natural_disturbance = 'NDT5'; I.e. Alpine Tundra
 - 'Y' if VRI non-zero opening_id exists or historical harvest (I.e., consolidated cutblock) exists; I.e. previously harvested
@@ -281,7 +277,7 @@ The following adjustments were made based on a review of satellite imagery, cons
 OTHERWISE retain VRI for_mgmt_land_base_ind
 
 
-Below is a SQL snippet illustrating the logic used to build the newly adjusted FMLB. It is done using a long 'case when' statement. In the netdown table, each adjustment is assigned it's own descriptive label under the variable n01_fmlb.
+Below is a SQL snippet illustrating the logic used to build the newly adjusted FMLB. It is done using a long 'case when' statement. In the netdown table, when adjusted to 'N', its assigned it's own descriptive label under the variable n01_fmlb. If 'Y', the label is set to NULL. 
 
 ```{sql fmlb_adj_sql, eval= FALSE}
 	CASE 
@@ -291,7 +287,7 @@ Below is a SQL snippet illustrating the logic used to build the newly adjusted F
 		WHEN (nullif(vri.opening_id::text,'0') is not null or cc.harvest_start_year_calendar is not null) THEN NULL
 		-- remove spruce, willow, birch shrublands
 		WHEN upper(bec.zone || bec.subzone) IN ('SWBMKS', 'SWBUNS', 'SWBVKS') then 'BEC spruce-willow-birch shrublands'
-		-- removeall bec bunch grass
+		-- remove all bec bunch grass
 		WHEN bec.zone = 'BG' THEN 'BEC bunchgrass'
 		-- current & historical lidar
 		-- include in FMLB if >= 10% treed & napercent < 25%
@@ -332,7 +328,7 @@ Below is a SQL snippet illustrating the logic used to build the newly adjusted F
 			(coalesce(vri.for_mgmt_land_base_ind,'Y') = 'Y') 
 		THEN 'unreported/urban'
 		-- remove where bclcs_level_1 is Non Vegetated and not beetle kill or wildfire
-		-- don't want to switch something to N when it is beetle kill or wildfire
+		-- avoid switching to N when it is beetle kill or wildfire
 		WHEN 
 			coalesce(vri.bclcs_level_1, 'U') = 'N' AND 
 			COALESCE(earliest_nonlogging_dist_type, 'ZZ') not in ('IBM', 'B', 'NB')  
@@ -428,7 +424,7 @@ __R Scripts__
 No pre-processing was performed on the ownership layer. The dadmtools library was used to import the ownership layer:
 
 ```
-src\analysis\dadm-import-layers.R
+src\analysis\0.setup-and-import-data-sources.R
 ```
 
 #### Ownership Summary
@@ -477,7 +473,7 @@ __R Scripts__
 No pre-processing was performed on the ownership layer. The dadmtools library was used to import the ownership layer:
 
 ```
-src\analysis\dadm-import-layers.R
+src\analysis\0.setup-and-import-data-sources.R
 ```
 
 #### Ownership Summary
@@ -538,7 +534,7 @@ __R Scripts__
 No pre-processing was performed on the layers used to derive this netdown factor. The dadmtools library was used to import the required layers:
 
 ```
-src\analysis\dadm-import-layers.R
+src\analysis\0.setup-and-import-data-sources.R
 ```
 
 #### Non-Forest and Non-Productive Summary
@@ -645,7 +641,7 @@ __R Scripts__
 No pre-processing was performed on the ownership layer. The dadmtools library was used to import the ownership layers:
 
 ```
-src\analysis\dadm-import-layers.R
+src\analysis\0.setup-and-import-data-sources.R
 ```
 
 #### Parks and Protected Areas Summary
@@ -672,7 +668,7 @@ __R Scripts__
 No pre-processing was performed on the ownership layer. The dadmtools library was used to import the wildlife habitat layer. Please note that the layer was filtered for to only include where timber_harvest_code IN ('NO HARVEST ZONE', 'NO HARVEST'):
 
 ```
-src\analysis\dadm-import-layers.R
+src\analysis\0.setup-and-import-data-sources.R
 ```
 
 #### Wildlife Habitat Areas Summary
@@ -693,9 +689,12 @@ pretty_table(netdown_summary)
 Miscellaneous tenures including the following ownership classes:
 
 + 69U, Crown - Misc. Reserves
-+ 69U, Crown - Misc. Reserves Caribou
 + 69U, Crown - Watershed Reserve
 + 99N, Crown – Misc. lease
+
+
+Please note that the proxy THLB does not exclude the following ownership class:
++ 69U, Crown - Misc. Reserves Caribou
 
 **Data sources:** BCGW file: WHSE_FOREST_VEGETATION.F_OWN
 
@@ -704,7 +703,7 @@ __R Scripts__
 No pre-processing was performed on the ownership layer. The dadmtools library was used to import the ownership layers:
 
 ```
-src\analysis\dadm-import-layers.R
+src\analysis\0.setup-and-import-data-sources.R
 ```
 
 #### Miscellaneous Tenures Summary
@@ -730,7 +729,7 @@ The FPPR specifies riparian classes for streams, wetlands and lakes.  See here f
 
 __R Scripts__
 
-The following R scripts were used to import all needed data sources, post process imported datasets, perform riparian classification and buffer the riparian classifications.
+The following R scripts were used to import all needed data sources, post process imported datasets, perform riparian classification, buffer the riparian classifications and create a raster with a proportion (i.e. number between 0-1) of riparian area coverage per pixel.
 
 ```
 src\analysis\1.riparian-import-layers.R
@@ -743,12 +742,12 @@ __Application in Land Base Classification:__
 
 __Note: The riparian netdown inclusion factor also includes the area of the lakes, wetlands and rivers in addition to the buffered areas. As such, the total 'riparian area' will seem larger than expected. As lakes, rivers and wetlands were all netted out in a previous step, the net_excluded value will reflect only the buffered areas and not the area of the lakes, wetlands and rivers.__
 
-Similar to other proportional netdown factors, the pTHLB is multiplied by 1-proportion identified as riparian retention. For example, if pthlb_net is 0.9 prior to excluding riparian retention and the riparian retention is 0.3, the updated pthlb_net for that cell becomes 0.9*(1-.3) = 0.63.
+Similar to other proportional netdown factors, the pTHLB is multiplied by 1-proportion identified as riparian retention. For example, if pthlb_net is 0.9 prior to excluding riparian retention and the riparian retention is 0.3, the updated pthlb_net for that cell becomes 0.9*(1-0.3) = 0.63.
 
-In the netdown table, each record is assigned the proportion of the cell considered riparian retention, represented by the variable p09_riparian.
+In the netdown table, each record is assigned the proportion of the cell considered riparian retention, represented by the field p09_riparian.
 
 <details>
-  <summary> Expand for a detailed breakdown of the riparian analysis, including the data sources, methodology, buffers widths for each riparian class.</summary>
+  <summary> [Expand for a detailed breakdown of the riparian analysis, including the data sources, methodology, buffers widths for each riparian class.] </summary>
   <br>
 
 __Data Sources__
@@ -766,21 +765,18 @@ BCGW Layers:
 
 Externally provided data sources:
 
-+ Fish Habitat Accessibility MODEL to determine fish presence/absence (obtained from: Simon Norris via Craig Mount)
-+ Modeled channel width (obtained from: Simon Norris via Craig Mount)
-+ FREP riparian 2006 - 2023 monitoring data
++ Provincial Fish Habitat Accessibility MODEL to determine fish presence/absence
++ Modeled channel width
 
 
 <details>
-  <summary> Expand for further details about data sources.  </summary>
+  <summary> [Expand for further details about data sources.]  </summary>
   <br>
-* __FREP riparian 2006 - 2023 monitoring data__ - Lisa Nordin has provided an abbreviated version of the data. Sensitive fields were removed and it was recommended to use BC Albers for the spatial coordinates as the data specialist ensures Albers is correct.
-  + Filename: `data/input/June13_Riparian data_for_FAIB.xlsx`
   
-* __Fish Habitat Accessibility MODEL__ - Fish presence/absence is required to determine stream classification. The provincial BC Fish Passage database was obtained with the approval of Craig Mount. Approval was granted provided the usage is not for operational purposes as the model is only appropriate for use as a broad landscape analysis tool. The dataset was provided by Simon Norris, the Fish Passage contractor. The dataset is identical to the FWA stream network table but divided into smaller segments. The dataset contains linear_feature_id, allowing it to be related to the FWA stream network table.
+* __Fish Habitat Accessibility MODEL__ - Fish presence/absence is required to determine stream classification. The provincial BC Fish Passage database was obtained with the approval of project lead. Approval was granted provided the usage is not for operational purposes as the model is only appropriate for use as a broad landscape analysis tool. The dataset is identical to the FWA stream network table but divided into smaller segments. The dataset contains linear_feature_id, allowing it to be related to the FWA stream network table.
   + Filename: `data/input/fishpassage.gpkg.zip`
 
-* __Channel width__ - Also provided by Craig Mount. The channel width model is invalid when the contributing area is outside BC. There is no field that identifies when contributing area extends to outside BC. Note from Simon, June 19, 2024 - "Some progress is being made on that though - turns out Daniel W at the Cultus Lake lab has done the required trans-boundary stream work. He is sharing the data - I haven't seen it yet but I hope to be able to incorporate fixed per-stream upstream area numbers in fwapg sometime soon." The dataset was also provided by Simon Norris. Dataset contains linear_feature_id, allowing them to be related to the FWA stream network table. For this analysis, stream reaches with a contributing area outside BC were identified manually and set to NULL. 
+* __Channel width__ - A dataset including the modelled channel width for all FWA stream segments in the province. The channel width model is invalid when the contributing area is outside BC. As there is no field within the channel width table provided, a different data source was used to identify streams with a contributing area outside BC. See `src\analysis\2.riparian-fwapg-pre-processing.R` for steps used. The dataset contains linear_feature_id, allowing them to be related to the FWA stream network table. For this analysis, stream reaches with a contributing area outside BC were identified manually and set to NULL. A stream order based method was used in lieu of not having channel width when determining riparian classes. 
   + Filename: `data/input/fwa_stream_networks_channel_width.csv.gz`
 
 
@@ -790,7 +786,8 @@ Description of how channel width was calculated:
 Channel width code - https://github.com/smnorris/fwapg/tree/main/extras/channel_width/sql
 
 </details>
-
+<br>
+<br>
 __Riparian Classification Methodology Summary__
 
 
@@ -812,18 +809,14 @@ In order to assign stream riparian classes, the following pre-processing steps w
 * Each stream network reach was assigned a value for active floodplain presence: TRUE if the stream falls within an active floodplain, and FALSE if it does not. All streams that fell within an active floodplain were manually inspected and assigned a value if the surrounding floodplain was >= 100m.
 * Each stream is assigned a Natural Resource Area (ex. North, South, Coast)
 
-All classified streams were assigned a stream classification using the above added attributes. Either the modeled channel width does not exist or the stream has a trans boundary upstream catchment basin (I.e., part of the catchment basin is outside BC). Unclassified streams were assigned classes based on stream order and natural resource area. 
+All classified streams were assigned a stream classification using the above added attributes. Either the modeled channel width exists or the stream has a trans boundary upstream catchment basin (I.e., part of the catchment basin is outside BC). Unclassified streams were assigned classes based on stream order and natural resource area. 
 <details>
-  <summary> Expand for further details of how unclassified streams were handled.  </summary>
+  <summary> [Expand for further details of how unclassified streams were handled.]  </summary>
   <br>
 
-Stream classification was divided by administrative areas, following advice from Erin Moore, who noted significant differences between coastal and interior regions.
+Stream classification was divided by administrative areas, following advice from FAIB analyst, who noted significant differences between coastal and interior regions.
 
 __North and South Admin Areas__
-
-Approach taken from 2024 Boundary Timber Supply Area (TSA) for North and South Admin Areas. 
-Source: `file:///G:/!Workgrp/Analysts/!Project/TSA_Projects/active/KootenayLake_TSA13/TSR4/AnalysisReport/TSA13_TSR4_AnalysisReport/03-data-analysis.html#riparian-analysis`
-
 
 ```{r eval = TRUE, echo=FALSE}
 library(knitr)
@@ -838,9 +831,6 @@ kable(stream_data, caption='Stream Classification Assignment within North and So
 ```
 
 __Coast Admin Area__
-
-Approach taken from 2020 North Island TSA. Source:
-https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/stewardship/forest-analysis-inventory/tsr-annual-allowable-cut/48tsdp_2020.pdf
 
 ```{r eval = TRUE, echo=FALSE}
 library(knitr)
@@ -930,71 +920,34 @@ lake_riparian_df <- data.frame(
 kable(lake_riparian_df, caption='Lake Riparian Riparian Buffer Guidelines')
 ```
 
-This analysis applies a riparian buffer with 100% retention to the entire Applied Riparian Buffer width, rather than retaining 100% in the Riparian Reserve Zone and applying a maximum overall retention in the Riparian Management Zone.
+This analysis applies a riparian buffer with 100% retention to the entire Applied Riparian Buffer width, rather than retaining 100% in the Riparian Reserve Zone and applying the maximum overall retention in the Riparian Management Zone.
 
 For example, an S2 stream would receive a single 40m buffer with 100% retention, instead of a two-tiered approach: a 30m buffer with 100% retention immediately around the stream, followed by an additional 20m buffer with 50% retention extending outward from the first buffer.
 
 The buffered areas were converted into a numeric raster, where each cell represents the proportion of the cell covered by the riparian buffer polygons.
 
 
-__Known Limitations__
-<details>
-  <summary> Expand for known limitations of provincial modeled lake, wetland and stream classification </summary>
-  <br>
-  
 __Usage Limitations__
 
 __Stream__ - Riparian stream classification can only be assigned if the channels have been measured and sampled for fish presence or absence, which requires field work. As such, no provincial riparian classification database exists. This stream classification model is __not appropriate for operational use__. It is acceptable for generating broad landscape level summary stats for something like AAC Impacts and TSR.
 
-__General Limitations__
+__Analysis Methodology Further Details__
 
-Lisa Nordin, Aquatic Resources Stewardship Evaluation Office, was contacted to get clarification on regulation. During the email exchange, she identified common misclassifications and other inherent problems with using modeled data and the FWA.
-
-
-> _"The FWA is unreliable when it comes to water features, especially streams. They are vastly over-represented in the interior and under-represented on the coast."_
-
-> _"I have strong concerns over what might be considered non fish (S5 or S6). Under current regulation it is acceptable to say anything over 20% gradient is non-fish (even though most biologists will tell you certain species can move through those gradients with ease, but except for rare circumstances they aren't likely to reside there). However, it would be incorrect to say everything above a steep gradient or identified barrier is also non-fish if it is less than 20% unless it has been sampled, or field confirmed that all upstream reaches are dry or frozen to the bottom at any time of year. I am not sure what the model is telling you but please do not make that mistake -  when you are mapping it is critical that all reaches less than 20% be identified as a fish stream unless classed otherwise using ground based methods. This is in our current regulation and goes back to the forest practices code days so it isn't new. I can't stress how important this is as we have been seeing misclassifications and subsequent harvesting of reserves. I know this because I have been an expert witness in legal cases where a licensee saw a waterfall and called everything upstream non-fish bearing and harvested it to the edge without sampling. The Forest Practices Board is also tuned into this and runs audits to make sure there is appropriate sampling above barriers to prove a non-fish status.   To try to correct for this, we are currently in the last stages of revising and posting the fish stream identification guidebook and in the meantime posted this 3-page Extension Note [here](https://www2.gov.bc.ca/assets/gov/farming-natural-resources-and-industry/forestry/frep/extension-notes/frep-fish-stream-identifcation_final.pdf)."_
-
-__Wetland__ - Riparian wetland classification relies on the FWA wetlands layer. 
-
-Identified problems with using the FWA wetlands for classify riparian zones for wetlands by Lisa Nordin:
-
-> _"Non classified wetlands (NCWs) are not included management areas. However, it should be noted that in many (many!) cases, NCWs were incorrectly identified as being separate when in fact they are not - sometimes because of a treed section between them and the next wetland that makes a GIS user believe it is not a wetland type, or incorrect spatial vegetation layers. This was occurring so frequently, webinars for practioners were ran on wetland identification and delineation, [link](https://www.fpbc.ca/professional-development/continuing-professional-development/offerings/webinar-recordings/) . The video describes the value of ground verification and site indicators, but there is also some good info on spatial sources of information."_
-
-Lisa is correct to have these concerns about the classification of S5 and S6 streams and non-classified wetlands from an operational perspective. Hence the usage limitations for this modeled dataset.
-
-__Analysis Methodology Limitations__
-
-__FWA River Polygons__ - A review of several TSAs was conducted to understand how river polygons are classified. The guidelines specify that a stream is classified as S1A if it averages, over a one-kilometer length, either a stream width or an active floodplain width of 100 meters or more. A stream is classified as S1B if its width exceeds 20 meters but it does not meet the criteria for S1A. Since TSAs often lacked access to channel width data, they typically classified river polygons S1A or S1B by manually measuring features from the river polygon or satellite imagery. As this analysis has access to modelled channel width, that was leveraged to classify the river polygons.
+__Clarification of FWA River Polygons Riparian Classification__ - A review of several TSAs was conducted to understand how river polygons are classified. The guidelines specify that a stream is classified as S1A if it averages, over a one-kilometer length, either a stream width or an active floodplain width of 100 meters or more. A stream is classified as S1B if its width exceeds 20 meters but it does not meet the criteria for S1A. Since TSAs often lacked access to channel width data, they typically classified river polygons S1A or S1B by manually measuring features from the river polygon or satellite imagery. As this analysis has access to modelled channel width, that was leveraged to classify the river polygons.
 
 The following approach was used:
 
-1. Each stream reach is classified individually.
+1. Each stream reach (I.e. segment linestring) is classified individually.
 2. The stream reaches within a river polygon are identified
-3. The river polygon is assigned the classification of the most common riparian class (I.e., mode) of the stream reaches that it overlaps.
+3. The river polygon is assigned the classification of the most common riparian class (I.e., mode) of the stream reaches that are within.
 
 As FWA Rivers are known to be large rivers, it was assumed erroneous if any were classified as S6 (channel width <= 3m), S3 (channel width >= 1.5m and < 5m) or S4 (< 1.5m). Any FWA rivers classified as S6 were altered to S5 and any classified as S3 or S4 were changed to S2. 
 
-Many river polygons were not classified because they lack a stream reach within them. This commonly occurs in braided rivers, where a smaller river polygon is attached to a larger polygon but lacks any stream network linework. In these instances, the FWA polygon was assigned the lowest classification among all intersecting FWA polygons.
+Many river polygons were not classified because they lack a stream reach within them. This commonly occurs in braided rivers, where a smaller river polygon is attached to a larger polygon but lacks any stream network linework. In these instances, the FWA polygon was assigned the lowest classification among all adjacent FWA polygons.
 
 This approach is considered a limitation as it is new and differs from TSA analysis and has not been checked against field data.
 
-</details>
-
-__References and resources__
-<details>
-  <summary> Expand for an overview of references and resources used to guide classification </summary>
-  <br>
-
-__Regulation__
-The riparian classification requirements were primarily guided by the Forest and Range Practices Act, Forest Planning and Practices Regulation (FPPR) [link](https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/14_2004#division_d2e9829). Specific subsection: Division 3 - Riparian Areas.
-
-__Timber Supply Area Examples__
-
-Rhian's example
-file:///G:/!Workgrp/Analysts/!Project/TSA_Projects/active/KootenayLake_TSA13/TSR4/AnalysisReport/TSA13_TSR4_AnalysisReport/03-data-analysis.html#riparian-analysis
-
-__Wetland additional notes__: When classifying W5 wetlands, the regulation states:
+__Clarification of FWA Wetland Polygons Riparian Classification__: When classifying W5 wetlands, the regulation states:
 
 > _"(a) the area contains:  
   (i) two or more W1 wetlands located within 100 m of each other,  
@@ -1003,214 +956,12 @@ __Wetland additional notes__: When classifying W5 wetlands, the regulation state
 (b) the combined size of the wetlands, excluding the upland areas, is 5 ha or larger."_
 
 
-It was unclear whether "non-W1 wetlands" included non-classified wetlands and unclear whether bullet (i) should be read as having an "or" at the end of the line. Clarification was given by Lisa Nordin:
-
-> _"The FPPR definitions carried over from the Code and are based on those in the FPC Riparian Management Area Guidebook (which is no longer referenced in our regulation). The W5 class is a wetland complex meaning there are 2 or more individual wetlands with overlapping RMAs. The FPPR s.48(2) is just outlining the distance when that would occur. So, a W1 has an RMA of 50. To have two of them overlap, you would need a distance of less than 100m between them.  W2, W3, and W4 wetlands have RMAs of 30. So if you had one W1 and any one of the others, then 80m is your max overlap distance. Two of the smaller wetlands together would be 60m, but the polygon (including the distance between them) has to be more than 5 ha for it to be a W5, hence the "and" after iii. 
-To answer your second questions, unfortunately NCWs are not included in the W5 classification because they do not have an RMA associated with them."_
-
-As such, W5's were assigned using the following workflow:
+It was unclear whether "non-W1 wetlands" included non-classified wetlands and unclear whether bullet (i) should be read as having an "or" at the end of the line. Based upon clarification from a domain export, W5's were assigned using the following workflow:
 
 * buffer's were created on polygons classified as W1 (50m), W2 (30m), W3 (30m) or W4 (30m)  
 * all buffers that overlapped with one or more other buffers were identified and grouped together  
 * the sum of the wetland area of all identified overlapping groups was calculated  
 * if the area was >= 5 ha, W5 was assigned  
-
-</details>
-
-
-__QA/QC comparison with Kootenay Lake (TSA13)__
-<details>
-  <summary> Expand for QA/QC comparison with Kootenay Lake (TSA13)</summary>
-  <br>
-  
-__Wetland QA/QC__
-Visually compared results with Kootenay Lakes TSA results. Almost identical except for 2 cases:
-
-+ In TSR, two sets of nearby wetlands were classified as W5, but above analysis calculated W5. I think its mis-classified as the summed area was < 5. (Eg., waterbody_poly_id in (705016913, 705016826) and (705016771, 705016732))
-
-
-__Lake QA/QC__
-Visually compared the above output with Rhian's layer for Kootenay Lakes TSA (TSA13) - found to be identical.
-Rhian's layer: W:/FOR/VIC/HTS/ANA/Workarea/ardavies/ts_units/2019/tsa13/Tasks/005_riparian/data/riparian.gdb|layername=lake_classes
-
-__Stream QA/QC__
-Visually compared the above output with Rhian's layer for Kootenay Lakes TSA (TSA13) - there were many differences as Rhian used a stream order based approach and this analysis used modeled channel width. 
-</details>
-
-__QA/QC Comparison with FREP__
-<details>
-  <summary> Expand for Comparison with FREP </summary>
-  <br>
-
-Code snippet to associate FREP points with nearest modeled riparian classes. 
-```{r eval = FALSE}
-library(dadmtools)
-library(dplyr)
-
-conn_list <- dadmtools::get_pg_conn_list()
-
-## Add geometry field to the FREP monitoring data
-## one time
-query <- "ALTER TABLE whse.june13_riparian_data_for_faib DROP COLUMN IF EXISTS geom;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse.june13_riparian_data_for_faib ADD COLUMN IF NOT EXISTS geom Geometry(Point, 3005);"
-run_sql_r(query, conn_list)
-query <- "UPDATE whse.june13_riparian_data_for_faib SET geom = ST_SetSRID(ST_Point(bcalbers_easting, bcalbers_northing), 3005);"
-run_sql_r(query, conn_list)
-
-## Compare the modeled stream width with FREP data
-## Add a linking key (I.e., `modelled_habitat_potential_fid`) to `thlb_proxy.june13_riparian_data_for_faib` with the fid of the nearest linestring of `thlb_proxy.modelled_habitat_potential`
-query <- "ALTER TABLE whse.june13_riparian_data_for_faib DROP COLUMN IF EXISTS modelled_habitat_potential_fid;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse.june13_riparian_data_for_faib ADD COLUMN modelled_habitat_potential_fid INTEGER;"
-run_sql_r(query, conn_list)
-
-query <- "ALTER TABLE whse.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_line;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse.june13_riparian_data_for_faib ADD COLUMN distance_to_line real;"
-run_sql_r(query, conn_list)
-
-## Associate FREP points with modeled stream with by distance
-query <- "WITH nearest_lines AS (
-    SELECT
-        r.objectid AS point_fid,
-        l.fid AS line_fid,
-		l.distance
-    FROM
-        whse.june13_riparian_data_for_faib r
-    CROSS JOIN LATERAL (
-        SELECT
-		fid,
-		ST_Distance(r.geom, l.geom) as distance
-        FROM whse.modelled_habitat_potential l
-        ORDER BY r.geom <-> l.geom
-        LIMIT 1
-    ) l
-)
-UPDATE whse.june13_riparian_data_for_faib r
-SET
-	modelled_habitat_potential_fid = nl.line_fid,
-	distance_to_line= nl.distance
-FROM
-	nearest_lines nl
-WHERE
-	r.objectid = nl.point_fid;"
-run_sql_r(query, conn_list)
-
-
-query <- "ALTER TABLE whse.june13_riparian_data_for_faib DROP COLUMN IF EXISTS fwa_rivers_poly_waterbody_poly_id;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse.june13_riparian_data_for_faib ADD COLUMN fwa_rivers_poly_waterbody_poly_id INTEGER;"
-run_sql_r(query, conn_list)
-
-query <- "ALTER TABLE whse.june13_riparian_data_for_faib DROP COLUMN IF EXISTS distance_to_poly;"
-run_sql_r(query, conn_list)
-query <- "ALTER TABLE whse.june13_riparian_data_for_faib ADD COLUMN distance_to_poly real;"
-run_sql_r(query, conn_list)
-
-## update FREP points that have been associated to a stream nearest river
-query <- "WITH nearest_lines AS (
-    SELECT
-        r.objectid AS point_fid,
-        l.waterbody_poly_id AS line_fid,
-		l.distance
-    FROM
-        whse.june13_riparian_data_for_faib r
-    CROSS JOIN LATERAL (
-        SELECT
-          waterbody_poly_id,
-          ST_Distance(r.geom, l.geom) as distance
-        FROM whse_vector.fwa_rivers_poly l
-        ORDER BY r.geom <-> l.geom
-        LIMIT 1
-    ) l
-)
-UPDATE whse.june13_riparian_data_for_faib r
-SET
-	fwa_rivers_poly_waterbody_poly_id = nl.line_fid,
-	distance_to_poly= nl.distance
-FROM
-	nearest_lines nl
-WHERE
-	r.objectid = nl.point_fid;"
-run_sql_r(query, conn_list)
-```
-
-
-Look at the results of the confusion matrix. Accuracy of 0.42.. not very good. Advised to review accuracy over different regions like BEC zones etc. Didn't complete that work and carried on with THLB proxy.
-
-```{r eval = FALSE, message=FALSE, warning=FALSE}
-library(dadmtools)
-library(dplyr)
-library(caret)
-conn_list <- dadmtools::get_pg_conn_list()
-
-## assciate rivers with FREP points if in a certain class and if distance is closer that to stream
-query <- "SELECT
-	frep.stream_class_in_field,
-	CASE
-		-- when observed class in field is either S1, S2, or S5, get the closest river distance, otherwise, get the closest stream distance
-		WHEN frep.stream_class_in_field IN ('S1', 'S2', 'S5') THEN
-			CASE
-				WHEN frep.distance_to_poly < frep.distance_to_line THEN 'rivers'
-				ELSE 'streams'
-			END
-		ELSE 'streams'
-	END as data_source,
-	CASE
-		-- when observed class in field is either S1, S2, or S5, get the closest river distance, otherwise, get the closest stream distance
-		WHEN frep.stream_class_in_field IN ('S1', 'S2', 'S5') THEN
-			CASE
-				WHEN frep.distance_to_poly < frep.distance_to_line THEN riv.riparian_class
-				ELSE stream.riparian_class
-			END
-		ELSE stream.riparian_class
-	END as riparian_class,
-	CASE
-		-- when observed class in field is either S1, S2, or S5, get the closest river distance, otherwise, get the closest stream distance
-		WHEN frep.stream_class_in_field IN ('S1', 'S2', 'S5') THEN
-			CASE
-				WHEN frep.distance_to_poly < frep.distance_to_line THEN frep.distance_to_poly
-				ELSE frep.distance_to_line 
-			END
-		ELSE frep.distance_to_line
-	END as distance,
-	frep.channel_width as frep_channel_width,
-	stream.channel_width as modelled_channel_width,
-	CASE WHEN 
-			CASE
-			WHEN frep.stream_class_in_field IN ('S1', 'S2', 'S5') THEN
-				CASE
-					WHEN frep.distance_to_poly < frep.distance_to_line THEN riv.riparian_class
-					ELSE stream.riparian_class
-				END
-			ELSE stream.riparian_class
-			END
-			= frep.stream_class_in_field THEN 1
-	ELSE 0
-	END as match
-FROM
-whse.june13_riparian_data_for_faib frep
-LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, channel_width, fid FROM whse.modelled_habitat_potential) stream ON frep.modelled_habitat_potential_fid = stream.fid
-LEFT JOIN (SELECT CASE WHEN riparian_class in ('S1A', 'S1B') THEN 'S1' ELSE riparian_class END as riparian_class, waterbody_poly_id from whse_vector.fwa_rivers_poly) riv ON riv.waterbody_poly_id = frep.fwa_rivers_poly_waterbody_poly_id
-WHERE 
-	stream_class_in_field in ('S1', 'S2', 'S3', 'S4', 'S5', 'S6')
-ORDER BY distance desc"
-mod_order_based_v1_frep_comparison <- sql_to_df(query, conn_list)
-conf_matrix2 <- confusionMatrix(factor(mod_order_based_v1_frep_comparison$riparian_class), 
-                               factor(mod_order_based_v1_frep_comparison$stream_class_in_field))
-
-print(conf_matrix2)
-## work with Peter
-##foo <- glm(match ~ distance, data = mod_order_based_v1_frep_comparison, family = binomial)
-
-##plot(mod_order_based_v1_frep_comparison$distance, 
-##mod_order_based_v1_frep_comparison$match)
-##lines(mod_order_based_v1_frep_comparison$distance, predict(foo, type="response"))
-```
-
-</details>
-
 
 </details>
 
@@ -1246,7 +997,7 @@ __R Scripts__
 No pre-processing was performed for this netdown factor. The layer was imported using the dadmtools:
 
 ```
-src\analysis\dadm-import-layers.R
+src\analysis\0.setup-and-import-data-sources.R
 ```
 
 ```{r thlb_arch, eval= TRUE}
@@ -1276,7 +1027,7 @@ __R Scripts__
 No pre-processing was performed for this netdown factor. The layer was imported using the dadmtools:
 
 ```
-src\analysis\dadm-import-layers.R
+src\analysis\0.setup-and-import-data-sources.R
 ```
 
 ```{r rr, eval= TRUE}
@@ -1315,7 +1066,7 @@ Note:
 A table containing the calculated 99th percentile elevation and slope values, along with the number of harvested openings per TSA and TFL, is provided below.
 
 <details>
-  <summary> Expand to view the table of percentile thresholds and sample sizes used in the analysis. </summary>
+  <summary> [Expand to view the table of percentile thresholds and sample sizes used in the analysis.] </summary>
   <br>
 
 ```{r thlb_phys_thresh, eval= TRUE}
@@ -1550,7 +1301,7 @@ Note:
 A table containing the calculated 5th percentile site index is provided below.
 
 <details>
-  <summary> Expand to view the table of 5th percentile thresholds used in the analysis. </summary>
+  <summary> [Expand to view the table of 5th percentile thresholds used in the analysis.] </summary>
   <br>
 
 ```{r thlb_mer_thresh, eval= TRUE}
@@ -2123,8 +1874,8 @@ SELECT
 	-- recreate what the R netdown does by adjusting merchantability to be NULL when a cutblocks exists (harvest start year is pulled from consolidated cutblocks layer)
 	CASE 
 		WHEN harvest_start_year_calendar IS NOT NULL THEN NULL
-		ELSE n13_merchantability
-	END AS n13_merchantability,
+		ELSE n13_non_merchantable
+	END AS n13_non_merchantable,
 	-- recreate what the R netdown does by adjusting non commercial to be NULL when a cutblocks exists (harvest start year is pulled from consolidated cutblocks layer)
 	CASE 
 		WHEN harvest_start_year_calendar IS NOT NULL THEN NULL
@@ -2169,7 +1920,7 @@ select
 				n08_misc IS NULL AND 
 				n10_arch IS NULL AND
 				n11_harvest_restrictions IS NULL AND
-				adj.n13_merchantability IS NULL AND
+				adj.n13_non_merchantable IS NULL AND
 				adj.n14_non_commercial IS NULL
 				-- proportional netdowns
 				THEN 1 * (1-p05_linear_features) * (1-p09_riparian) * (1-adj.p12_phys_inop) * (1-p15_future_retention)

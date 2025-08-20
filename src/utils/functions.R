@@ -735,7 +735,7 @@ netdown100pct<-function(netdown_tab, net_summary, running_total, lclass, n_step)
     # filter to where netdown step variable is NOT NA.
     filter(!is.na(get(n_step))) %>%
     # calculate thlb_net area
-    summarise(x = sum(thlb_net)) %>%
+    summarise(x = sum(thlb_net, na.rm = TRUE)) %>%
     pull() # pull value
 
   # calculate new running total value
@@ -812,22 +812,21 @@ landbase_sum <- function(netdown_tab,net_summary,running_total,lclass,netdown,wh
 
 
 
-
 #### ### recreation
 #### Below is a specific list of ownership classes excluded:
-#### 
-#### + 66N, Crown - Recreation Area 
-#### + 68U, Crown - Forest Recreation 
-#### 
+####
+#### + 66N, Crown - Recreation Area
+#### + 68U, Crown - Forest Recreation
+####
 #### **Data sources:** BCGW file: WHSE_FOREST_VEGETATION.F_OWN
-#### 
-#### Forest Recreation sites were not excluded from the THLB as there are no harvesting restrictions. 
-#### 
+####
+#### Forest Recreation sites were not excluded from the THLB as there are no harvesting restrictions.
+####
 #### ```{r thlb_rec, eval= FALSE}
 #### ## NOT RAN
 #### lclass<-"Recreation_Features"
 #### n_step<-"n08_rec"
-#### 
+####
 #### netdown_summary<-netdown100pct(netdown_tab,netdown_summary,running_total,lclass,n_step)
 #### netdown_tab<-update_areas_thlb(netdown_tab,n_step)
 #### running_total<-get_running_total(netdown_summary,lclass)
