@@ -1,5 +1,9 @@
 library(dadmtools)
 
+## handover document:
+https://bcgov-my.sharepoint.com/:w:/r/personal/hailey_eckstrand_gov_bc_ca/Documents/THLB%20Proxy%20Handover%20Instructions.docx?d=wb836983afbb14745a119ab3ef8db6df4&csf=1&web=1&e=GMS6Vr
+
+
 ## check out the git repo:
 ## https://github.com/bcgov/FAIB_PROXY_THLB
 ## update the repo_path path below to your local path
@@ -27,7 +31,7 @@ conn_list <- dadmtools::get_pg_conn_list()
 ## as per instructions in the Handover document (Step 5)
 ## Open up {repo_path}/config_parameters.csv in excel
 ## Go through the config_parameters.csv and update as per the handover document
-## Once that is done, then run the import using the dadmtools. 
+## Once that is done, then run the import using the dadmtools.
 
 
 batch_import_to_pg_gr_skey(
@@ -58,4 +62,4 @@ source('src/analysis/2.fmlb-creation.R')
 ## row numbers that reference f_own & attributes: 172, 243, 244, 269, 276, 277, 298, 299
 source('src/analysis/3.netdown-create-table.R')
 
-## open up 4.netdown.Rmd in RStudio and run with knit on - it will recreate the file: 4.netdown.html. Review this html for sanity 
+## open up 4.netdown.Rmd in RStudio and run with knit on - it will recreate the file: 4.netdown.html. Review this html for sanity
