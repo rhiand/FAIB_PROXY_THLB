@@ -13,10 +13,12 @@ setwd(repo_path)
 ## ensure the follow keyrings are setup and referring to Hailey's thlb_proxy db
 library(keyring)
 keyring_create("localpsql")
-key_set("dbuser", keyring = "localpsql", prompt = 'Postgres keyring dbuser:')   ## in the handover document
-key_set("dbpass", keyring = "localpsql", prompt = 'Postgres keyring password:') ## in the handover document
-key_set("dbhost", keyring = "localpsql", prompt = 'Postgres keyring host:')     ## in the handover document
-key_set("dbname", keyring = "localpsql", prompt = 'Postgres keyring dbname:')   ## in the handover document
+key_set("dbuser", keyring = "localpsql", prompt = 'Postgres keyring dbuser:')
+key_set("dbpass", keyring = "localpsql", prompt = 'Postgres keyring password:')
+## change host to Hailey's ip address
+key_set("dbhost", keyring = "localpsql", prompt = 'Postgres keyring host:')
+## change dbname to thlb_proxy
+key_set("dbname", keyring = "localpsql", prompt = 'Postgres keyring dbname:')
 
 ## connect to oracle using your (Ie. Rhian's) login credentials
 keyring_create("oracle")
@@ -28,6 +30,8 @@ key_set("dbserver", keyring = "oracle", prompt = 'Oracle keyring server:')
 
 conn_list <- dadmtools::get_pg_conn_list()
 
+test_query <- "select man_unit from whse.thlb_proxy_netdown LIMIT 10"
+df <- sql_to_df(test_query, conn_list)
 ## as per instructions in the Handover document (Step 5)
 ## Open up {repo_path}/config_parameters.csv in excel
 ## Go through the config_parameters.csv and update as per the handover document
