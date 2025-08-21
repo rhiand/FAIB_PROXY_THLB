@@ -93,12 +93,13 @@ linear_weight <- function(
 		print(glue("On map tile: {grid_row}, {i}/{all_rows}, {format(iteration_start_time, '%Y-%m-%d %I:%M:%S %p')}"))
 
 		tryCatch({
-			vect <- st_cast(st_read(conn, query = glue(spatial_query), crs = 3005), "MULTIPOLYGON")
+			my_vect <- st_cast(st_read(conn, query = glue(spatial_query), crs = 3005), "MULTIPOLYGON")
 		}, error = function(e){
 			## in the case of an error - wrap a buffer within 0.0001 width to 'fix'
-			vect <- st_cast(st_read(conn, query = glue(spatial_query_when_error), crs = 3005), "MULTIPOLYGON")
+			my_vect <- st_cast(st_read(conn, query = glue(spatial_query_when_error), crs = 3005), "MULTIPOLYGON")
 		})
-		if (nrow(vect) < 1) {
+
+		if (nrow(my_vect) < 1) {
 			## skip to the next map tile if no results were found within the mapsheet
 			query <- glue("UPDATE {dst_schema}.{dst_tbl}_status SET status = 'completed', modified_at = now() WHERE {grid_loop_fld} = '{grid_row}'")
 			run_sql_r(query, pg_conn_param)
@@ -106,11 +107,11 @@ linear_weight <- function(
 			next
 		}
 
-		vect_extent <- terra::ext(vect)
+		vect_extent <- terra::ext(my_vect)
 		rast_clipped <- terra::crop(gr_skey_rast, vect_extent)
 		## terra extract link:
 		## https://www.paulamoraga.com/book-spatial/the-terra-package-for-raster-and-vector-data.html
-		results <- terra::extract(rast_clipped, vect, weights = TRUE, na.rm = TRUE)
+		results <- terra::extract(rast_clipped, my_vect, weights = TRUE, na.rm = TRUE)
 		## within the results, records sometimes exist where bc_01ha_gr_skey IS NULL
 		## this happen on the coast when the raster has been masked but the linear features
 		## exists outside the mask

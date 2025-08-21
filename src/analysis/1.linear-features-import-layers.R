@@ -84,43 +84,25 @@ import_bcgw_to_pg(src_schema     = "WHSE_TANTALIS",
 				  grouping_name  = "right-of-way",
 				  pg_conn_list   = conn_list)
 
-## Rationale: Kootenay Lake data package for roads, rails, trail, tranmission lines etc
-## FGDB import
-# src_path <- "W:\\FOR\\VIC\\HTS\\ANA\\Workarea\\PROVINCIAL\\BC_CE_Integrated_Roads_2021_20210805.gdb"
+# ## 2021 import
+# src_path <- "S:\\FOR\\VIC\\HTS\\ANA\\workarea\\AR2023\\BC_CE_Integrated_Roads_2021_20210805.gdb"
 # src_lyr <- "integratedRoadsBuffers"
 # ## import the integratedroads buffers using ogr2ogr
-# ogr_cmd <- glue('ogr2ogr -overwrite -a_srs EPSG:3005 -nln {src_lyr} -lco SCHEMA=thlb_proxy -nlt MULTIPOLYGON -sql "SELECT SHAPE as geom, INTEGRATED_ROADS_ID, DRA_ROAD_CLASS, Integrated_Road_Class_Num, Integrated_Road_Class_Descr, CEF_Road_Buffer_Width_m, BUFF_DIST FROM {src_lyr}" -lco OVERWRITE=YES --config PG_USE_COPY YES -f PostgreSQL PG:dbname=prov_data {src_path}')
+# ogr_cmd <- glue('ogr2ogr -overwrite -a_srs EPSG:3005 -nln {src_lyr} -lco SCHEMA={vector_schema} -nlt MULTIPOLYGON -sql "SELECT SHAPE as geom, INTEGRATED_ROADS_ID, DRA_ROAD_CLASS, Integrated_Road_Class_Num, Integrated_Road_Class_Descr, CEF_Road_Buffer_Width_m, BUFF_DIST FROM {src_lyr}" -lco OVERWRITE=YES --config PG_USE_COPY YES -f PostgreSQL PG:dbname={conn_list$dbname} {src_path}')
 # system(ogr_cmd)
+# today_date <- format(Sys.time(), "%Y-%m-%d %I:%M:%S %p")
+# tbl_comment <- glue("COMMENT ON TABLE {vector_schema}.{src_lyr} IS 'Table created at {today_date}.
+# Imported from {src_path} | layername = {src_lyr}'")
+# run_sql_r(tbl_comment, conn_list)
 
-## JAN 2025 UNFINISHED WORK
-## instead of importing all the rights of way etc layers as above - instead only import CE HD data.. 
-## Rationale: Lisa Gibbons imported the BC Cumulative Effects Framework Human Disturbance to represent other non road linear features
-## FGDB import
-## Jan 23, 2025 - HDE: didn't use this approach for first THLB proxy
-# src_path <- "C:\\projects\\THLB_Proxy\\data\\input\\BC_CEF_Human_Disturbance_2023\\BC_CEF_Human_Disturbance_2023.gdb"
-# src_lyr <- "CEF_Human_Disturbance_2023"
-# ## import the CEF_Human_Disturbance_2023 using ogr2ogr
-# ogr_cmd <- glue(
-#   "ogr2ogr -overwrite -a_srs EPSG:3005 -nln {src_lyr} -lco SCHEMA=thlb_proxy -nlt MULTIPOLYGON -lco OVERWRITE=YES --config PG_USE_COPY YES ",
-#   "-where \"CEF_DISTURB_GROUP IN ('Mining_and_Extraction','Rail_and_Infrastructure','OGC_Infrastructure','Power','ROW')\" ",
-#   "-f PostgreSQL PG:dbname=prov_data {src_path}"
-# )
-# system(ogr_cmd)
+
 
 ## 2024 dataset 
-## Jan 23, 2025 - HDE: couldn't import into PG - ran into geometry type errors.. 
-src_path <- "//spatialfiles2.bcgov/archive/FOR/VIC/HTS/ANA/workarea/AR2024/local_inputs/BC_CE_Integrated_Roads_2024_fix.gdb"
+src_path <- "S:\\FOR\\VIC\\HTS\\ANA\\workarea\\AR2024\\local_inputs\\BC_CE_Integrated_Roads_2024_with_buffers.gdb"
 src_lyr <- "integratedRoadsBuffers"
 ogr_cmd <- glue("ogr2ogr -overwrite -a_srs EPSG:3005 -nln {src_lyr} -lco SCHEMA={vector_schema} -nlt MULTIPOLYGON -lco OVERWRITE=YES --config PG_USE_COPY YES -f PostgreSQL PG:dbname={conn_list$dbname} {src_path}")
 system(ogr_cmd)
-
-
-# library(sf)
-# library(janitor)
-# ## read in the CE Integrated Roads layer
-# roads <- st_read(src_path, layer = src_lyr)%>%
-# 	clean_names()%>%
-# 	select(integrated_roads_id)%>%
-# 	mutate(grid = 1) # create a field to dissolve later
-
-# pryr::object_size(roads)# really big
+today_date <- format(Sys.time(), "%Y-%m-%d %I:%M:%S %p")
+tbl_comment <- glue("COMMENT ON TABLE {vector_schema}.{src_lyr} IS 'Table created at {today_date}.
+Imported from {src_path} | layername = {src_lyr}'")
+run_sql_r(tbl_comment, conn_list)

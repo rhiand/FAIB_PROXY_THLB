@@ -560,7 +560,7 @@ Productive forest land is permanently lost due to the development of roads, trai
 
 Existing estimates of the area affected by linear features are derived by applying standardized buffer widths to the identified features.
 
-The linear features table was created in July 2024 and is based on the 2021 Cumulative Effects (CE) Integrated Roads Dataset, incorporating the FAIB Analysis Ready Dataset (ARD) buffer standards. Additional linear features such as railways, transmission lines, pipelines, and rights-of-way are also included, with the following buffer widths applied:
+The linear features table was created in AUg 2025 and is based on the 2024 Cumulative Effects (CE) Integrated Roads Dataset, incorporating the FAIB Analysis Ready Dataset (ARD) buffer standards. Additional linear features such as railways, transmission lines, pipelines, and rights-of-way are also included, with the following buffer widths applied:
 
  - Railways: 15m
  - Transmission Lines: 25m
@@ -577,7 +577,7 @@ For linear features, the pAFLB, and pTHLB are multiplied by one minus the propor
  
 In the netdown table, each record is assigned the proportion of the cell covered by linear features, represented by the variable p05_linear_features.
 
-**Data source:** BC cumulative effects framework 2021 integrated roads dataset, WHSE_TANTALIS.TA_CROWN_RIGHTS_OF_WAY_SVW, WHSE_MINERAL_TENURE.OG_PIPELINE_AREA_PERMIT_SP, WHSE_IMAGERY_AND_BASE_MAPS.DRP_OIL_GAS_PIPELINES_BC_SP, WHSE_BASEMAPPING.GBA_TRANSMISSION_LINES_SP, WHSE_BASEMAPPING.GBA_RAILWAY_TRACKS_SP
+**Data source:** BC cumulative effects framework 2024 integrated roads dataset, WHSE_TANTALIS.TA_CROWN_RIGHTS_OF_WAY_SVW, WHSE_MINERAL_TENURE.OG_PIPELINE_AREA_PERMIT_SP, WHSE_IMAGERY_AND_BASE_MAPS.DRP_OIL_GAS_PIPELINES_BC_SP, WHSE_BASEMAPPING.GBA_TRANSMISSION_LINES_SP, WHSE_BASEMAPPING.GBA_RAILWAY_TRACKS_SP
 
 __R Scripts__
 
@@ -1763,7 +1763,7 @@ df_new <- all_tsa_results %>%
 all_tsa_results <- bind_rows(all_tsa_results, df_new)
 
 ## write table that contains retention adjust to postgres
-df_to_pg(Id(schema = 'thlb_proxy', table = 'retention_adjustment_man_unit'), all_tsa_results, conn_list, overwrite=TRUE)
+df_to_pg(Id(schema = 'whse', table = 'retention_adjustment_man_unit'), all_tsa_results, conn_list, overwrite=TRUE)
 
 
 ## join the previously created long term retention table to the newly created adjustment table & create the adjusted retention factor

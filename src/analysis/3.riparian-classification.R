@@ -1317,7 +1317,7 @@ run_sql_r(query, conn_list)
 grid_table <- glue("{vector_schema}.nts_50k_grid")
 grid_loop_fld <- "map_tile"
 grid_geom_fld <- "geom"
-buffer_table_name <- glue("{dst_schema}.riparian_buffers")
+buffer_table_name <- glue("{vector_schema}.riparian_buffers")
 
 query <- glue("DROP TABLE IF EXISTS {buffer_table_name};")
 run_sql_r(query, conn_list)
@@ -1437,6 +1437,8 @@ Table contains the gr_skey pixel percent coverage by the following layers:
 Layer: {buffer_table_name}
 Buffer: riparian_buffer_width_m'"
 
+dst_tbl <- "bc_riparian_buffers_gr_skey"
+
 linear_weight(template_tif           = "data\\input\\bc_01ha_gr_skey.tif",  ## "S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\bc_01ha_gr_skey.tif"
 			mask_tif                 = "data\\input\\BC_Boundary_Terrestrial.tif", ## 'S:\\FOR\\VIC\\HTS\\ANA\\workarea\\PROVINCIAL\\BC_Boundary_Terrestrial.tif',
 			crop_extent              = c(273287.5,1870587.5,367787.5,1735787.5),
@@ -1444,7 +1446,7 @@ linear_weight(template_tif           = "data\\input\\bc_01ha_gr_skey.tif",  ## "
 			grid_loop_fld            = "map_tile",
 			grid_geom_fld            = "geom",
 			dst_schema               = dst_schema,
-			dst_tbl                  = "bc_riparian_buffers",
+			dst_tbl                  = dst_tbl,
 			pg_conn_param            = conn_list,
 			create_vector_lyr        = TRUE,
 			spatial_query            = spatial_query,
@@ -1452,14 +1454,15 @@ linear_weight(template_tif           = "data\\input\\bc_01ha_gr_skey.tif",  ## "
 			tbl_comment              = tbl_comment)
 
 ## Check output
-query <- glue("select * from {dst_schema}.bc_riparian_buffers where fact > 1")
+query <- glue("select * from {dst_schema}.{dst_tbl} where fact > 1")
 review_rip <- sql_to_df(query, conn_list)
 ## at time of processing, there were 475 cells where fact > 1 and the largest was 1.01963
 ## That level of error is acceptable - adjust down to 1
 if (max(review_rip$fact) < 1.01964 && nrow(review_rip) == 475) {
-	query <- glue("UPDATE {dst_schema}.bc_riparian_buffers SET fact = 1 WHERE fact > 1")
+	query <- glue("UPDATE {dst_schema}.{dst_tbl} SET fact = 1 WHERE fact > 1")
 	run_sql_r(query, conn_list)
 }
+
 
 ## Example code of outputting riparian vectors into a file geodatabase
 ## Used when outputting the riparian vectors to other analysts

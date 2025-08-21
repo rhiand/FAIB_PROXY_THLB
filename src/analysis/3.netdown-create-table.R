@@ -308,7 +308,7 @@ for (i in 1:nrow(tsas)){
 	LEFT JOIN {dst_schema}.veg_consolidated_cut_blocks_sp cc on cc.pgid = ccg.pgid
 	LEFT JOIN {dst_schema}.fwa_wetlands_gr_skey wet_key ON wet_key.gr_skey = bc.gr_skey
 	LEFT JOIN {dst_schema}.fwa_wetlands wet ON wet.pgid = wet_key.pgid
-	LEFT JOIN {dst_schema}.bc_linear_features lin ON lin.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.bc_linear_features_gr_skey lin ON lin.gr_skey = bc.gr_skey
 	LEFT JOIN {dst_schema}.bc_riparian_buffers rip ON rip.gr_skey = bc.gr_skey
 	LEFT JOIN {dst_schema}.bc_inoperable_gr_skey inop ON inop.gr_skey = bc.gr_skey
 	LEFT JOIN {dst_schema}.bc_merchantability_gr_skey merch ON merch.gr_skey = bc.gr_skey

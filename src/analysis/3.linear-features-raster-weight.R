@@ -72,13 +72,13 @@ WHERE
 	grid.{grid_loop_fld} = '{grid_row}'
 UNION ALL
 SELECT
-	vect.geom as geom -- no buffer needed, already buffered
+	vect.shape as geom -- no buffer needed, already buffered
 FROM
 	whse_vector.integratedroadsbuffers vect
 JOIN
 	{grid_tbl} grid
 ON
-	ST_Intersects(vect.geom, grid.{grid_geom_fld})
+	ST_Intersects(vect.shape, grid.{grid_geom_fld})
 WHERE
 	grid.{grid_loop_fld} = '{grid_row}'
 )
@@ -152,13 +152,13 @@ WHERE
 	grid.{grid_loop_fld} = '{grid_row}'
 UNION ALL
 SELECT
-	vect.geom as geom -- no buffer needed, already buffered
+	vect.shape as geom -- no buffer needed, already buffered
 FROM
 	whse_vector.integratedroadsbuffers vect
 JOIN
 	{grid_tbl} grid
 ON
-	ST_Intersects(vect.geom, grid.{grid_geom_fld})
+	ST_Intersects(vect.shape, grid.{grid_geom_fld})
 WHERE
 	grid.{grid_loop_fld} = '{grid_row}'
 )
@@ -201,7 +201,7 @@ linear_weight(template_tif           = glue("{repo_path}\\data\\input\\bc_01ha_g
 			grid_loop_fld            = "map_tile",
 			grid_geom_fld            = "geom",
 			dst_schema               = dst_schema,
-			dst_tbl                  = "bc_linear_features",
+			dst_tbl                  = "bc_linear_features_gr_skey",
 			pg_conn_param            = pg_conn_param,
 			create_vector_lyr        = TRUE,
 			spatial_query            = spatial_query,
