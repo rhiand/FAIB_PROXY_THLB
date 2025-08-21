@@ -1,7 +1,7 @@
 library(dadmtools)
 
 ## handover document:
-https://bcgov-my.sharepoint.com/:w:/r/personal/hailey_eckstrand_gov_bc_ca/Documents/THLB%20Proxy%20Handover%20Instructions.docx?d=wb836983afbb14745a119ab3ef8db6df4&csf=1&web=1&e=GMS6Vr
+## https://bcgov-my.sharepoint.com/:w:/r/personal/hailey_eckstrand_gov_bc_ca/Documents/THLB%20Proxy%20Handover%20Instructions.docx?d=wb836983afbb14745a119ab3ef8db6df4&csf=1&web=1&e=GMS6Vr
 
 
 ## check out the git repo:
