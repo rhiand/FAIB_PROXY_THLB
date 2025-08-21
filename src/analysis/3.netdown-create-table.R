@@ -309,7 +309,7 @@ for (i in 1:nrow(tsas)){
 	LEFT JOIN {dst_schema}.fwa_wetlands_gr_skey wet_key ON wet_key.gr_skey = bc.gr_skey
 	LEFT JOIN {dst_schema}.fwa_wetlands wet ON wet.pgid = wet_key.pgid
 	LEFT JOIN {dst_schema}.bc_linear_features_gr_skey lin ON lin.gr_skey = bc.gr_skey
-	LEFT JOIN {dst_schema}.bc_riparian_buffers rip ON rip.gr_skey = bc.gr_skey
+	LEFT JOIN {dst_schema}.bc_riparian_buffers_gr_skey rip ON rip.gr_skey = bc.gr_skey
 	LEFT JOIN {dst_schema}.bc_inoperable_gr_skey inop ON inop.gr_skey = bc.gr_skey
 	LEFT JOIN {dst_schema}.bc_merchantability_gr_skey merch ON merch.gr_skey = bc.gr_skey
 	LEFT JOIN {dst_schema}.non_commercial_lu_table non_com on non_com.tsa = man_unit.tsa_rank1 and vri_species_cd_datadict.species_grouping = non_com.species_grouping
