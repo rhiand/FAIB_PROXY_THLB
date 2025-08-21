@@ -7,7 +7,7 @@ library(dadmtools)
 ## check out the git repo:
 ## https://github.com/bcgov/FAIB_PROXY_THLB
 ## update the repo_path path below to your local path
-repo_path <- 'C:/projects/FAIB_PROXY_THLB'
+repo_path <- 'C:/ard/FAIB_PROXY_THLB'
 setwd(repo_path)
 
 ## ensure the follow keyrings are setup and referring to Hailey's thlb_proxy db
@@ -34,6 +34,8 @@ test_query <- "select man_unit from whse.thlb_proxy_netdown LIMIT 10"
 df <- sql_to_df(test_query, conn_list)
 ## as per instructions in the Handover document (Step 5)
 ## Open up {repo_path}/config_parameters.csv in excel
+utils::browseURL(repo_path)
+
 ## Go through the config_parameters.csv and update as per the handover document
 ## Once that is done, then run the import using the dadmtools.
 
@@ -56,7 +58,7 @@ batch_import_to_pg_gr_skey(
 ## after you've successfully imported all the needed data sources, run the following scripts:
 
 ## The following creates a value added attributes table (vaa) tables needed for later analysis called whse.man_unit_gr_skey
-run_sql_psql(sql_var=NULL, sql_file = 'src/analysis/0.vaa_tables.sql', 'thlb_proxy')
+run_sql_psql(sql_var=NULL, sql_file = 'src/analysis/0.vaa_tables.sql', 'thlb_proxy', host=conn_list$host)
 
 ## Update the FMLB to use the latest VRI & cutblocks
 source('src/analysis/2.fmlb-creation.R')

@@ -1,16 +1,19 @@
 library(dadmtools)
 library(dplyr)
 source('src/utils/functions.R')
-## one time runs are commented out to help with rerunning code
 conn_list <- dadmtools::get_pg_conn_list()
 
-## raster exports:
+## export the required raster exports for the ARD:
 source('src/utils/GenerateTIFFS.R')
 
-## vector outputs
+## export the required vector exports for the ARD:
 ## riparian
 output_dir <- "S:\\FOR\\VIC\\HTS\\FAIB_DATA_FOR_DISTRIBUTION\\THLB\\THLB_Proxy"
 system(glue("ogr2ogr -overwrite -f \"FileGDB\" {output_dir}\\provincial_riparian_buffers.gdb PG:\"dbname='{conn_list$dbname}' host='{conn_list$host}' user='{conn_list$user}' password='{conn_list$password}'\"  -sql \"SELECT * FROM whse_vector.riparian_buffers\" -nlt MULTIPOLYGON -nln riparian_buffers"))
+
+## pthlb
+query <- "DROP TABLE IF EXISTS public.provincial_pthlb;"
+run_sql_r(query, conn_list)
 
 query <- "CREATE TABLE public.provincial_pthlb AS
 WITH first_dissolve AS (
@@ -35,7 +38,13 @@ SELECT
 	man_unit
 FROM
 	first_dissolve"
+run_sql_r(query, conn_list)
 
+## export to FAIB_DATA_FOR_DISTRIBUTION
+system(glue("ogr2ogr -overwrite -f \"FileGDB\" {output_dir}\\provincial_pthlb.gdb PG:\"dbname='{conn_list$dbname}' host='{conn_list$host}' user='{conn_list$user}' password='{conn_list$password}'\"  -sql \"SELECT * FROM public.provincial_pthlb\" -nlt MULTIPOLYGON -nln provincial_pthlb"))
+
+## paflb
+query <- "DROP TABLE IF EXISTS public.provincial_paflb;"
 run_sql_r(query, conn_list)
 
 query <- "CREATE TABLE public.provincial_paflb AS
@@ -56,14 +65,20 @@ GROUP BY
 	)
 SELECT
 	(ST_Dump(geom)).geom as geom,
-	paflb,
+	paflb_fact,
 	version,
 	man_unit
 FROM
 	first_dissolve"
-
 run_sql_r(query, conn_list)
 
+## export to FAIB_DATA_FOR_DISTRIBUTION
+system(glue("ogr2ogr -overwrite -f \"FileGDB\" {output_dir}\\provincial_paflb.gdb PG:\"dbname='{conn_list$dbname}' host='{conn_list$host}' user='{conn_list$user}' password='{conn_list$password}'\"  -sql \"SELECT * FROM public.provincial_paflb\" -nlt MULTIPOLYGON -nln provincial_paflb"))
+
+
+## fmlb
+query <- "DROP TABLE IF EXISTS public.provincial_fmlb;"
+run_sql_r(query, conn_list)
 query <- "CREATE TABLE public.provincial_fmlb AS
 WITH first_dissolve AS (
 SELECT
@@ -89,3 +104,5 @@ FROM
 	first_dissolve"
 
 run_sql_r(query, conn_list)
+## export to FAIB_DATA_FOR_DISTRIBUTION
+system(glue("ogr2ogr -overwrite -f \"FileGDB\" {output_dir}\\provincial_fmlb.gdb PG:\"dbname='{conn_list$dbname}' host='{conn_list$host}' user='{conn_list$user}' password='{conn_list$password}'\"  -sql \"SELECT * FROM public.provincial_fmlb\" -nlt MULTIPOLYGON -nln provincial_fmlb"))
