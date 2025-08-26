@@ -4,6 +4,7 @@
 #  install.packages("keyring")
 #  install.packages("sf")
 #  install.packages("devtools")
+#  install.packages("DT")
 #  library(devtools)
 #  install_github("bcgov/FAIB_DADMTOOLS")
 library(dadmtools)

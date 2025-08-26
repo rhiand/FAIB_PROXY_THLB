@@ -137,11 +137,291 @@ query <- "SELECT
 	p.p12_phys_inop,
 	p.n13_non_merchantable,
 	p.n14_non_commercial
-FROM whse.thlb_proxy_netdown p where man_unit = 'Merritt TSA'"
+FROM whse.thlb_proxy_netdown p"
 netdown_tab <- sql_to_df(query, conn_list)
 netdown_summary <- setup_tracking_variable(netdown_tab)
 running_total <- 0
 pretty_table(netdown_summary)
+```
+
+### Data Sources and Import Dates
+
+```{r data_sources, eval= TRUE}
+library(dadmtools)
+library(DT)
+
+conn_list <- dadmtools::get_pg_conn_list()
+
+
+my_table <- sql_to_df(r"(SELECT created_at::date as import_date, src_type, src_path, src_lyr, dst_schema, dst_tbl, query, notes FROM whse.data_sources where dst_schema != 'public' UNION ALL
+select
+'2025-08-12' as created_at,
+'sqlite' as src_type,
+'\\spatialfiles2.bcgov\work\FOR\VIC\HTS\DAM\Staff_WorkArea\heckstrand\thlb_proxy\local_inputs\final_gaps_current_noncurrent_lidar_treedPercent.sqlite' as src_path,
+'gaps_current_noncurrent_lidar_treedpercent' as src_lyr,
+'whse' as dst_schema,
+'gaps_current_noncurrent_lidar_treedpercent' as dst_table,
+'' as query,
+'Provided by FAIB inventory lidar specialist' as notes
+union all
+select
+'2025-08-12', -- created_at
+'sqlite', -- src_type
+'\\spatialfiles2.bcgov\work\FOR\VIC\HTS\DAM\Staff_WorkArea\heckstrand\thlb_proxy\local_inputs\final_gaps_lidarProgam_contained_treedpercent.sqlite',
+'gaps_lidarprogam_contained_treedpercent', --src_lyr
+'whse',-- dst_schema
+'gaps_lidarprogam_contained_treedpercent', -- dst_table
+'', --query
+'Provided by FAIB inventory lidar specialist' -- notes
+
+union all
+select
+'2025-08-20', -- created_at
+'gdb', -- src_type
+'\\spatialfiles2.bcgov\archive\FOR\VIC\HTS\ANA\workarea\AR2024\local_inputs\BC_CE_Integrated_Roads_2024_with_buffers.gdb',
+'integratedRoadsBuffers', --src_lyr
+'whse_vector',-- dst_schema
+'integratedRoadsBuffers', -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2025-08-20', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_BASEMAPPING.GBA_RAILWAY_TRACKS_SP', --src_lyr
+'whse_vector',-- dst_schema
+lower('GBA_RAILWAY_TRACKS_SP'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2025-08-20', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_BASEMAPPING.GBA_TRANSMISSION_LINES_SP', --src_lyr
+'whse_vector',-- dst_schema
+lower('GBA_TRANSMISSION_LINES_SP'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2025-08-20', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_IMAGERY_AND_BASE_MAPS.DRP_OIL_GAS_PIPELINES_BC_SP', --src_lyr
+'whse_vector',-- dst_schema
+lower('DRP_OIL_GAS_PIPELINES_BC_SP'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2025-08-20', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_MINERAL_TENURE.OG_PIPELINE_AREA_PERMIT_SP', --src_lyr
+'whse_vector',-- dst_schema
+lower('OG_PIPELINE_AREA_PERMIT_SP'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2025-08-20', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_TANTALIS.TA_CROWN_RIGHTS_OF_WAY_SVW', --src_lyr
+'whse_vector',-- dst_schema
+lower('TA_CROWN_RIGHTS_OF_WAY_SVW'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2025-08-20', -- created_at
+'gdb', -- src_type
+'\\spatialfiles2.bcgov\work\FOR\VIC\HTS\ANA\Workarea\PROVINCIAL\provincial.gdb',
+'tsa_boundaries_2020', --src_lyr
+'whse_vector',-- dst_schema
+lower('tsa_boundaries_2020'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2025-07-22', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_FOREST_VEGETATION.RSLT_OPENING_SVW', --src_lyr
+'whse_vector',-- dst_schema
+lower('RSLT_OPENING_SVW'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2025-07-22', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_FOREST_VEGETATION.RSLT_FOREST_COVER_INV_SVW', --src_lyr
+'whse_vector',-- dst_schema
+lower('RSLT_FOREST_COVER_INV_SVW'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2025-07-22', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_FOREST_VEGETATION.bec_biogeoclimatic_poly', --src_lyr
+'whse_vector',-- dst_schema
+lower('bec_biogeoclimatic_poly'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2025-07-22', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_BASEMAPPING.CWB_FLOODPLAINS_BC_AREA_SP', --src_lyr
+'whse_vector',-- dst_schema
+lower('CWB_FLOODPLAINS_BC_AREA_SP'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2024-10-01', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_BASEMAPPING.FWA_RIVERS_POLY', --src_lyr
+'whse_vector',-- dst_schema
+lower('FWA_RIVERS_POLY'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2024-10-01', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_BASEMAPPING.FWA_LAKES_POLY', --src_lyr
+'whse_vector',-- dst_schema
+lower('FWA_LAKES_POLY'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2024-10-01', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_BASEMAPPING.FWA_WETLANDS_POLY', --src_lyr
+'whse_vector',-- dst_schema
+lower('FWA_WETLANDS_POLY'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2025-07-22', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_BASEMAPPING.WLS_COMMUNITY_WS_PUB_SVW', --src_lyr
+'whse_vector',-- dst_schema
+lower('WLS_COMMUNITY_WS_PUB_SVW'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2024-06-07', -- created_at
+'gpkg', -- src_type
+'\\spatialfiles2.bcgov\work\FOR\VIC\HTS\DAM\Staff_WorkArea\heckstrand\thlb_proxy\local_inputs\fish_passage_lines.gpkg',
+'modelled_habitat_potential', --src_lyr
+'whse_vector',-- dst_schema
+lower('modelled_habitat_potential'), -- dst_table
+'', --query
+'Obtained from BC Fish Passage project lead' -- notes
+
+union all
+select
+'2024-06-07', -- created_at
+'csv', -- src_type
+'\\spatialfiles2.bcgov\work\FOR\VIC\HTS\DAM\Staff_WorkArea\heckstrand\thlb_proxy\local_inputs\fwa_stream_networks_channel_width.csv',
+'fwa_stream_networks_channel_width', --src_lyr
+'whse_vector',-- dst_schema
+lower('modelled_habitat_potential'), -- dst_table
+'', --query
+'Obtained from BC Fish Passage project lead' -- notes
+
+union all
+select
+'2025-07-22', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_TERRESTRIAL_ECOLOGY.STE_TER_ATTRIBUTE_POLYS_SVW', --src_lyr
+'whse_vector',-- dst_schema
+lower('STE_TER_ATTRIBUTE_POLYS_SVW'), -- dst_table
+'slope_stability_class_txt IN (''Potentially unstable'', ''Potentially unstable after road building'', ''Unstable'')', --query
+'' -- notes
+
+union all
+select
+'2025-07-22', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP', --src_lyr
+'whse_vector',-- dst_schema
+lower('VEG_CONSOLIDATED_CUT_BLOCKS_SP'), -- dst_table
+'', --query
+'' -- notes
+
+union all
+select
+'2025-07-22', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_FOREST_TENURE.FTEN_MANAGED_LICENCE_POLY_SVW', --src_lyr
+'whse_vector',-- dst_schema
+lower('FTEN_MANAGED_LICENCE_POLY_SVW'), -- dst_table
+'(Retirement_Date is Null or RETIREMENT_DATE > CURRENT_DATE) and FILE_STATUS_CODE = ''HI''', --query
+'' -- notes
+
+union all
+select
+'2025-07-22', -- created_at
+'oracle', -- src_type
+'bcgw',
+'WHSE_ADMIN_BOUNDARIES.FADM_TFL_ALL_SP', --src_lyr
+'whse_vector',-- dst_schema
+lower('FADM_TFL_ALL_SP'), -- dst_table
+'', --query
+'' -- notes)", conn_list)
+
+
+
+datatable(
+  my_table,
+  options = list(
+    scrollX = TRUE, 
+    columnDefs = list(
+      list(width = '300px', targets = which(names(my_table) == "src_path") - 1)
+    )
+  )
+) %>%
+  formatStyle(
+    columns = "src_path",
+    whiteSpace = "normal",
+    wordWrap = "break-word"
+  )
+
 ```
 
 
@@ -1854,24 +2134,6 @@ lclass<-"LAND BASE SUMMARY - pTHLB"
 netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,netdown,which_landbase=thlb_net)
 
 pretty_table(netdown_summary)
-```
-
-```{r data_sources, eval= TRUE}
-library(dadmtools)
-library(DT)
-
-conn_list <- dadmtools::get_pg_conn_list()
-my_table <- sql_to_df('SELECT src_type, src_path, src_lyr, dst_schema, dst_tbl, query, created_at FROM whse.data_sources', conn_list)
-
-
-datatable(
-  my_table,
-  options = list(
-    scrollX = TRUE,     # enable horizontal scrolling
-    pageLength = 10     # how many rows per page
-  )
-)
-
 ```
 
 ### pTHLB Land Base Modification

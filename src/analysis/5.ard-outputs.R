@@ -122,10 +122,9 @@ system(glue("ogr2ogr -overwrite -f \"FileGDB\" {output_dir}\\provincial_fmlb.gdb
 query <- "DROP TABLE IF EXISTS public.provincial_fmlb;"
 run_sql_r(query, conn_list)
 
-system(glue("ogr2ogr -overwrite -f \"FileGDB\" {output_dir}\\provincial_fmlb.gdb PG:\"dbname='{conn_list$dbname}' host='{conn_list$host}' user='{conn_list$user}' password='{conn_list$password}'\"  -sql \"SELECT * FROM public.provincial_fmlb\" -nlt MULTIPOLYGON -nln provincial_fmlb"))
 
-## copy the proxy THLB over to the central db
-## coordinate with Iaian about when you update the central db table so he knows
+## copy the proxy THLB netdown table over to the central db
+## coordinate with Iaian about when you update the central db table so he knows when its updated
 ## central db admin credentials (get from Iaian):
 
 cdb_user <-     ''
@@ -140,7 +139,7 @@ cdb_port <-     ''
 query <- "ALTER TABLE whse.thlb_proxy_netdown SET SCHEMA public;"
 run_sql_r(query, conn_list)
 
-## create
+## make a dumped compressed file
 system(glue('pg_dump --dbname=postgresql://{conn_list$user}:{conn_list$password}@{conn_list$host}:{conn_list$port}/{conn_list$dbname} --table=public.thlb_proxy_netdown --format=custom --file thlb_proxy_netdown.sqlc'))
 
 ## put the netdown back into the whse schema
@@ -149,7 +148,11 @@ run_sql_r(query, conn_list)
 
 system(glue('pg_restore -d postgresql://{cdb_user}:{cdb_password}@{cdb_host}:{cdb_port}/{cdb_dbname} thlb_proxy_netdown.sqlc'))
 
+## after successful restore, remove dump file
+file.remove("thlb_proxy_netdown.sqlc")
 
+
+## connect to the central database as admir and move the table from the public to the prov_gr_skey schema
 library(DBI)
 
 con <- dbConnect(

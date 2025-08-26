@@ -17,4 +17,3 @@ oracle,bcgw,WHSE_WILDLIFE_MANAGEMENT.WCP_WILDLIFE_HABITAT_AREA_POLY,whse,WCP_WIL
 oracle,bcgw,whse_forest_vegetation.rslt_forest_cover_reserve_svw,whse,rslt_forest_cover_reserve_svw,,0,FALSE,,,
 oracle,bcgw,WHSE_FOREST_VEGETATION.VEG_CONSOLIDATED_CUT_BLOCKS_SP,whse,veg_consolidated_cut_blocks_sp,,1,FALSE,,,
 oracle,bcgw,WHSE_TANTALIS.TA_PARK_ECORES_PA_SVW,whse,TA_PARK_ECORES_PA_SVW,,1,FALSE,,,
-oracle,W:\FOR\VIC\HTS\ANA\Workarea\PROVINCIAL\BC_CE_Integrated_Roads_2021_20210805.gdb,integratedRoadsBuffers,whse,integratedRoadsBuffers,,0,FALSE,,,
