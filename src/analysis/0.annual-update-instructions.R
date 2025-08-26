@@ -58,7 +58,7 @@ batch_import_to_pg_gr_skey(
 ## after you've successfully imported all the needed data sources, run the following scripts:
 
 ## The following creates a value added attributes table (vaa) tables needed for later analysis called whse.man_unit_gr_skey
-source('src/analysis/0.vaa_tables.R')
+source('src/analysis/0.recreate_man_unit_gr_skey.R')
 
 ## Update the FMLB to use the latest VRI & cutblocks
 source('src/analysis/2.fmlb-creation.R')

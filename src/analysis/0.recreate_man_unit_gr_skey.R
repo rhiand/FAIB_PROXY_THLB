@@ -56,7 +56,7 @@ query <- glue("CREATE TABLE {dst_schema}.man_unit_gr_skey AS
 	left join {dst_schema}.mu_lookup_table_im mu_look on tsa.tsa_number::integer = mu_look.tsa_number::integer;")
 run_sql_r(query, conn_list)
 
-query <- "ALTER TABLE {dst_schema}.man_unit_gr_skey ADD PRIMARY KEY (gr_skey);"
+query <- glue("ALTER TABLE {dst_schema}.man_unit_gr_skey ADD PRIMARY KEY (gr_skey);")
 run_sql_r(query, conn_list)
 
 todays_date <- format(Sys.time(), "%Y-%m-%d %I:%M:%S %p")

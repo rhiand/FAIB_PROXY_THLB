@@ -45,7 +45,7 @@ run_sql_r(query, conn_list)
 
 
 
-## Run if you don't have the following layer in whse schema: 
+## Run if you don't have the following layer in whse schema:
 import_gr_skey_tif_to_pg_rast(
     out_crop_tif_name = glue('{repo_path}/data/output/bc_01ha_gr_skey.tif'),
     template_tif      = "//spatialfiles2.bcgov/archive/FOR/VIC/HTS/ANA/workarea/PROVINCIAL/bc_01ha_gr_skey.tif",
@@ -72,14 +72,14 @@ import_gr_skey_tif_to_pg_rast(
 ## \\spatialfiles2.bcgov\work\FOR\VIC\HTS\DAM\Staff_WorkArea\heckstrand\thlb_proxy\local_inputs\final_gaps_lidarProgam_contained_treedpercent.sqlite (for FMLB)
 ## \\spatialfiles2.bcgov\archive\FOR\VIC\HTS\ANA\workarea\PROVINCIAL\bc_01ha_gr_skey.tif (for linear_features rasterizing)
 ## \\spatialfiles2.bcgov\archive\FOR\VIC\HTS\ANA\workarea\PROVINCIAL\BC_Boundary_Terrestrial.tif (for linear_features rasterizing)
-## 
+##
 
 
 
 ## Go through the config_parameters.csv and update the data source path & layer name to the most recent layer for the following layers:
 ## VEG_COMP_LYR_R1_POLY_INTERNAL --> new year
 ## harvest restrictions --> most recent
-## 
+##
 
 
 batch_import_to_pg_gr_skey(
@@ -98,10 +98,10 @@ batch_import_to_pg_gr_skey(
 
 
 ## after you've successfully imported all the needed data sources or updated where you need to run, run the following scripts
-## The following creates a value added attributes table (vaa) tables needed for later analysis called whse.man_unit_gr_skey
+## The following recreates the man_unit_gr_skey table needed for later analysis.
 
 ## 1.scripts: importing data sources:
-run_sql_psql(sql_var=NULL, sql_file = 'src/analysis/0.vaa_tables.sql', 'thlb_proxy')
+run_sql_psql(sql_var=NULL, sql_file = 'src/analysis/0.recreate_man_unit_gr_skey.sql', 'thlb_proxy')
 
 source('src/analysis/1.fmlb-import-layers.R')
 source('src/analysis/1.linear-features-import-layers.R')

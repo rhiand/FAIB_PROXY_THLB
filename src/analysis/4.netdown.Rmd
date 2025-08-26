@@ -42,6 +42,7 @@ library(cowplot)
 library(mapview)
 library(tidytext)
 library(janitor)
+library(DT)
 
 rm(list = ls())
 
@@ -136,7 +137,7 @@ query <- "SELECT
 	p.p12_phys_inop,
 	p.n13_non_merchantable,
 	p.n14_non_commercial
-FROM whse.thlb_proxy_netdown p"
+FROM whse.thlb_proxy_netdown p where man_unit = 'Merritt TSA'"
 netdown_tab <- sql_to_df(query, conn_list)
 netdown_summary <- setup_tracking_variable(netdown_tab)
 running_total <- 0
@@ -1855,6 +1856,23 @@ netdown_summary<-landbase_sum(netdown_tab,netdown_summary,running_total,lclass,n
 pretty_table(netdown_summary)
 ```
 
+```{r data_sources, eval= TRUE}
+library(dadmtools)
+library(DT)
+
+conn_list <- dadmtools::get_pg_conn_list()
+my_table <- sql_to_df('SELECT src_type, src_path, src_lyr, dst_schema, dst_tbl, query, created_at FROM whse.data_sources', conn_list)
+
+
+datatable(
+  my_table,
+  options = list(
+    scrollX = TRUE,     # enable horizontal scrolling
+    pageLength = 10     # how many rows per page
+  )
+)
+
+```
 
 ### pTHLB Land Base Modification
 In the event that modifications of the land bases or netdown factors are required, a few suggestions are provided. 
@@ -1932,7 +1950,7 @@ JOIN harvest_netdown_adjustment adj USING (gr_skey);
 ```
  
  
-```{r aflb_to_pg, eval= TRUE}
+```{r aflb_to_pg, eval= FALSE}
 
 df_to_pg(Id(schema = 'whse', table = 'prov_netdown_temp'), netdown_tab[,c('gr_skey', 'fmlb', 'falb', 'aflb', 'thlb_net', 'p15_future_retention')], conn_list, overwrite=TRUE)
 
@@ -1940,7 +1958,7 @@ df_to_pg(Id(schema = 'whse', table = 'prov_netdown_temp'), netdown_tab[,c('gr_sk
 
 
 
-```{r aflb_to_pgs, eval= TRUE}
+```{r aflb_to_pgs, eval= FALSE}
 query <- "UPDATE whse.thlb_proxy_netdown set 
   fmlb = a.fmlb,
   falb = a.falb,
