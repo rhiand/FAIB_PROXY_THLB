@@ -160,6 +160,6 @@ con <- dbConnect(
   user     = cdb_user,
   password = cdb_password
 )
-dbGetQuery(con, "DROP TABLE IF EXISTS prov_grskey.thlb_proxy_netdown")
+dbSendQuery(con, "DROP TABLE IF EXISTS prov_grskey.thlb_proxy_netdown")
 ## move the table over to prov_grskey schema
-dbGetQuery(con, "ALTER TABLE public.thlb_proxy_netdown SET SCHEMA prov_grskey")
+dbSendQuery(con, "ALTER TABLE public.thlb_proxy_netdown SET SCHEMA prov_grskey")
