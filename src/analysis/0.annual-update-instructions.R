@@ -1,3 +1,12 @@
+#  install.packages("RPostgres")
+#  install.packages("glue")
+#  install.packages("terra")
+#  install.packages("keyring")
+#  install.packages("sf")
+#  install.packages("devtools")
+#  install.packages("DT")
+#  library(devtools)
+#  install_github("bcgov/FAIB_DADMTOOLS")
 library(dadmtools)
 
 ## handover document:
@@ -68,4 +77,14 @@ source('src/analysis/2.fmlb-creation.R')
 ## row numbers that reference f_own & attributes: 172, 243, 244, 269, 276, 277, 298, 299
 source('src/analysis/3.netdown-create-table.R')
 
-## open up 4.netdown.Rmd in RStudio and run with knit on - it will recreate the file: 4.netdown.html. Review this html for sanity
+## !!! IMPORTANT MANUAL STEP - DONT MISS THIS: !!!
+## open up 4.netdown.Rmd in RStudio and run with knit on
+## it will recreate the file: 4.netdown.html. Review this html contents & THLB sum's for sanity
+## compare with last years copy which has been renamed to: provincial.thlb.netdown.and.documentation.html
+## which should have been moved here:
+## S:\FOR\VIC\HTS\FAIB_DATA_FOR_DISTRIBUTION\THLB\THLB_Proxy\archive\2025
+
+
+## export datasets to the FAIB_FOR_DISTRIBUTION folder for analyst & ARD usage
+## run the lines in the below script - I'd probably just do them one at a time rather than sourcing the whole R file
+source('src/analysis/5.ard-outputs.R')

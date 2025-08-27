@@ -6,12 +6,21 @@ conn_list <- dadmtools::get_pg_conn_list()
 repo_path <- 'C:/ard/FAIB_PROXY_THLB'
 setwd(repo_path)
 
+## !!! IMPORTANT MANUAL STEP - DONT MISS THIS: !!!
+## move last years THLB Proxy to the archive folder
+## S:\FOR\VIC\HTS\FAIB_DATA_FOR_DISTRIBUTION\THLB\THLB_Proxy\
+## into S:\FOR\VIC\HTS\FAIB_DATA_FOR_DISTRIBUTION\THLB\THLB_Proxy\archive\2025
+
+output_dir <- "S:\\FOR\\VIC\\HTS\\FAIB_DATA_FOR_DISTRIBUTION\\THLB\\THLB_Proxy"
+## export the new metadata file:
+file.copy(from = 'src\\analysis\\4.netdown.html', to = glue('{output_dir}\\provincial.thlb.netdown.and.documentation.html'))
+
+
 ## export the required raster exports for the ARD:
 source('src/utils/GenerateTIFFS.R')
 
 ## export the required vector exports for the ARD:
 ## riparian
-output_dir <- "S:\\FOR\\VIC\\HTS\\FAIB_DATA_FOR_DISTRIBUTION\\THLB\\THLB_Proxy"
 system(glue("ogr2ogr -overwrite -f \"FileGDB\" {output_dir}\\provincial_riparian_buffers.gdb PG:\"dbname='{conn_list$dbname}' host='{conn_list$host}' user='{conn_list$user}' password='{conn_list$password}'\"  -sql \"SELECT * FROM whse_vector.riparian_buffers\" -nlt MULTIPOLYGON -nln riparian_buffers"))
 
 ## pthlb
@@ -122,16 +131,11 @@ system(glue("ogr2ogr -overwrite -f \"FileGDB\" {output_dir}\\provincial_fmlb.gdb
 query <- "DROP TABLE IF EXISTS public.provincial_fmlb;"
 run_sql_r(query, conn_list)
 
-
-## copy the proxy THLB netdown table over to the central db
-## coordinate with Iaian about when you update the central db table so he knows when its updated
-## central db admin credentials (get from Iaian):
-
-cdb_user <-     ''
-cdb_password <- ''
-cdb_host <-     ''
-cdb_dbname <-   ''
-cdb_port <-     ''
+## create a (non-compressed) SQL dump of the netdown table
+system(glue('pg_dump --dbname=postgresql://{conn_list$user}:{conn_list$password}@{conn_list$host}:{conn_list$port}/{conn_list$dbname} --table=whse.thlb_proxy_netdown --format=plain --file thlb_proxy_netdown.sql'))
+file.rename('thlb_proxy_netdown.sql', glue('{output_dir}\\thlb_proxy_netdown.sql'))
+## after successful moving of the file, remove dump file
+file.remove("thlb_proxy_netdown.sql")
 
 
 ## copying the latest THLB PROXY netdown table to the central db
@@ -146,11 +150,20 @@ system(glue('pg_dump --dbname=postgresql://{conn_list$user}:{conn_list$password}
 query <- "ALTER TABLE public.thlb_proxy_netdown SET SCHEMA whse;"
 run_sql_r(query, conn_list)
 
+## copy the proxy THLB netdown table over to the central db
+## coordinate with Iaian about when you update the central db table so he knows when its updated
+## central db admin credentials (get from Iaian):
+
+cdb_user <-     ''
+cdb_password <- ''
+cdb_host <-     ''
+cdb_dbname <-   ''
+cdb_port <-     ''
+
 system(glue('pg_restore -d postgresql://{cdb_user}:{cdb_password}@{cdb_host}:{cdb_port}/{cdb_dbname} thlb_proxy_netdown.sqlc'))
 
 ## after successful restore, remove dump file
 file.remove("thlb_proxy_netdown.sqlc")
-
 
 ## connect to the central database as admir and move the table from the public to the prov_gr_skey schema
 library(DBI)
