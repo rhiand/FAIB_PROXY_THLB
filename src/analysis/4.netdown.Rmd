@@ -153,7 +153,22 @@ library(DT)
 conn_list <- dadmtools::get_pg_conn_list()
 
 
-my_table <- sql_to_df(r"(SELECT created_at::date as import_date, src_type, src_path, src_lyr, dst_schema, dst_tbl, query, notes FROM whse.data_sources where dst_schema != 'public' UNION ALL
+my_table <- sql_to_df(r"((SELECT 
+  distinct on (dst_schema, dst_tbl) -- run a distinct on dst schema & dst_tbl in order to only get the latest data source if it has the same dst table and schema name
+  created_at::date as import_date, 
+  src_type, 
+  src_path, 
+  src_lyr, 
+  dst_schema, 
+  dst_tbl, 
+  query, 
+  notes 
+FROM 
+whse.data_sources
+WHERE
+   dst_schema != 'public' 
+ORDER BY dst_schema, dst_tbl, created_at asc)
+UNION ALL
 select
 '2025-08-12' as created_at,
 'sqlite' as src_type,

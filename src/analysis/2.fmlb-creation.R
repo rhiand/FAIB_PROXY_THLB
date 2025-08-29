@@ -86,6 +86,80 @@ SELECT
 		THEN 'N'
 		ELSE vri.for_mgmt_land_base_ind
 	END AS fmlb_adj,
+		CASE 
+			-- knock out BEC NDT5 — Alpine Tundra and Subalpine Parkland
+			WHEN bec.natural_disturbance = 'NDT5' THEN 'N: NDT5'
+			-- keep in any RESULTS openings or consolidated cutblocks
+			WHEN (nullif(vri.opening_id::text,'0') is not null or cc.harvest_start_year_calendar is not null) THEN 'Y: vri opening_id or cc harvest year exists'
+			-- knock out spruce, willow, birch shrublands
+			WHEN upper(bec.zone || bec.subzone) IN ('SWBMKS', 'SWBUNS', 'SWBVKS') then 'N: SWB scrublands'
+			-- knock out all BEC bunch grass
+			WHEN bec.zone = 'BG' THEN 'N: bunchgrass'
+			-- current & historical lidar
+			-- include in FMLB if >= 10% treed & napercent < 25%
+			-- exclude from FMLB if < 10% treed percent & na percent < 25%
+			WHEN current_lidar.treedpercent >= 10 and current_lidar.napercent < 25 then 'Y: Lidar >= 10% treed%'
+			WHEN current_lidar.treedpercent < 10 and current_lidar.napercent < 25 then 'N: Lidar < 10% treed %'
+			WHEN hx_lidar.treedpercent >= 10 and hx_lidar.napercent < 25 then 'Y: Lidar >= 10% treed%'
+			WHEN hx_lidar.treedpercent < 10 and hx_lidar.napercent < 25 then 'N: Lidar < 10% treed %'
+			-- keep in where TFL 19, btm forest and inv != F or orig FMLB is null
+			-- known old growth in TFL19 where old inventory
+			WHEN 
+				tfl.forest_file_id ='TFL19' and 
+				((vri.for_mgmt_land_base_ind = 'N' and vri.inventory_standard_cd = 'F') OR (vri.for_mgmt_land_base_ind IS NULL)) and 
+				btm.present_land_use_label in ('Old Forest', 'Recently Logged', 'Selectively Logged', 'Young Forest') 
+			THEN 'Y: TFL19, orig FMLB = N, inv code = F, btm forested'
+			-- keep in known areas of forest in strathcona park 
+			WHEN 
+				park.protected_lands_name = 'STRATHCONA PARK' AND 
+				vri.bclcs_level_1 ='V' AND 
+				vri.bclcs_level_2 = 'T' AND 
+				vri.site_index > 4 AND
+				vri.for_mgmt_land_base_ind ='N' 
+			THEN 'Y: strathcona'
+			-- keep in where VRI is unreported but btm present land use is forested
+			WHEN 
+				(coalesce(vri.bclcs_level_1,'U') = 'U' AND 
+				btm.present_land_use_label IN ('Old Forest', 'Recently Logged', 'Selectively Logged', 'Young Forest')) 
+			THEN 'Y: BTM forest, bclcs unreported'
+			-- knock out where original for_mgmt_land_base_ind = 'Y' but other fields denote unreported
+			WHEN 
+				((trim(vri.non_productive_descriptor_cd) = 'U' OR 
+				vri.bclcs_level_5 = 'UR' OR 
+				vri.land_cover_class_cd_1 = 'UR' OR 
+				vri.land_cover_class_cd_2 = 'UR' OR 
+				vri.land_cover_class_cd_3 = 'UR' OR 
+				vri.non_veg_cover_type_1 = 'UR')) AND 
+				(coalesce(vri.for_mgmt_land_base_ind,'Y') = 'Y') 
+			THEN 'N: urban etc'
+			-- knock out where bclcs_level_1 is Non Vegetated and not beetle kill or wildfire
+			-- don't want to switch something to N when it is beetle kill or wildfire
+			WHEN 
+				coalesce(vri.bclcs_level_1, 'U') = 'N' AND 
+				COALESCE(earliest_nonlogging_dist_type, 'ZZ') not in ('IBM', 'B', 'NB')  
+			THEN 'N: bclcs nonveg, not beetle kill or burn'
+			-- keep in veg / non treed / CC < 10 / land cover class IS NULL / not beetle kill (IBM) or wildfire (B, NB) / FMLB original = 'Y' / forested according to feds
+			WHEN 
+				vri.BCLCS_LEVEL_1 = 'V' AND 
+				COALESCE(vri.BCLCS_LEVEL_2, '') <> 'T' AND 
+				vri.FOR_MGMT_LAND_BASE_IND = 'Y' AND 
+				vri.CROWN_CLOSURE < 10 AND 
+				vri.LAND_COVER_CLASS_CD_1 IS NULL AND
+				btm.present_land_use_label in ('Old Forest', 'Recently Logged', 'Selectively Logged', 'Young Forest') AND
+				COALESCE(earliest_nonlogging_dist_type, 'ZZ') not in ('IBM', 'B', 'NB')
+			THEN 'Y: veg, non treed, BTM forested'
+			-- knock out veg / non treed / CC < 10 / land cover class not tree classes / not beetle kill (IBM) or wildfire (B, NB) / FMLB original = 'Y'
+			-- https://archive.ipcc.ch/ipccreports/sres/land_use/index.php?idp=124
+			WHEN 
+				vri.BCLCS_LEVEL_1 = 'V' AND 
+				COALESCE(vri.BCLCS_LEVEL_2, '') <> 'T' AND 
+				vri.FOR_MGMT_LAND_BASE_IND = 'Y' AND 
+				vri.CROWN_CLOSURE < 10 AND 
+				coalesce(vri.LAND_COVER_CLASS_CD_1, '') NOT IN ('TB', 'TC', 'TM') AND 
+				COALESCE(earliest_nonlogging_dist_type, 'ZZ') not in ('IBM', 'B', 'NB')
+			THEN 'N: veg, nontreed etc'
+			ELSE vri.for_mgmt_land_base_ind || ': for_mgmt_land_base_ind'
+		END AS fmlb_adj_desc,
 	CASE 
 		-- knock out BEC NDT5 — Alpine Tundra and Subalpine Parkland
 		WHEN bec.natural_disturbance = 'NDT5' THEN 'BEC NDT5'
