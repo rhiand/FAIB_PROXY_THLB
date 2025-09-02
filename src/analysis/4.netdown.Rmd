@@ -2227,7 +2227,7 @@ JOIN harvest_netdown_adjustment adj USING (gr_skey);
 ```
  
  
-```{r aflb_to_pg, eval= FALSE}
+```{r aflb_to_pg, eval= TRUE}
 
 df_to_pg(Id(schema = 'whse', table = 'prov_netdown_temp'), netdown_tab[,c('gr_skey', 'fmlb', 'falb', 'aflb', 'thlb_net', 'p15_future_retention')], conn_list, overwrite=TRUE)
 
@@ -2235,7 +2235,7 @@ df_to_pg(Id(schema = 'whse', table = 'prov_netdown_temp'), netdown_tab[,c('gr_sk
 
 
 
-```{r aflb_to_pgs, eval= FALSE}
+```{r aflb_to_pgs, eval= TRUE}
 query <- "UPDATE whse.thlb_proxy_netdown set 
   fmlb = a.fmlb,
   falb = a.falb,
